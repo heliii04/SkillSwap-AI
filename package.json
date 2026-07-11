@@ -1,0 +1,9 @@
+{
+    "name": "skillswap-ai",
+    "private": true,
+    "version": "1.0.0",
+    "dependencies": {
+        "@tailwindcss/vite": "^4.3.2",
+        "tailwindcss": "^4.3.2"
+    }
+}
