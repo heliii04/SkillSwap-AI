@@ -1,1 +1,101 @@
 @import "tailwindcss";
+
+html {
+    scroll-behavior: smooth;
+}
+
+body {
+    margin: 0;
+    min-width: 320px;
+    background: #07080d;
+    color: #ffffff;
+    overflow-x: hidden;
+}
+
+button,
+a,
+input {
+    font: inherit;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+/* Hero glow animation */
+
+@keyframes hero-float {
+
+    0%,
+    100% {
+        transform: translateY(0px);
+    }
+
+    50% {
+        transform: translateY(-18px);
+    }
+}
+
+.hero-float {
+    animation: hero-float 6s ease-in-out infinite;
+}
+
+/* Orb glow animation */
+
+@keyframes orb-glow {
+
+    0%,
+    100% {
+        opacity: 0.65;
+        transform: scale(1);
+    }
+
+    50% {
+        opacity: 1;
+        transform: scale(1.06);
+    }
+}
+
+.orb-glow {
+    animation: orb-glow 5s ease-in-out infinite;
+}
+
+/* Moving light */
+
+@keyframes light-move {
+    0% {
+        transform: translateX(-35%);
+    }
+
+    50% {
+        transform: translateX(35%);
+    }
+
+    100% {
+        transform: translateX(-35%);
+    }
+}
+
+.light-move {
+    animation: light-move 8s ease-in-out infinite;
+}
+
+/* Categories marquee — tumhara existing effect */
+
+@keyframes marquee {
+    from {
+        transform: translateX(0);
+    }
+
+    to {
+        transform: translateX(-50%);
+    }
+}
+
+.animate-marquee {
+    animation: marquee 30s linear infinite;
+}
+
+.animate-marquee:hover {
+    animation-play-state: paused;
+}

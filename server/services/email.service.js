@@ -1,6 +1,11 @@
 import transporter from "../config/mailer.js";
-import { env } from "../config/env.js";
 import { otpEmailTemplate } from "../templates/otpEmail.template.js";
+
+const MAIL_FROM_NAME =
+    process.env.MAIL_FROM_NAME || "SkillSwap AI";
+
+const MAIL_FROM_ADDRESS =
+    process.env.MAIL_FROM_ADDRESS || process.env.SMTP_USER;
 
 export const sendEmail = async ({
     to,
@@ -13,22 +18,23 @@ export const sendEmail = async ({
         throw new Error("Email recipient is required");
     }
 
+    if (!MAIL_FROM_ADDRESS) {
+        throw new Error(
+            "MAIL_FROM_ADDRESS or SMTP_USER is not configured"
+        );
+    }
+
     try {
         const info = await transporter.sendMail({
             from: {
-                name: env.MAIL_FROM_NAME,
-                address: env.MAIL_FROM_ADDRESS,
+                name: MAIL_FROM_NAME,
+                address: MAIL_FROM_ADDRESS,
             },
-
             to,
             subject,
             text,
             html,
             replyTo,
-
-            headers: {
-                "X-Application": "SkillSwap AI",
-            },
         });
 
         return {
@@ -44,7 +50,9 @@ export const sendEmail = async ({
             command: error.command,
         });
 
-        throw new Error("Unable to send email at the moment");
+        throw new Error(
+            "Unable to send email at the moment"
+        );
     }
 };
 

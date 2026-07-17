@@ -1,97 +1,229 @@
-import { FaArrowRight } from "react-icons/fa";
-import { FiSearch } from "react-icons/fi";
+import { useState } from "react";
+import { Link } from "react-router-dom";
+
+import {
+    FaArrowRight,
+    FaSearch,
+} from "react-icons/fa";
+
+import { HiSparkles } from "react-icons/hi2";
 
 export default function Hero() {
+    const [search, setSearch] = useState("");
+
+    const popularSkills = [
+        "React",
+        "Python",
+        "AI & ML",
+        "UI/UX",
+        "Node.js",
+    ];
+
     return (
-        <section className="bg-gradient-to-r from-indigo-50 via-white to-purple-60">
-            <div className="max-w-7xl mx-auto px-6 py-24">
-                <div className="grid lg:grid-cols-2 gap-10 items-center">
-                    {/* Left */}
-                    <div>
-                        <span className="bg-indigo-100 text-indigo-600 px-4 py-2 rounded-full text-sm font-semibold">
-                            🚀 AI Powered Skill Exchange Platform
-                        </span>
+        <section
+            className="
+        relative flex min-h-screen w-full
+        items-center overflow-hidden
+        bg-[#07080D]
+        pt-24
+      "
+        >
+            {/* Subtle background grid */}
+            <div
+                className="
+          pointer-events-none absolute inset-0
+          opacity-[0.08]
+          [background-image:linear-gradient(rgba(255,255,255,0.07)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.07)_1px,transparent_1px)]
+          [background-size:60px_60px]
+        "
+            />
 
-                        <h1 className="text-6xl font-extrabold text-gray-900 leading-tight mt-6">
-                            Learn.
-                            <br />
-                            Teach.
-                            <br />
+            <div
+                className="
+          relative z-10 mx-auto
+          w-full max-w-[1500px]
+          px-5 pb-10 pt-10
+          text-center
+          sm:px-8
+          lg:px-12
+          xl:px-16
+        "
+            >
+                {/* Badge */}
+                <div
+                    className="
+            mx-auto inline-flex items-center gap-2
+            rounded-full
+            border border-white/10
+            bg-[#111218]
+            px-4 py-2
+            text-xs font-semibold
+            uppercase tracking-[0.2em]
+            text-orange-400
+            sm:text-sm
+          "
+                >
+                    <HiSparkles className="text-orange-400" />
 
-                            <span className="text-indigo-600">
-                                Grow Together.
-                            </span>
-                        </h1>
+                    AI-powered skill exchange
+                </div>
 
-                        <p className="text-gray-500 text-lg mt-6 leading-8">
-                            Discover amazing people, exchange skills,
-                            build your portfolio and grow your career
-                            through collaborative learning.
-                        </p>
+                {/* Heading */}
+                <h1
+                    className="
+            mx-auto mt-7 max-w-5xl
+            text-5xl font-semibold
+            leading-[0.98] tracking-[-0.04em]
+            text-white
+            sm:text-6xl
+            lg:text-7xl
+            xl:text-[88px]
+          "
+                >
+                    Exchange skills.
+                    <br />
 
-                        {/* Search */}
-                        <div className="mt-8 flex">
-                            <div className="flex items-center bg-white rounded-xl shadow-lg px-5 w-full max-w-lg">
-                                <FiSearch className="text-gray-400 text-xl" />
-                                <input
-                                    type="text"
-                                    placeholder="Search Skills..."
-                                    className="w-full p-4 outline-none"
-                                />
-                            </div>
-                        </div>
+                    <span className="text-orange-500">
+                        Powered by AI.
+                    </span>
+                </h1>
 
-                        {/* Buttons */}
-                        <div className="mt-8 flex gap-5">
-                            <button className="bg-indigo-600 text-white px-7 py-3 rounded-xl hover:bg-indigo-700 duration-300">
-                                Get Started
-                            </button>
+                {/* Description */}
+                <p
+                    className="
+            mx-auto mt-6 max-w-2xl
+            text-base leading-7
+            text-white/55
+            sm:text-lg
+          "
+                >
+                    Connect with the right mentors, exchange knowledge and receive
+                    intelligent skill recommendations designed around your goals.
+                </p>
 
-                            <button className="border border-indigo-600 text-indigo-600 px-7 py-3 rounded-xl hover:bg-indigo-50 duration-300 flex items-center gap-2">
-                                Browse Skills
-                                <FaArrowRight />
-                            </button>
-                        </div>
+                {/* Buttons */}
+                <div
+                    className="
+            mt-8 flex flex-col
+            items-center justify-center gap-4
+            sm:flex-row
+          "
+                >
+                    <Link
+                        to="/search"
+                        className="
+              group flex min-w-[180px]
+              items-center justify-center gap-3
+              rounded-full
+              border border-white/15
+              bg-[#111218]
+              px-7 py-4
+              font-semibold text-white
+              transition-all duration-300
+              hover:border-orange-400/50
+              hover:bg-[#171820]
+            "
+                    >
+                        Explore Skills
 
-                        {/* Stats */}
-                        <div className="flex gap-10 mt-12">
-                            <div>
-                                <h2 className="text-3xl font-bold text-indigo-600">
-                                    1500+
-                                </h2>
-                                <p className="text-gray-500">
-                                    Skills
-                                </p>
-                            </div>
+                        <FaArrowRight className="transition-transform duration-300 group-hover:translate-x-1" />
+                    </Link>
 
-                            <div>
-                                <h2 className="text-3xl font-bold text-indigo-600">
-                                    5000+
-                                </h2>
-                                <p className="text-gray-500">
-                                    Learners
-                                </p>
-                            </div>
+                    <Link
+                        to="/register"
+                        className="
+              group flex min-w-[180px]
+              items-center justify-center gap-3
+              rounded-full
+              bg-orange-500
+              px-7 py-4
+              font-semibold text-white
+              transition-all duration-300
+              hover:-translate-y-1
+              hover:bg-orange-400
+            "
+                    >
+                        Get Started
 
-                            <div>
-                                <h2 className="text-3xl font-bold text-indigo-600">
-                                    1200+
-                                </h2>
-                                <p className="text-gray-500">
-                                    Skill Swaps
-                                </p>
-                            </div>
-                        </div>
-                    </div>
+                        <FaArrowRight className="transition-transform duration-300 group-hover:translate-x-1" />
+                    </Link>
+                </div>
 
-                    {/* Right */}
-                    <div className="flex justify-center">
-                        <img
-                            src="https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=700"
-                            alt="Hero"
-                            className="rounded-3xl shadow-2xl"
+                {/* Search */}
+                <div
+                    className="
+            mx-auto mt-8 max-w-2xl
+            rounded-2xl
+            border border-white/10
+            bg-[#111218]
+            p-2
+          "
+                >
+                    <div className="flex items-center">
+                        <FaSearch className="ml-4 shrink-0 text-white/35" />
+
+                        <input
+                            type="text"
+                            value={search}
+                            onChange={(event) => setSearch(event.target.value)}
+                            placeholder="Search React, Python, AI, UI Design..."
+                            className="
+                min-w-0 flex-1
+                bg-transparent
+                px-4 py-3
+                text-sm text-white
+                outline-none
+                placeholder:text-white/30
+                sm:text-base
+              "
                         />
+
+                        <button
+                            type="button"
+                            className="
+                shrink-0 rounded-xl
+                bg-orange-500
+                px-5 py-3
+                text-sm font-semibold text-white
+                transition-colors duration-300
+                hover:bg-orange-400
+              "
+                        >
+                            Search
+                        </button>
                     </div>
+                </div>
+
+                {/* Popular skills */}
+                <div
+                    className="
+            mt-4 flex flex-wrap
+            items-center justify-center gap-2
+          "
+                >
+                    <span className="mr-1 text-xs text-white/35">
+                        Popular:
+                    </span>
+
+                    {popularSkills.map((skill) => (
+                        <button
+                            key={skill}
+                            type="button"
+                            onClick={() => setSearch(skill)}
+                            className="
+                rounded-full
+                border border-white/10
+                bg-[#111218]
+                px-4 py-2
+                text-xs text-white/55
+                transition-all duration-300
+                hover:border-orange-400/40
+                hover:text-orange-300
+              "
+                        >
+                            {skill}
+                        </button>
+                    ))}
                 </div>
             </div>
         </section>
