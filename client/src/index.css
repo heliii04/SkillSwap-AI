@@ -22,7 +22,123 @@ input {
     box-sizing: border-box;
 }
 
-/* Hero glow animation */
+/* ==========================================================
+   GLOBAL HOVER & CURSOR EFFECTS
+========================================================== */
+
+a,
+button,
+input,
+textarea,
+select,
+label,
+[role="button"],
+.clickable {
+    transition:
+        transform 0.25s ease,
+        box-shadow 0.25s ease,
+        background-color 0.25s ease,
+        color 0.25s ease,
+        border-color 0.25s ease,
+        opacity 0.25s ease;
+}
+
+/* Pointer Cursor */
+
+a,
+button,
+select,
+label,
+[role="button"],
+.clickable {
+    cursor: pointer;
+}
+
+/* Text Cursor */
+
+input,
+textarea {
+    cursor: text;
+}
+
+/* Button Hover */
+
+button:not(:disabled):hover,
+[role="button"]:hover,
+.clickable:hover {
+    transform: translateY(-2px);
+}
+
+/* Button Click */
+
+button:not(:disabled):active,
+[role="button"]:active,
+.clickable:active {
+    transform: scale(0.97);
+}
+
+/* Link Hover */
+
+a:hover {
+    opacity: 0.85;
+}
+
+/* Inputs */
+
+input:hover,
+textarea:hover,
+select:hover {
+    border-color: #6366f1;
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+    outline: none;
+    border-color: #6366f1;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+}
+
+/* Disabled */
+
+button:disabled,
+input:disabled,
+textarea:disabled,
+select:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+    transform: none;
+    box-shadow: none;
+}
+
+/* Universal Card Hover */
+
+.hover-card {
+    transition:
+        transform .3s ease,
+        box-shadow .3s ease,
+        border-color .3s ease;
+}
+
+.hover-card:hover {
+    cursor: pointer;
+    transform: translateY(-6px);
+}
+
+/* Keyboard Focus */
+
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+    outline: 3px solid rgba(99, 102, 241, 0.35);
+    outline-offset: 3px;
+}
+
+/* ==========================================================
+   Hero Glow Animation
+========================================================== */
 
 @keyframes hero-float {
 
@@ -40,7 +156,9 @@ input {
     animation: hero-float 6s ease-in-out infinite;
 }
 
-/* Orb glow animation */
+/* ==========================================================
+   Orb Glow Animation
+========================================================== */
 
 @keyframes orb-glow {
 
@@ -60,7 +178,9 @@ input {
     animation: orb-glow 5s ease-in-out infinite;
 }
 
-/* Moving light */
+/* ==========================================================
+   Moving Light
+========================================================== */
 
 @keyframes light-move {
     0% {
@@ -80,7 +200,9 @@ input {
     animation: light-move 8s ease-in-out infinite;
 }
 
-/* Categories marquee — tumhara existing effect */
+/* ==========================================================
+   Categories Marquee
+========================================================== */
 
 @keyframes marquee {
     from {
@@ -98,4 +220,46 @@ input {
 
 .animate-marquee:hover {
     animation-play-state: paused;
+}
+
+/* ==========================================================
+   Custom Scrollbar
+========================================================== */
+
+.custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.12);
+    border-radius: 9999px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.25);
+}
+
+.custom-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.12) transparent;
+}
+
+/* ==========================================================
+   Reduce Motion
+========================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+
+    *,
+    *::before,
+    *::after {
+        animation: none !important;
+        transition: none !important;
+        scroll-behavior: auto;
+    }
 }

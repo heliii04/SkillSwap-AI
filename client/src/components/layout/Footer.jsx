@@ -79,16 +79,16 @@ export default function Footer() {
             <div className="mt-6 space-y-4">
 
               {[
-                "Home",
-                "Browse Skills",
-                "How It Works",
-                "Testimonials",
-                "Contact",
+                { name: "Home", path: "/" },
+                { name: "Browse Skills", path: "/browse-skills" },
+                { name: "How It Works", path: "/how-it-works" },
+                { name: "About", path: "/about" },
+                { name: "Contact", path: "/contact" },
               ].map((item) => (
 
                 <Link
-                  key={item}
-                  to="/"
+                  key={item.name}
+                  to={item.path}
                   className="
                     block
                     text-white/45
@@ -97,7 +97,7 @@ export default function Footer() {
                     hover:text-orange-400
                   "
                 >
-                  {item}
+                  {item.name}
                 </Link>
 
               ))}
@@ -117,16 +117,16 @@ export default function Footer() {
             <div className="mt-6 space-y-4">
 
               {[
-                "Privacy Policy",
-                "Terms & Conditions",
-                "Help Center",
-                "FAQ",
-                "Support",
+                { name: "Privacy Policy", path: "/privacy" },
+                { name: "Terms & Conditions", path: "/terms" },
+                { name: "Help Center", path: "/contact" },
+                { name: "FAQ", path: "/how-it-works#faq" },
+                { name: "Support", path: "/contact" },
               ].map((item) => (
 
                 <Link
-                  key={item}
-                  to="/"
+                  key={item.name}
+                  to={item.path}
                   className="
                     block
                     text-white/45
@@ -135,7 +135,7 @@ export default function Footer() {
                     hover:text-orange-400
                   "
                 >
-                  {item}
+                  {item.name}
                 </Link>
 
               ))}

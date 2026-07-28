@@ -4,56 +4,157 @@ const userSchema = new mongoose.Schema(
     {
         name: {
             type: String,
-            required: [true, "Name is required"],
+            required: true,
             trim: true,
-            minlength: [2, "Name must contain at least 2 characters"],
-            maxlength: [80, "Name cannot exceed 80 characters"],
+            minlength: 2,
+            maxlength: 80,
         },
 
         email: {
             type: String,
-            required: [true, "Email is required"],
+            required: true,
             unique: true,
             lowercase: true,
             trim: true,
             index: true,
-            maxlength: 254,
         },
 
-        password: {
+        passwordHash: {
             type: String,
-            required: [true, "Password is required"],
+            required: true,
             select: false,
+        },
+
+        avatar: {
+            publicId: {
+                type: String,
+                default: null,
+            },
+
+            url: {
+                type: String,
+                default: null,
+            },
+        },
+
+        headline: {
+            type: String,
+            trim: true,
+            maxlength: 120,
+            default: "",
+        },
+
+        bio: {
+            type: String,
+            trim: true,
+            maxlength: 500,
+            default: "",
+        },
+
+        location: {
+            city: {
+                type: String,
+                trim: true,
+                maxlength: 80,
+                default: "",
+            },
+
+            state: {
+                type: String,
+                trim: true,
+                maxlength: 80,
+                default: "",
+            },
+
+            country: {
+                type: String,
+                trim: true,
+                maxlength: 80,
+                default: "",
+            },
+        },
+
+        socialLinks: {
+            github: {
+                type: String,
+                trim: true,
+                maxlength: 300,
+                default: "",
+            },
+
+            linkedin: {
+                type: String,
+                trim: true,
+                maxlength: 300,
+                default: "",
+            },
+
+            portfolio: {
+                type: String,
+                trim: true,
+                maxlength: 300,
+                default: "",
+            },
+        },
+
+        profileCompletion: {
+            type: Number,
+            min: 0,
+            max: 100,
+            default: 0,
+        },
+
+        role: {
+            type: String,
+            enum: ["user", "admin"],
+            default: "user",
+        },
+
+        accountStatus: {
+            type: String,
+            enum: [
+                "active",
+                "suspended",
+                "deactivated",
+            ],
+            default: "active",
         },
 
         isEmailVerified: {
             type: Boolean,
             default: false,
-            index: true,
         },
 
         emailVerificationOtpHash: {
             type: String,
             select: false,
+            default: null,
         },
 
         emailVerificationOtpExpiresAt: {
             type: Date,
             select: false,
+            default: null,
         },
 
         emailVerificationOtpAttempts: {
             type: Number,
-            default: 0,
             select: false,
+            default: 0,
         },
 
         emailVerificationOtpLastSentAt: {
             type: Date,
             select: false,
+            default: null,
         },
 
-        emailVerifiedAt: {
+        passwordChangedAt: {
+            type: Date,
+            default: null,
+        },
+
+        lastLoginAt: {
             type: Date,
             default: null,
         },
@@ -61,19 +162,24 @@ const userSchema = new mongoose.Schema(
     {
         timestamps: true,
         versionKey: false,
+
+        toJSON: {
+            transform(_document, returnedObject) {
+                delete returnedObject.passwordHash;
+                delete returnedObject.emailVerificationOtpHash;
+                delete returnedObject.emailVerificationOtpExpiresAt;
+                delete returnedObject.emailVerificationOtpAttempts;
+                delete returnedObject.emailVerificationOtpLastSentAt;
+
+                return returnedObject;
+            },
+        },
     }
 );
 
-// userSchema.index(
-//     { emailVerificationOtpExpiresAt: 1 },
-//     {
-//         expireAfterSeconds: 0,
-//         partialFilterExpression: {
-//             emailVerificationOtpExpiresAt: {
-//                 $type: "date",
-//             },
-//         },
-//     }
-// );
+export const User = mongoose.model(
+    "User",
+    userSchema
+);
 
-export default mongoose.model("User", userSchema);
+export default User;

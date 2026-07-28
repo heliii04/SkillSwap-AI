@@ -2,11 +2,9 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
-const API_URL = "http://localhost:5000/api/auth";
-
 export default function Register() {
     const navigate = useNavigate();
-    const { login } = useAuth();
+    const { register } = useAuth();
 
     const [formData, setFormData] = useState({
         name: "",
@@ -48,8 +46,20 @@ export default function Register() {
             return;
         }
 
-        if (password.length < 6) {
-            setError("Password must contain at least 6 characters.");
+        if (password.length < 8) {
+            setError("Password must contain at least 8 characters.");
+            return;
+        }
+
+        const hasLowercase = /[a-z]/.test(password);
+        const hasUppercase = /[A-Z]/.test(password);
+        const hasNumber = /\d/.test(password);
+        const hasSpecial = /[^A-Za-z0-9]/.test(password);
+
+        if (!hasLowercase || !hasUppercase || !hasNumber || !hasSpecial) {
+            setError(
+                "Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character."
+            );
             return;
         }
 
@@ -61,26 +71,16 @@ export default function Register() {
         try {
             setLoading(true);
 
-            const response = await fetch(`${API_URL}/register`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                    name,
-                    email,
-                    password,
-                }),
+            await register({
+                name,
+                email,
+                password,
             });
 
-            const data = await response.json();
-
-            if (!response.ok) {
-                throw new Error(data.message || "Registration failed.");
-            }
-
-            login(data.token, data.user);
-            navigate("/dashboard", { replace: true });
+            navigate("/verify-otp", {
+                replace: true,
+                state: { email },
+            });
         } catch (requestError) {
             setError(
                 requestError.message ||

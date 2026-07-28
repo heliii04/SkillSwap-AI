@@ -1,55 +1,71 @@
-import "dotenv/config";
-import { z } from "zod";
+import dotenv from "dotenv";
 
-const envSchema = z.object({
-    NODE_ENV: z
-        .enum(["development", "test", "production"])
-        .default("development"),
+dotenv.config();
 
-    PORT: z.coerce.number().positive().default(5000),
+const requiredVariables = [
+    "MONGODB_URI",
+    "JWT_ACCESS_SECRET",
+    "JWT_REFRESH_SECRET",
+    "SMTP_HOST",
+    "SMTP_PORT",
+    "SMTP_USER",
+    "SMTP_PASSWORD",
+    "SMTP_FROM_EMAIL",
+    "CLIENT_URL",
+];
 
-    MONGO_URI: z.string().min(1, "MONGO_URI is required"),
-
-    JWT_SECRET: z
-        .string()
-        .min(32, "JWT_SECRET must contain at least 32 characters"),
-
-    SMTP_HOST: z.string().min(1, "SMTP_HOST is required"),
-
-    SMTP_PORT: z.coerce
-        .number()
-        .int()
-        .positive("SMTP_PORT must be a valid positive number"),
-
-    SMTP_SECURE: z
-        .string()
-        .transform((value) => value.toLowerCase() === "true"),
-
-    SMTP_USER: z.string().min(1, "SMTP_USER is required"),
-
-    SMTP_PASS: z.string().min(1, "SMTP_PASS is required"),
-
-    MAIL_FROM_NAME: z.string().default("SkillSwap AI"),
-
-    MAIL_FROM_ADDRESS: z
-        .string()
-        .email("MAIL_FROM_ADDRESS must be a valid email"),
-
-    CLIENT_URL: z.string().url("CLIENT_URL must be a valid URL"),
-});
-
-const parsedEnv = envSchema.safeParse(process.env);
-
-if (!parsedEnv.success) {
-    console.error("❌ Invalid environment variables:");
-
-    const errors = parsedEnv.error.flatten().fieldErrors;
-
-    Object.entries(errors).forEach(([key, messages]) => {
-        console.error(`${key}: ${messages?.join(", ")}`);
-    });
-
-    process.exit(1);
+for (const variable of requiredVariables) {
+    if (!process.env[variable]) {
+        throw new Error(
+            `Missing required environment variable: ${variable}`
+        );
+    }
 }
 
-export const env = parsedEnv.data;
+export const env = {
+    nodeEnv: process.env.NODE_ENV || "development",
+    port: Number(process.env.PORT) || 5000,
+
+    clientUrl: process.env.CLIENT_URL,
+
+    mongodbUri: process.env.MONGODB_URI,
+
+    jwtAccessSecret: process.env.JWT_ACCESS_SECRET,
+    jwtRefreshSecret: process.env.JWT_REFRESH_SECRET,
+
+    jwtAccessExpiresIn:
+        process.env.JWT_ACCESS_EXPIRES_IN || "15m",
+
+    jwtRefreshExpiresInDays:
+        Number(process.env.JWT_REFRESH_EXPIRES_IN_DAYS) || 30,
+
+    otpExpiresInMinutes:
+        Number(process.env.OTP_EXPIRES_IN_MINUTES) || 10,
+
+    bcryptSaltRounds:
+        Number(process.env.BCRYPT_SALT_ROUNDS) || 12,
+
+    smtp: {
+        host: process.env.SMTP_HOST,
+        port: Number(process.env.SMTP_PORT),
+        secure: process.env.SMTP_SECURE === "true",
+        user: process.env.SMTP_USER,
+        password: process.env.SMTP_PASSWORD,
+        fromName:
+            process.env.SMTP_FROM_NAME || "SkillSwap AI",
+        fromEmail: process.env.SMTP_FROM_EMAIL,
+    },
+
+    isProduction: process.env.NODE_ENV === "production",
+
+    // Backwards compatibility mappings
+    NODE_ENV: process.env.NODE_ENV || "development",
+    MONGO_URI: process.env.MONGODB_URI,
+    SMTP_HOST: process.env.SMTP_HOST,
+    SMTP_PORT: Number(process.env.SMTP_PORT),
+    SMTP_SECURE: process.env.SMTP_SECURE === "true",
+    SMTP_USER: process.env.SMTP_USER,
+    SMTP_PASS: process.env.SMTP_PASSWORD,
+    MAIL_FROM_NAME: process.env.SMTP_FROM_NAME || "SkillSwap AI",
+    MAIL_FROM_ADDRESS: process.env.SMTP_FROM_EMAIL,
+};

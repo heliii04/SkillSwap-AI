@@ -7,7 +7,7 @@ export default function MainLayout() {
     <>
       <Navbar />
 
-      <main className="w-full overflow-x-hidden">
+      <main className="w-full overflow-x-clip">
         <Outlet />
       </main>
 

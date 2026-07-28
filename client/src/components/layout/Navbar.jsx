@@ -48,10 +48,12 @@ export default function Navbar() {
     setMenuOpen(false);
   };
 
-  const handleLogout = () => {
-    logout();
-    closeMenu();
-    navigate("/login", { replace: true });
+  const handleLogout = async () => {
+    await logout();
+
+    navigate("/login", {
+      replace: true,
+    });
   };
 
   return (
@@ -116,36 +118,27 @@ export default function Navbar() {
           </li>
 
           <li>
-            <NavLink to="/search" className={navLinkClass}>
+            <NavLink to="/browse-skills" className={navLinkClass}>
               Browse Skills
             </NavLink>
           </li>
 
           <li>
-            <a
-              href="/#how-it-works"
-              className="text-white/70 transition hover:text-orange-400"
-            >
+            <NavLink to="/how-it-works" className={navLinkClass}>
               How It Works
-            </a>
+            </NavLink>
           </li>
 
           <li>
-            <a
-              href="/#about"
-              className="text-white/70 transition hover:text-orange-400"
-            >
+            <NavLink to="/about" className={navLinkClass}>
               About
-            </a>
+            </NavLink>
           </li>
 
           <li>
-            <a
-              href="/#contact"
-              className="text-white/70 transition hover:text-orange-400"
-            >
+            <NavLink to="/contact" className={navLinkClass}>
               Contact
-            </a>
+            </NavLink>
           </li>
         </ul>
 
@@ -274,36 +267,36 @@ export default function Navbar() {
           </NavLink>
 
           <NavLink
-            to="/search"
+            to="/browse-skills"
             onClick={closeMenu}
             className="rounded-xl px-4 py-3 text-white/80 hover:bg-white/5"
           >
             Browse Skills
           </NavLink>
 
-          <a
-            href="/#how-it-works"
+          <NavLink
+            to="/how-it-works"
             onClick={closeMenu}
             className="rounded-xl px-4 py-3 text-white/80 hover:bg-white/5"
           >
             How It Works
-          </a>
+          </NavLink>
 
-          <a
-            href="/#about"
+          <NavLink
+            to="/about"
             onClick={closeMenu}
             className="rounded-xl px-4 py-3 text-white/80 hover:bg-white/5"
           >
             About
-          </a>
+          </NavLink>
 
-          <a
-            href="/#contact"
+          <NavLink
+            to="/contact"
             onClick={closeMenu}
             className="rounded-xl px-4 py-3 text-white/80 hover:bg-white/5"
           >
             Contact
-          </a>
+          </NavLink>
 
           <div className="mt-4">
             {authLoading ? (
@@ -372,6 +365,6 @@ export default function Navbar() {
           </div>
         </div>
       </div>
-    </header>
+    </header >
   );
 }

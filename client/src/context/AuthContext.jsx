@@ -1,85 +1,251 @@
 import {
     createContext,
+    useCallback,
     useContext,
     useEffect,
+    useMemo,
     useState,
 } from "react";
 
-const AuthContext = createContext(null);
+import {
+    getCurrentUser,
+    loginUser,
+    logoutUser,
+    registerUser,
+    resendVerificationOtp,
+    verifyUserEmail,
+} from "../api/authApi";
 
-const API_URL = "http://localhost:5000/api/auth";
+import {
+    refreshAccessTokenRequest,
+} from "../api/axiosClient";
+
+import {
+    clearAccessToken,
+    setAccessToken,
+} from "../api/tokenStore";
+
+export const AuthContext = createContext(null);
+
+function getErrorMessage(error) {
+    if (
+        error.response?.data?.errors &&
+        Array.isArray(error.response.data.errors) &&
+        error.response.data.errors.length > 0
+    ) {
+        return error.response.data.errors
+            .map((err) => err.message)
+            .join(" ");
+    }
+    return (
+        error.response?.data?.message ||
+        error.message ||
+        "Something went wrong. Please try again."
+    );
+}
 
 export function AuthProvider({ children }) {
     const [user, setUser] = useState(null);
-    const [authLoading, setAuthLoading] = useState(true);
+    const [isAuthLoading, setIsAuthLoading] =
+        useState(true);
 
-    const loadCurrentUser = async () => {
-        const token = localStorage.getItem("token");
+    const isAuthenticated = Boolean(user);
 
-        if (!token) {
-            setUser(null);
-            setAuthLoading(false);
-            return;
-        }
-
-        try {
-            setAuthLoading(true);
-
-            const response = await fetch(`${API_URL}/me`, {
-                method: "GET",
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                },
-            });
-
-            const data = await response.json();
-
-            if (!response.ok) {
-                throw new Error(data.message || "Authentication failed");
-            }
-
-            setUser(data.user);
-            localStorage.setItem("user", JSON.stringify(data.user));
-        } catch (error) {
-            console.error("Authentication error:", error);
-
-            localStorage.removeItem("token");
-            localStorage.removeItem("user");
-
-            setUser(null);
-        } finally {
-            setAuthLoading(false);
-        }
-    };
-
-    useEffect(() => {
-        loadCurrentUser();
+    const clearSession = useCallback(() => {
+        clearAccessToken();
+        setUser(null);
     }, []);
 
-    const login = (token, userData) => {
-        localStorage.setItem("token", token);
-        localStorage.setItem("user", JSON.stringify(userData));
+    const loadCurrentUser = useCallback(async () => {
+        const result = await getCurrentUser();
 
-        setUser(userData);
-    };
+        const currentUser = result?.data?.user;
 
-    const logout = () => {
-        localStorage.removeItem("token");
-        localStorage.removeItem("user");
+        if (!currentUser) {
+            throw new Error(
+                "Current user was not returned."
+            );
+        }
 
-        setUser(null);
-    };
+        setUser(currentUser);
+
+        return currentUser;
+    }, []);
+
+    const restoreSession = useCallback(async () => {
+        try {
+            await refreshAccessTokenRequest();
+            await loadCurrentUser();
+        } catch {
+            clearSession();
+        } finally {
+            setIsAuthLoading(false);
+        }
+    }, [clearSession, loadCurrentUser]);
+
+    useEffect(() => {
+        restoreSession();
+    }, [restoreSession]);
+
+    useEffect(() => {
+        function handleSessionExpired() {
+            clearSession();
+        }
+
+        window.addEventListener(
+            "skillswap:session-expired",
+            handleSessionExpired
+        );
+
+        return () => {
+            window.removeEventListener(
+                "skillswap:session-expired",
+                handleSessionExpired
+            );
+        };
+    }, [clearSession]);
+
+    const register = useCallback(async (formData) => {
+        try {
+            return await registerUser(formData);
+        } catch (error) {
+            throw new Error(getErrorMessage(error));
+        }
+    }, []);
+
+    const verifyEmail = useCallback(
+        async (formData) => {
+            try {
+                const result =
+                    await verifyUserEmail(formData);
+
+                const accessToken =
+                    result?.data?.accessToken;
+
+                const verifiedUser =
+                    result?.data?.user;
+
+                if (!accessToken || !verifiedUser) {
+                    throw new Error(
+                        "Invalid verification response."
+                    );
+                }
+
+                setAccessToken(accessToken);
+                setUser(verifiedUser);
+
+                return result;
+            } catch (error) {
+                throw new Error(
+                    getErrorMessage(error)
+                );
+            }
+        },
+        []
+    );
+
+    const resendOtp = useCallback(
+        async (email) => {
+            try {
+                return await resendVerificationOtp({
+                    email,
+                });
+            } catch (error) {
+                throw new Error(
+                    getErrorMessage(error)
+                );
+            }
+        },
+        []
+    );
+
+    const login = useCallback(
+        async (formData) => {
+            try {
+                const result =
+                    await loginUser(formData);
+
+                const accessToken =
+                    result?.data?.accessToken;
+
+                const authenticatedUser =
+                    result?.data?.user;
+
+                if (
+                    !accessToken ||
+                    !authenticatedUser
+                ) {
+                    throw new Error(
+                        "Invalid login response."
+                    );
+                }
+
+                setAccessToken(accessToken);
+                setUser(authenticatedUser);
+
+                return result;
+            } catch (error) {
+                const message =
+                    error.response?.data?.message ||
+                    error.message ||
+                    "Login failed.";
+
+                throw new Error(message);
+            }
+        },
+        []
+    );
+
+    const logout = useCallback(async () => {
+        try {
+            await logoutUser();
+        } catch (error) {
+            console.error(
+                "Logout request failed:",
+                error
+            );
+        } finally {
+            clearSession();
+        }
+    }, [clearSession]);
+
+    const refreshUser = useCallback(async () => {
+        try {
+            return await loadCurrentUser();
+        } catch (error) {
+            clearSession();
+            throw new Error(getErrorMessage(error));
+        }
+    }, [clearSession, loadCurrentUser]);
+
+    const contextValue = useMemo(
+        () => ({
+            user,
+            isAuthenticated,
+            isAuthLoading,
+            authLoading: isAuthLoading, // Compatibility mapping
+            register,
+            verifyEmail,
+            resendOtp,
+            login,
+            logout,
+            refreshUser,
+        }),
+        [
+            user,
+            isAuthenticated,
+            isAuthLoading,
+            register,
+            verifyEmail,
+            resendOtp,
+            login,
+            logout,
+            refreshUser,
+        ]
+    );
 
     return (
-        <AuthContext.Provider
-            value={{
-                user,
-                authLoading,
-                login,
-                logout,
-                loadCurrentUser,
-            }}
-        >
+        <AuthContext.Provider value={contextValue}>
             {children}
         </AuthContext.Provider>
     );
@@ -89,7 +255,9 @@ export function useAuth() {
     const context = useContext(AuthContext);
 
     if (!context) {
-        throw new Error("useAuth must be used inside AuthProvider");
+        throw new Error(
+            "useAuth must be used inside AuthProvider."
+        );
     }
 
     return context;

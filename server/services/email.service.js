@@ -1,77 +1,102 @@
-import transporter from "../config/mailer.js";
-import { otpEmailTemplate } from "../templates/otpEmail.template.js";
+import { env } from "../config/env.js";
+import { mailTransporter } from "../config/mailer.js";
 
-const MAIL_FROM_NAME =
-    process.env.MAIL_FROM_NAME || "SkillSwap AI";
-
-const MAIL_FROM_ADDRESS =
-    process.env.MAIL_FROM_ADDRESS || process.env.SMTP_USER;
-
-export const sendEmail = async ({
-    to,
-    subject,
-    text,
-    html,
-    replyTo,
-}) => {
-    if (!to) {
-        throw new Error("Email recipient is required");
-    }
-
-    if (!MAIL_FROM_ADDRESS) {
-        throw new Error(
-            "MAIL_FROM_ADDRESS or SMTP_USER is not configured"
-        );
-    }
-
-    try {
-        const info = await transporter.sendMail({
-            from: {
-                name: MAIL_FROM_NAME,
-                address: MAIL_FROM_ADDRESS,
-            },
-            to,
-            subject,
-            text,
-            html,
-            replyTo,
-        });
-
-        return {
-            success: true,
-            messageId: info.messageId,
-            accepted: info.accepted,
-            rejected: info.rejected,
-        };
-    } catch (error) {
-        console.error("Email sending failed:", {
-            message: error.message,
-            code: error.code,
-            command: error.command,
-        });
-
-        throw new Error(
-            "Unable to send email at the moment"
-        );
-    }
-};
-
-export const sendOtpEmail = async ({
-    to,
+export async function sendVerificationOtpEmail({
     name,
+    email,
     otp,
-    expiryMinutes = 10,
-}) => {
-    const template = otpEmailTemplate({
-        name,
-        otp,
-        expiryMinutes,
-    });
+}) {
+    const subject = "Verify your SkillSwap AI account";
 
-    return sendEmail({
-        to,
-        subject: template.subject,
-        text: template.text,
-        html: template.html,
+    const text = `
+Hello ${name},
+
+Your SkillSwap AI verification code is: ${otp}
+
+This code expires in ${env.otpExpiresInMinutes} minutes.
+
+Do not share this OTP with anyone.
+
+SkillSwap AI
+    `.trim();
+
+    const html = `
+        <div style="
+            max-width: 560px;
+            margin: 0 auto;
+            padding: 32px;
+            background: #0b0b0b;
+            color: #ffffff;
+            font-family: Arial, sans-serif;
+            border-radius: 18px;
+            border: 1px solid #292929;
+        ">
+            <h1 style="
+                margin: 0;
+                color: #f97316;
+                font-size: 26px;
+            ">
+                SkillSwap AI
+            </h1>
+
+            <p style="
+                margin-top: 28px;
+                color: #d4d4d4;
+                line-height: 1.7;
+            ">
+                Hello ${name},
+            </p>
+
+            <p style="
+                color: #d4d4d4;
+                line-height: 1.7;
+            ">
+                Use the following verification code to
+                activate your account:
+            </p>
+
+            <div style="
+                margin: 28px 0;
+                padding: 18px;
+                background: #171717;
+                color: #fb923c;
+                font-size: 34px;
+                font-weight: bold;
+                text-align: center;
+                letter-spacing: 10px;
+                border-radius: 12px;
+                border: 1px solid #431407;
+            ">
+                ${otp}
+            </div>
+
+            <p style="
+                color: #a3a3a3;
+                line-height: 1.7;
+            ">
+                This code expires in
+                ${env.otpExpiresInMinutes} minutes.
+            </p>
+
+            <p style="
+                color: #a3a3a3;
+                line-height: 1.7;
+            ">
+                Never share your password or OTP with
+                anyone.
+            </p>
+        </div>
+    `;
+
+    await mailTransporter.sendMail({
+        from: `"${env.smtp.fromName}" <${env.smtp.fromEmail}>`,
+        to: email,
+        subject,
+        text,
+        html,
     });
-};
+}
+
+export async function sendOtpEmail({ email, name, otp }) {
+    return sendVerificationOtpEmail({ email, name, otp });
+}

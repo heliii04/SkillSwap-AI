@@ -1,153 +1,86 @@
-import express from "express";
-import dotenv from "dotenv";
-import cors from "cors";
-import cookieParser from "cookie-parser";
-import morgan from "morgan";
+import http from "http";
+import mongoose from "mongoose";
 
-import connectDB from "./config/db.js";
-import { verifyEmailTransporter } from "./config/mailer.js";
-import authRoutes from "./routes/authRoutes.js";
-
-dotenv.config();
-
-const app = express();
-
-const allowedOrigins = [
-    process.env.CLIENT_URL || "http://localhost:5173",
-];
-
-app.use(
-    cors({
-        origin: (origin, callback) => {
-            // Postman, mobile apps aur server-to-server requests me
-            // origin undefined ho sakta hai.
-            if (!origin || allowedOrigins.includes(origin)) {
-                return callback(null, true);
-            }
-
-            return callback(new Error("Not allowed by CORS"));
-        },
-        credentials: true,
-        methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-        allowedHeaders: ["Content-Type", "Authorization"],
-    })
-);
-
-app.use(express.json({ limit: "10kb" }));
-app.use(
-    express.urlencoded({
-        extended: true,
-        limit: "10kb",
-    })
-);
-app.use(cookieParser());
-
-if (process.env.NODE_ENV !== "production") {
-    app.use(morgan("dev"));
-}
-
-app.use("/api/auth", authRoutes);
-
-app.get("/", (req, res) => {
-    res.status(200).json({
-        success: true,
-        message: "SkillSwap AI Backend Running 🚀",
-        environment: process.env.NODE_ENV || "development",
-    });
-});
-
-// Unknown route handler
-app.use((req, res) => {
-    res.status(404).json({
-        success: false,
-        message: `Route not found: ${req.method} ${req.originalUrl}`,
-    });
-});
-
-// Global error handler
-app.use((error, req, res, next) => {
-    console.error("Global error:", {
-        message: error.message,
-        stack:
-            process.env.NODE_ENV === "development"
-                ? error.stack
-                : undefined,
-    });
-
-    res.status(error.statusCode || 500).json({
-        success: false,
-        message:
-            error.message || "Internal server error",
-    });
-});
-
-const PORT = Number(process.env.PORT) || 5000;
+import app from "./app.js";
+import { connectDatabase } from "./config/db.js";
+import { env } from "./config/env.js";
+import { verifyMailConnection } from "./config/mailer.js";
 
 let server;
 
-const startServer = async () => {
-    try {
-        // Database connection
-        await connectDB();
-        console.log("✅ Database connected successfully");
+async function startServer() {
+    await connectDatabase();
 
-        // SMTP connection verification
-        const smtpReady = await verifyEmailTransporter();
+    await verifyMailConnection();
 
-        if (!smtpReady) {
-            console.warn(
-                "⚠️ Server will start, but email delivery is currently unavailable"
-            );
-        }
+    server = http.createServer(app);
 
-        server = app.listen(PORT, () => {
-            console.log(
-                `🚀 Server running on http://localhost:${PORT}`
-            );
-            console.log(
-                `📦 Environment: ${process.env.NODE_ENV || "development"
-                }`
-            );
-        });
-    } catch (error) {
-        console.error("❌ Server startup failed:", error.message);
-        process.exit(1);
-    }
-};
+    server.listen(env.port, () => {
+        console.log(
+            `SkillSwap AI API running on port ${env.port}`
+        );
 
-const gracefulShutdown = (signal) => {
-    console.log(`\n${signal} received. Shutting down gracefully...`);
-
-    if (!server) {
-        process.exit(0);
-    }
-
-    server.close(() => {
-        console.log("✅ HTTP server closed");
-        process.exit(0);
+        console.log(
+            `Environment: ${env.nodeEnv}`
+        );
     });
+}
 
-    setTimeout(() => {
-        console.error("❌ Forced shutdown after timeout");
-        process.exit(1);
-    }, 10_000).unref();
-};
-
-process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
-process.on("SIGINT", () => gracefulShutdown("SIGINT"));
-
-process.on("unhandledRejection", (error) => {
-    console.error("❌ Unhandled promise rejection:", error);
+async function shutdown(signal) {
+    console.log(
+        `${signal} received. Closing server...`
+    );
 
     if (server) {
-        server.close(() => process.exit(1));
+        server.close(async () => {
+            await mongoose.connection.close();
+
+            console.log(
+                "Server and database connections closed."
+            );
+
+            process.exit(0);
+        });
     } else {
-        process.exit(1);
+        await mongoose.connection.close();
+        process.exit(0);
     }
-});
+
+    setTimeout(() => {
+        console.error(
+            "Forced shutdown after timeout."
+        );
+
+        process.exit(1);
+    }, 10000).unref();
+}
+
+process.on("SIGTERM", () =>
+    shutdown("SIGTERM")
+);
+
+process.on("SIGINT", () =>
+    shutdown("SIGINT")
+);
+
+process.on(
+    "unhandledRejection",
+    (reason) => {
+        console.error(
+            "Unhandled promise rejection:",
+            reason
+        );
+
+        shutdown("unhandledRejection");
+    }
+);
 
 process.on("uncaughtException", (error) => {
-    console.error("❌ Uncaught exception:", error);
+    console.error(
+        "Uncaught exception:",
+        error
+    );
+
     process.exit(1);
 });
 

@@ -1,5 +1,4 @@
 import {
-    BrowserRouter,
     Route,
     Routes,
 } from "react-router-dom";
@@ -8,56 +7,110 @@ import MainLayout from "../layouts/MainLayout";
 import AuthLayout from "../layouts/AuthLayout";
 import DashboardLayout from "../layouts/DashboardLayout";
 
+import ProtectedRoute from "../components/ProtectedRoute";
+
 import Home from "../pages/Home";
 import Login from "../pages/Login";
 import Register from "../pages/Register";
-import ProtectedRoute from "../components/ProtectedRoute";
 import Dashboard from "../pages/Dashboard";
-
-import Profile from "../pages/Profile";
+import MyProfile from "../pages/MyProfile";
+import SkillsTeach from "../pages/SkillsTeach";
+import SkillsWant from "../pages/SkillsWant";
 import Search from "../pages/Search";
-import Chat from "../pages/Chat";
+import Requests from "../pages/Requests";
+import Messages from "../pages/Messages";
 import Notifications from "../pages/Notifications";
-import Reviews from "../pages/Reviews";
-import Settings from "../pages/Settings";
-import EditProfile from "../pages/EditProfile";
+
+import BrowseSkills from "../pages/BrowseSkills";
+import HowItWorks from "../pages/HowItWorks";
+import About from "../pages/About";
+import Contact from "../pages/Contact";
 import NotFound from "../pages/NotFound";
+import VerifyOtp from "../pages/VerifyOtp";
+
 
 export default function AppRoutes() {
     return (
-        <BrowserRouter>
-            <Routes>
-                {/* Public pages */}
-                <Route element={<MainLayout />}>
-                    <Route path="/" element={<Home />} />
-                </Route>
+        <Routes>
+            {/* Public pages */}
+            <Route element={<MainLayout />}>
+                <Route
+                    path="/"
+                    element={<Home />}
+                />
+                <Route
+                    path="/browse-skills"
+                    element={<BrowseSkills />}
+                />
+                <Route path="/how-it-works" element={<HowItWorks />} />
+                <Route path="/about" element={<About />} />
+                <Route path="/contact" element={<Contact />} />
+            </Route>
 
-                {/* Authentication pages */}
-                <Route element={<AuthLayout />}>
-                    <Route path="/login" element={<Login />} />
-                    <Route path="/register" element={<Register />} />
-                </Route>
+            {/* Authentication pages */}
+            <Route element={<AuthLayout />}>
+                <Route
+                    path="/login"
+                    element={<Login />}
+                />
 
-                {/* Protected dashboard pages */}
-                <Route element={<ProtectedRoute />}>
-                    <Route element={<DashboardLayout />}>
-                        <Route path="/dashboard" element={<Dashboard />} />
-                        <Route path="/profile" element={<Profile />} />
-                        <Route path="/edit-profile" element={<EditProfile />} />
-                        <Route path="/search" element={<Search />} />
-                        <Route path="/chat" element={<Chat />} />
-                        <Route
-                            path="/notifications"
-                            element={<Notifications />}
-                        />
-                        <Route path="/reviews" element={<Reviews />} />
-                        <Route path="/settings" element={<Settings />} />
-                    </Route>
-                </Route>
+                <Route
+                    path="/register"
+                    element={<Register />}
+                />
 
-                {/* 404 page */}
-                <Route path="*" element={<NotFound />} />
-            </Routes>
-        </BrowserRouter>
+                <Route
+                    path="/verify-otp"
+                    element={<VerifyOtp />}
+                />
+            </Route>
+
+            {/* Protected dashboard pages */}
+            <Route element={<ProtectedRoute />}>
+                <Route element={<DashboardLayout />}>
+                    <Route
+                        path="/dashboard"
+                        element={<Dashboard />}
+                    />
+
+                    <Route
+                        path="/profile"
+                        element={<MyProfile />}
+                    />
+
+                    <Route
+                        path="/skills/teach"
+                        element={<SkillsTeach />}
+                    />
+                    <Route
+                        path="/skills/learn"
+                        element={<SkillsWant />}
+                    />
+                    <Route
+                        path="/search"
+                        element={<Search />}
+                    />
+                    <Route
+                        path="/requests"
+                        element={<Requests />}
+                    />
+                    <Route
+                        path="/messages"
+                        element={<Messages />}
+                    />
+                    <Route
+                        path="/notifications"
+                        element={<Notifications />}
+                    />
+                </Route>
+            </Route>
+
+
+            {/* 404 page */}
+            <Route
+                path="*"
+                element={<NotFound />}
+            />
+        </Routes>
     );
 }

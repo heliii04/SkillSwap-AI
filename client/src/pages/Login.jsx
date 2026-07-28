@@ -28,49 +28,29 @@ export default function Login() {
         setError("");
     };
 
-    const handleSubmit = async (event) => {
+    async function handleSubmit(event) {
         event.preventDefault();
+
+        setLoading(true);
         setError("");
 
-        const email = formData.email.trim().toLowerCase();
-        const password = formData.password;
-
-        if (!email || !password) {
-            setError("Please enter email and password.");
-            return;
-        }
-
         try {
-            setLoading(true);
-
-            const response = await fetch(`${API_URL}/login`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                    email,
-                    password,
-                }),
+            await login({
+                email: formData.email
+                    .trim()
+                    .toLowerCase(),
+                password: formData.password,
             });
 
-            const data = await response.json();
-
-            if (!response.ok) {
-                throw new Error(data.message || "Login failed.");
-            }
-
-            login(data.token, data.user);
-            navigate("/dashboard", { replace: true });
-        } catch (requestError) {
-            setError(
-                requestError.message ||
-                "Unable to login. Please try again."
-            );
+            navigate("/dashboard", {
+                replace: true,
+            });
+        } catch (error) {
+            setError(error.message);
         } finally {
             setLoading(false);
         }
-    };
+    }
 
     return (
         <main className="min-h-screen bg-[#07080D] px-4 py-10 text-white">

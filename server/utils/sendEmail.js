@@ -1,4 +1,4 @@
-import transporter from "../config/mailer.js";
+import { mailTransporter } from "../config/mailer.js";
 import { env } from "../config/env.js";
 import { otpEmailTemplate } from "../templates/otpEmail.template.js";
 
@@ -14,7 +14,7 @@ export const sendEmail = async ({
     }
 
     try {
-        const info = await transporter.sendMail({
+        const info = await mailTransporter.sendMail({
             from: {
                 name: env.MAIL_FROM_NAME,
                 address: env.MAIL_FROM_ADDRESS,

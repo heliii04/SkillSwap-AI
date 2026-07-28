@@ -1,188 +1,150 @@
-import bcrypt from "bcryptjs";
-import crypto from "crypto";
-import jwt from "jsonwebtoken";
+import { env } from "../config/env.js";
+import { AuthSession } from "../models/AuthSession.js";
+import { User } from "../models/User.js";
+import { sendVerificationOtpEmail } from "../services/email.service.js";
+import { ApiError } from "../utils/ApiError.js";
+import { asyncHandler } from "../utils/asyncHandler.js";
 
-import User from "../models/User.js";
-import { sendOtpEmail } from "../services/email.service.js";
-import { generateOtp } from "../utils/generateOtp.js";
+import {
+    comparePassword,
+    generateOtp,
+    generateSessionToken,
+    getOtpExpiryDate,
+    getRefreshTokenExpiryDate,
+    hashPassword,
+    hashValue,
+    normalizeEmail,
+} from "../utils/auth.utils.js";
 
-const OTP_EXPIRY_MINUTES = 10;
-const OTP_MAX_ATTEMPTS = 5;
-const OTP_RESEND_COOLDOWN_SECONDS = 60;
-const PASSWORD_SALT_ROUNDS = 12;
+import {
+    createAccessToken,
+    createRefreshToken,
+    verifyRefreshToken,
+} from "../utils/token.utils.js";
 
-const normalizeEmail = (email = "") => {
-    if (typeof email !== "string") {
-        return "";
-    }
+const REFRESH_COOKIE_NAME = "skillswap_refresh_token";
 
-    return email.trim().toLowerCase();
-};
-
-const hashOtp = (otp) => {
-    return crypto
-        .createHash("sha256")
-        .update(String(otp))
-        .digest("hex");
-};
-
-const generateAccessToken = (userId) => {
-    if (!process.env.JWT_SECRET) {
-        throw new Error("JWT_SECRET is not configured");
-    }
-
-    return jwt.sign(
-        {
-            userId: userId.toString(),
-        },
-        process.env.JWT_SECRET,
-        {
-            expiresIn: process.env.JWT_EXPIRES_IN || "7d",
-            issuer: "skillswap-ai",
-            audience: "skillswap-ai-users",
-        }
-    );
-};
-
-const setAuthCookie = (res, token) => {
-    const isProduction =
-        process.env.NODE_ENV === "production";
-
-    res.cookie("accessToken", token, {
-        httpOnly: true,
-        secure: isProduction,
-        sameSite: isProduction ? "none" : "lax",
-        maxAge: 7 * 24 * 60 * 60 * 1000,
-        path: "/",
-    });
-};
-
-const getSafeUser = (user) => {
+function getRefreshCookieOptions() {
     return {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        isEmailVerified: user.isEmailVerified,
-        emailVerifiedAt: user.emailVerifiedAt,
-        createdAt: user.createdAt,
+        httpOnly: true,
+        secure: env.isProduction,
+        sameSite: env.isProduction
+            ? "none"
+            : "lax",
+        maxAge:
+            env.jwtRefreshExpiresInDays *
+            24 *
+            60 *
+            60 *
+            1000,
+        path: "/api/v1/auth",
     };
-};
+}
 
-/* =========================
-   REGISTER USER
-========================= */
+function clearRefreshCookie(res) {
+    res.clearCookie(
+        REFRESH_COOKIE_NAME,
+        getRefreshCookieOptions()
+    );
+}
 
-export const registerUser = async (req, res, next) => {
-    try {
+function getClientIp(req) {
+    const forwardedFor =
+        req.headers["x-forwarded-for"];
+
+    if (typeof forwardedFor === "string") {
+        return forwardedFor.split(",")[0].trim();
+    }
+
+    return req.ip || req.socket.remoteAddress || "";
+}
+
+async function createAuthenticatedSession(
+    user,
+    req,
+    res
+) {
+    const rawSessionToken = generateSessionToken();
+
+    const session = await AuthSession.create({
+        user: user._id,
+        tokenHash: hashValue(rawSessionToken),
+        userAgent: req.get("user-agent") || "",
+        ipAddress: getClientIp(req),
+        expiresAt: getRefreshTokenExpiryDate(),
+    });
+
+    const accessToken = createAccessToken(user);
+
+    const refreshToken = createRefreshToken({
+        userId: user._id,
+        sessionId: session._id,
+        rawSessionToken,
+    });
+
+    res.cookie(
+        REFRESH_COOKIE_NAME,
+        refreshToken,
+        getRefreshCookieOptions()
+    );
+
+    return accessToken;
+}
+
+export const register = asyncHandler(
+    async (req, res) => {
         const {
-            name: rawName,
-            email: rawEmail,
+            name,
+            email: submittedEmail,
             password,
-        } = req.body ?? {};
+        } = req.body;
 
-        const name =
-            typeof rawName === "string"
-                ? rawName.trim()
-                : "";
+        const email = normalizeEmail(submittedEmail);
 
-        const email = normalizeEmail(rawEmail);
-
-        if (!name || !email || !password) {
-            return res.status(400).json({
-                success: false,
-                message:
-                    "Name, email and password are required.",
-            });
-        }
-
-        if (typeof password !== "string") {
-            return res.status(400).json({
-                success: false,
-                message:
-                    "Password must be a valid string.",
-            });
-        }
-
-        if (name.length < 2 || name.length > 80) {
-            return res.status(400).json({
-                success: false,
-                message:
-                    "Name must contain between 2 and 80 characters.",
-            });
-        }
-
-        const emailPattern =
-            /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-        if (!emailPattern.test(email)) {
-            return res.status(400).json({
-                success: false,
-                message:
-                    "Please provide a valid email address.",
-            });
-        }
-
-        if (password.length < 8) {
-            return res.status(400).json({
-                success: false,
-                message:
-                    "Password must contain at least 8 characters.",
-            });
-        }
-
-        const existingUser = await User.findOne({
+        let user = await User.findOne({
             email,
         }).select(
-            "+password " +
+            "+passwordHash " +
             "+emailVerificationOtpHash " +
             "+emailVerificationOtpExpiresAt " +
             "+emailVerificationOtpAttempts " +
             "+emailVerificationOtpLastSentAt"
         );
 
-        if (existingUser?.isEmailVerified) {
-            return res.status(409).json({
-                success: false,
-                message:
-                    "An account with this email already exists.",
-            });
+        if (user?.isEmailVerified) {
+            throw new ApiError(
+                409,
+                "An account already exists with this email.",
+                [],
+                "EMAIL_ALREADY_REGISTERED"
+            );
         }
 
+        const passwordHash =
+            await hashPassword(password);
+
         const otp = generateOtp();
-        const otpHash = hashOtp(otp);
+        const otpHash = hashValue(otp);
 
-        const otpExpiresAt = new Date(
-            Date.now() +
-            OTP_EXPIRY_MINUTES * 60 * 1000
-        );
-
-        const hashedPassword = await bcrypt.hash(
-            password,
-            PASSWORD_SALT_ROUNDS
-        );
-
-        let user;
-
-        if (existingUser) {
-            existingUser.name = name;
-            existingUser.password = hashedPassword;
-            existingUser.emailVerificationOtpHash =
-                otpHash;
-            existingUser.emailVerificationOtpExpiresAt =
-                otpExpiresAt;
-            existingUser.emailVerificationOtpAttempts = 0;
-            existingUser.emailVerificationOtpLastSentAt =
+        if (user) {
+            user.name = name;
+            user.passwordHash = passwordHash;
+            user.emailVerificationOtpHash = otpHash;
+            user.emailVerificationOtpExpiresAt =
+                getOtpExpiryDate();
+            user.emailVerificationOtpAttempts = 0;
+            user.emailVerificationOtpLastSentAt =
                 new Date();
 
-            user = await existingUser.save();
+            await user.save();
         } else {
             user = await User.create({
                 name,
                 email,
-                password: hashedPassword,
+                passwordHash,
                 emailVerificationOtpHash: otpHash,
                 emailVerificationOtpExpiresAt:
-                    otpExpiresAt,
+                    getOtpExpiryDate(),
                 emailVerificationOtpAttempts: 0,
                 emailVerificationOtpLastSentAt:
                     new Date(),
@@ -190,89 +152,45 @@ export const registerUser = async (req, res, next) => {
         }
 
         try {
-            await sendOtpEmail({
-                to: user.email,
+            await sendVerificationOtpEmail({
                 name: user.name,
+                email: user.email,
                 otp,
-                expiryMinutes:
-                    OTP_EXPIRY_MINUTES,
             });
-        } catch (emailError) {
+        } catch (error) {
             console.error(
-                "Registration OTP email failed:",
-                {
-                    message: emailError.message,
-                    userId: user._id.toString(),
-                }
+                "Verification email failed:",
+                error.message
             );
 
-            return res.status(503).json({
-                success: false,
-                message:
-                    "Account created, but verification email could not be sent. Please request a new OTP.",
-                requiresVerification: true,
-                email: user.email,
-            });
+            throw new ApiError(
+                503,
+                "Unable to send verification email. Please try again.",
+                [],
+                "EMAIL_DELIVERY_FAILED"
+            );
         }
 
-        return res.status(201).json({
+        res.status(201).json({
             success: true,
             message:
-                "Verification code sent to your email.",
+                "Registration successful. Verification OTP has been sent.",
             data: {
                 email: user.email,
-                expiresInSeconds:
-                    OTP_EXPIRY_MINUTES * 60,
-                resendAvailableInSeconds:
-                    OTP_RESEND_COOLDOWN_SECONDS,
+                requiresVerification: true,
             },
         });
-    } catch (error) {
-        if (error?.code === 11000) {
-            return res.status(409).json({
-                success: false,
-                message:
-                    "An account with this email already exists.",
-            });
-        }
-
-        next(error);
     }
-};
+);
 
-/* =========================
-   VERIFY EMAIL OTP
-========================= */
-
-export const verifyEmailOtp = async (
-    req,
-    res,
-    next
-) => {
-    try {
+export const verifyEmail = asyncHandler(
+    async (req, res) => {
         const {
-            email: rawEmail,
-            otp: rawOtp,
-        } = req.body ?? {};
+            email: submittedEmail,
+            otp,
+        } = req.body;
 
-        const email = normalizeEmail(rawEmail);
-        const otp = String(rawOtp ?? "").trim();
-
-        if (!email || !otp) {
-            return res.status(400).json({
-                success: false,
-                message:
-                    "Email and verification code are required.",
-            });
-        }
-
-        if (!/^\d{6}$/.test(otp)) {
-            return res.status(400).json({
-                success: false,
-                message:
-                    "Verification code must contain 6 digits.",
-            });
-        }
+        const email = normalizeEmail(submittedEmail);
 
         const user = await User.findOne({
             email,
@@ -283,364 +201,463 @@ export const verifyEmailOtp = async (
         );
 
         if (!user) {
-            return res.status(400).json({
-                success: false,
-                message:
-                    "Invalid or expired verification code.",
-            });
+            throw new ApiError(
+                400,
+                "Invalid email or verification code.",
+                [],
+                "INVALID_VERIFICATION_CODE"
+            );
         }
 
         if (user.isEmailVerified) {
-            return res.status(200).json({
-                success: true,
-                message:
-                    "Email is already verified.",
-                user: getSafeUser(user),
-            });
+            throw new ApiError(
+                409,
+                "This email is already verified.",
+                [],
+                "EMAIL_ALREADY_VERIFIED"
+            );
         }
 
         if (
             !user.emailVerificationOtpHash ||
             !user.emailVerificationOtpExpiresAt
         ) {
-            return res.status(400).json({
-                success: false,
-                message:
-                    "Invalid or expired verification code. Please request a new code.",
-            });
-        }
-
-        if (
-            user.emailVerificationOtpExpiresAt.getTime() <
-            Date.now()
-        ) {
-            return res.status(400).json({
-                success: false,
-                message:
-                    "Verification code has expired. Please request a new code.",
-            });
-        }
-
-        if (
-            user.emailVerificationOtpAttempts >=
-            OTP_MAX_ATTEMPTS
-        ) {
-            return res.status(429).json({
-                success: false,
-                message:
-                    "Too many incorrect attempts. Please request a new verification code.",
-            });
-        }
-
-        const submittedHash = hashOtp(otp);
-
-        const storedHashBuffer = Buffer.from(
-            user.emailVerificationOtpHash,
-            "hex"
-        );
-
-        const submittedHashBuffer = Buffer.from(
-            submittedHash,
-            "hex"
-        );
-
-        const isOtpValid =
-            storedHashBuffer.length ===
-            submittedHashBuffer.length &&
-            crypto.timingSafeEqual(
-                storedHashBuffer,
-                submittedHashBuffer
+            throw new ApiError(
+                400,
+                "Verification code is invalid or expired.",
+                [],
+                "INVALID_VERIFICATION_CODE"
             );
+        }
 
-        if (!isOtpValid) {
+        if (
+            user.emailVerificationOtpAttempts >= 5
+        ) {
+            throw new ApiError(
+                429,
+                "Too many incorrect attempts. Request a new OTP.",
+                [],
+                "OTP_ATTEMPTS_EXCEEDED"
+            );
+        }
+
+        if (
+            user.emailVerificationOtpExpiresAt <
+            new Date()
+        ) {
+            throw new ApiError(
+                400,
+                "Verification code has expired. Request a new OTP.",
+                [],
+                "OTP_EXPIRED"
+            );
+        }
+
+        const submittedOtpHash = hashValue(otp);
+
+        if (
+            submittedOtpHash !==
+            user.emailVerificationOtpHash
+        ) {
             user.emailVerificationOtpAttempts += 1;
-
             await user.save();
 
-            const remainingAttempts = Math.max(
-                OTP_MAX_ATTEMPTS -
-                user.emailVerificationOtpAttempts,
-                0
+            throw new ApiError(
+                400,
+                "Invalid email or verification code.",
+                [],
+                "INVALID_VERIFICATION_CODE"
             );
-
-            return res.status(400).json({
-                success: false,
-                message:
-                    "Invalid verification code.",
-                remainingAttempts,
-            });
         }
 
         user.isEmailVerified = true;
-        user.emailVerifiedAt = new Date();
-        user.emailVerificationOtpHash = undefined;
-        user.emailVerificationOtpExpiresAt =
-            undefined;
+        user.emailVerificationOtpHash = null;
+        user.emailVerificationOtpExpiresAt = null;
         user.emailVerificationOtpAttempts = 0;
-        user.emailVerificationOtpLastSentAt =
-            undefined;
+        user.emailVerificationOtpLastSentAt = null;
+        user.lastLoginAt = new Date();
 
         await user.save();
 
-        const token = generateAccessToken(user._id);
+        const accessToken =
+            await createAuthenticatedSession(
+                user,
+                req,
+                res
+            );
 
-        setAuthCookie(res, token);
-
-        return res.status(200).json({
+        res.status(200).json({
             success: true,
             message:
                 "Email verified successfully.",
-            user: getSafeUser(user),
+            data: {
+                accessToken,
+                user,
+            },
         });
-    } catch (error) {
-        next(error);
     }
-};
+);
 
-/* =========================
-   RESEND EMAIL OTP
-========================= */
-
-export const resendEmailOtp = async (
-    req,
-    res,
-    next
-) => {
-    try {
-        const { email: rawEmail } =
-            req.body ?? {};
-
-        const email = normalizeEmail(rawEmail);
-
-        if (!email) {
-            return res.status(400).json({
-                success: false,
-                message: "Email is required.",
-            });
-        }
-
-        const genericResponse = {
-            success: true,
-            message:
-                "If an unverified account exists, a verification code has been sent.",
-        };
+export const resendOtp = asyncHandler(
+    async (req, res) => {
+        const email = normalizeEmail(
+            req.body.email
+        );
 
         const user = await User.findOne({
             email,
         }).select(
+            "+emailVerificationOtpHash " +
+            "+emailVerificationOtpExpiresAt " +
+            "+emailVerificationOtpAttempts " +
             "+emailVerificationOtpLastSentAt"
         );
 
-        if (!user || user.isEmailVerified) {
-            return res
-                .status(200)
-                .json(genericResponse);
+        if (!user) {
+            return res.status(200).json({
+                success: true,
+                message:
+                    "If an unverified account exists, a new OTP has been sent.",
+            });
         }
 
+        if (user.isEmailVerified) {
+            throw new ApiError(
+                409,
+                "This email is already verified.",
+                [],
+                "EMAIL_ALREADY_VERIFIED"
+            );
+        }
+
+        const cooldownMilliseconds = 60 * 1000;
+
         if (
-            user.emailVerificationOtpLastSentAt
+            user.emailVerificationOtpLastSentAt &&
+            Date.now() -
+            user.emailVerificationOtpLastSentAt.getTime() <
+            cooldownMilliseconds
         ) {
-            const elapsedMilliseconds =
-                Date.now() -
-                user.emailVerificationOtpLastSentAt.getTime();
-
-            const cooldownMilliseconds =
-                OTP_RESEND_COOLDOWN_SECONDS *
-                1000;
-
-            if (
-                elapsedMilliseconds <
-                cooldownMilliseconds
-            ) {
-                const waitSeconds = Math.ceil(
-                    (cooldownMilliseconds -
-                        elapsedMilliseconds) /
-                    1000
-                );
-
-                return res.status(429).json({
-                    success: false,
-                    message: `Please wait ${waitSeconds} seconds before requesting another code.`,
-                    retryAfterSeconds:
-                        waitSeconds,
-                });
-            }
+            throw new ApiError(
+                429,
+                "Please wait before requesting another OTP.",
+                [],
+                "OTP_RESEND_COOLDOWN"
+            );
         }
 
         const otp = generateOtp();
 
         user.emailVerificationOtpHash =
-            hashOtp(otp);
-
+            hashValue(otp);
         user.emailVerificationOtpExpiresAt =
-            new Date(
-                Date.now() +
-                OTP_EXPIRY_MINUTES *
-                60 *
-                1000
-            );
-
+            getOtpExpiryDate();
         user.emailVerificationOtpAttempts = 0;
-
         user.emailVerificationOtpLastSentAt =
             new Date();
 
         await user.save();
 
-        try {
-            await sendOtpEmail({
-                to: user.email,
-                name: user.name,
-                otp,
-                expiryMinutes:
-                    OTP_EXPIRY_MINUTES,
-            });
-        } catch (emailError) {
-            console.error(
-                "Resend OTP email failed:",
-                {
-                    message: emailError.message,
-                    userId:
-                        user._id.toString(),
-                }
-            );
+        await sendVerificationOtpEmail({
+            name: user.name,
+            email: user.email,
+            otp,
+        });
 
-            return res.status(503).json({
-                success: false,
-                message:
-                    "Verification email could not be sent. Please try again later.",
-            });
-        }
-
-        return res
-            .status(200)
-            .json(genericResponse);
-    } catch (error) {
-        next(error);
+        res.status(200).json({
+            success: true,
+            message:
+                "A new verification OTP has been sent.",
+        });
     }
-};
+);
 
-/* =========================
-   LOGIN USER
-========================= */
-
-export const loginUser = async (
-    req,
-    res,
-    next
-) => {
-    try {
-        const {
-            email: rawEmail,
-            password,
-        } = req.body ?? {};
-
-        const email = normalizeEmail(rawEmail);
-
-        if (!email || !password) {
-            return res.status(400).json({
-                success: false,
-                message:
-                    "Email and password are required.",
-            });
-        }
-
-        if (typeof password !== "string") {
-            return res.status(400).json({
-                success: false,
-                message:
-                    "Password must be a valid string.",
-            });
-        }
+export const login = asyncHandler(
+    async (req, res) => {
+        const email = normalizeEmail(
+            req.body.email
+        );
 
         const user = await User.findOne({
             email,
-        }).select("+password");
+        }).select(
+            "+passwordHash"
+        );
 
-        if (!user) {
-            return res.status(401).json({
-                success: false,
-                message:
-                    "Invalid email or password.",
-            });
+        /*
+         * Same response for missing user and missing
+         * password hash to avoid leaking account details.
+         */
+        if (!user || !user.passwordHash) {
+            throw new ApiError(
+                401,
+                "Invalid email or password.",
+                [],
+                "INVALID_CREDENTIALS"
+            );
         }
 
         const passwordMatches =
-            await bcrypt.compare(
-                password,
-                user.password
+            await comparePassword(
+                req.body.password,
+                user.passwordHash
             );
 
         if (!passwordMatches) {
-            return res.status(401).json({
-                success: false,
-                message:
-                    "Invalid email or password.",
-            });
+            throw new ApiError(
+                401,
+                "Invalid email or password.",
+                [],
+                "INVALID_CREDENTIALS"
+            );
         }
 
         if (!user.isEmailVerified) {
-            return res.status(403).json({
-                success: false,
-                message:
-                    "Please verify your email before logging in.",
-                requiresVerification: true,
-                email: user.email,
-            });
+            throw new ApiError(
+                403,
+                "Verify your email before logging in.",
+                [],
+                "EMAIL_NOT_VERIFIED"
+            );
         }
 
-        const token = generateAccessToken(
-            user._id
-        );
+        if (user.accountStatus !== "active") {
+            throw new ApiError(
+                403,
+                "Your account is not active.",
+                [],
+                "ACCOUNT_NOT_ACTIVE"
+            );
+        }
 
-        setAuthCookie(res, token);
+        user.lastLoginAt = new Date();
 
-        return res.status(200).json({
+        await user.save();
+
+        const accessToken =
+            await createAuthenticatedSession(
+                user,
+                req,
+                res
+            );
+
+        res.status(200).json({
             success: true,
             message: "Login successful.",
-            user: getSafeUser(user),
+            data: {
+                accessToken,
+                user,
+            },
         });
-    } catch (error) {
-        next(error);
     }
-};
+);
 
-/* =========================
-   LOGOUT USER
-========================= */
+export const refreshAccessToken = asyncHandler(
+    async (req, res) => {
+        const refreshToken =
+            req.cookies[REFRESH_COOKIE_NAME];
 
-export const logoutUser = async (
-    req,
-    res
-) => {
-    const isProduction =
-        process.env.NODE_ENV === "production";
+        if (!refreshToken) {
+            throw new ApiError(
+                401,
+                "Refresh token is required.",
+                [],
+                "REFRESH_TOKEN_REQUIRED"
+            );
+        }
 
-    res.clearCookie("accessToken", {
-        httpOnly: true,
-        secure: isProduction,
-        sameSite: isProduction
-            ? "none"
-            : "lax",
-        path: "/",
-    });
+        let payload;
 
-    return res.status(200).json({
-        success: true,
-        message: "Logged out successfully.",
-    });
-};
+        try {
+            payload =
+                verifyRefreshToken(refreshToken);
+        } catch {
+            clearRefreshCookie(res);
 
-/* =========================
-   CURRENT USER
-========================= */
+            throw new ApiError(
+                401,
+                "Refresh token is invalid or expired.",
+                [],
+                "INVALID_REFRESH_TOKEN"
+            );
+        }
 
-export const getCurrentUser = async (
-    req,
-    res
-) => {
-    return res.status(200).json({
-        success: true,
-        user: req.user,
-    });
-};
+        if (payload.type !== "refresh") {
+            clearRefreshCookie(res);
+
+            throw new ApiError(
+                401,
+                "Invalid refresh token.",
+                [],
+                "INVALID_REFRESH_TOKEN"
+            );
+        }
+
+        const session = await AuthSession.findById(
+            payload.sid
+        ).select("+tokenHash");
+
+        if (
+            !session ||
+            session.revokedAt ||
+            session.expiresAt < new Date()
+        ) {
+            clearRefreshCookie(res);
+
+            throw new ApiError(
+                401,
+                "Session has expired.",
+                [],
+                "SESSION_EXPIRED"
+            );
+        }
+
+        if (
+            session.user.toString() !==
+            payload.sub
+        ) {
+            clearRefreshCookie(res);
+
+            throw new ApiError(
+                401,
+                "Invalid session.",
+                [],
+                "INVALID_SESSION"
+            );
+        }
+
+        const presentedTokenHash = hashValue(
+            payload.token
+        );
+
+        if (
+            presentedTokenHash !==
+            session.tokenHash
+        ) {
+            session.revokedAt = new Date();
+            await session.save();
+
+            clearRefreshCookie(res);
+
+            throw new ApiError(
+                401,
+                "Refresh token reuse detected.",
+                [],
+                "REFRESH_TOKEN_REUSE_DETECTED"
+            );
+        }
+
+        const user = await User.findById(
+            session.user
+        );
+
+        if (
+            !user ||
+            user.accountStatus !== "active"
+        ) {
+            session.revokedAt = new Date();
+            await session.save();
+
+            clearRefreshCookie(res);
+
+            throw new ApiError(
+                401,
+                "User session is no longer valid.",
+                [],
+                "INVALID_USER_SESSION"
+            );
+        }
+
+        /*
+         * Refresh-token rotation:
+         * old session token is replaced on every refresh.
+         */
+        const newRawSessionToken =
+            generateSessionToken();
+
+        session.tokenHash = hashValue(
+            newRawSessionToken
+        );
+
+        session.lastUsedAt = new Date();
+        session.expiresAt =
+            getRefreshTokenExpiryDate();
+
+        await session.save();
+
+        const newRefreshToken =
+            createRefreshToken({
+                userId: user._id,
+                sessionId: session._id,
+                rawSessionToken:
+                    newRawSessionToken,
+            });
+
+        const accessToken =
+            createAccessToken(user);
+
+        res.cookie(
+            REFRESH_COOKIE_NAME,
+            newRefreshToken,
+            getRefreshCookieOptions()
+        );
+
+        res.status(200).json({
+            success: true,
+            message:
+                "Access token refreshed successfully.",
+            data: {
+                accessToken,
+            },
+        });
+    }
+);
+
+export const logout = asyncHandler(
+    async (req, res) => {
+        const refreshToken =
+            req.cookies[REFRESH_COOKIE_NAME];
+
+        if (refreshToken) {
+            try {
+                const payload =
+                    verifyRefreshToken(
+                        refreshToken
+                    );
+
+                await AuthSession.findByIdAndUpdate(
+                    payload.sid,
+                    {
+                        revokedAt: new Date(),
+                    }
+                );
+            } catch {
+                // Invalid or expired cookie is still cleared.
+            }
+        }
+
+        clearRefreshCookie(res);
+
+        res.status(200).json({
+            success: true,
+            message: "Logout successful.",
+        });
+    }
+);
+
+export const getCurrentUser = asyncHandler(
+    async (req, res) => {
+        res.status(200).json({
+            success: true,
+            data: {
+                user: req.user,
+            },
+        });
+    }
+);
+
+export const registerUser = register;
+export const verifyEmailOtp = verifyEmail;
+export const resendEmailOtp = resendOtp;
+export const loginUser = login;
+export const logoutUser = logout;

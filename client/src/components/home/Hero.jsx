@@ -1,31 +1,15 @@
-import { useState } from "react";
 import { Link } from "react-router-dom";
-
-import {
-    FaArrowRight,
-    FaSearch,
-} from "react-icons/fa";
-
+import { FaArrowRight } from "react-icons/fa";
 import { HiSparkles } from "react-icons/hi2";
 
 export default function Hero() {
-    const [search, setSearch] = useState("");
-
-    const popularSkills = [
-        "React",
-        "Python",
-        "AI & ML",
-        "UI/UX",
-        "Node.js",
-    ];
-
     return (
         <section
             className="
-        relative flex min-h-screen w-full
+        relative flex min-h-[80vh] w-full
         items-center overflow-hidden
         bg-[#07080D]
-        pt-24
+        pt-32 pb-20
       "
         >
             {/* Subtle background grid */}
@@ -110,7 +94,7 @@ export default function Hero() {
           "
                 >
                     <Link
-                        to="/search"
+                        to="/browse-skills"
                         className="
               group flex min-w-[180px]
               items-center justify-center gap-3
@@ -147,83 +131,6 @@ export default function Hero() {
 
                         <FaArrowRight className="transition-transform duration-300 group-hover:translate-x-1" />
                     </Link>
-                </div>
-
-                {/* Search */}
-                <div
-                    className="
-            mx-auto mt-8 max-w-2xl
-            rounded-2xl
-            border border-white/10
-            bg-[#111218]
-            p-2
-          "
-                >
-                    <div className="flex items-center">
-                        <FaSearch className="ml-4 shrink-0 text-white/35" />
-
-                        <input
-                            type="text"
-                            value={search}
-                            onChange={(event) => setSearch(event.target.value)}
-                            placeholder="Search React, Python, AI, UI Design..."
-                            className="
-                min-w-0 flex-1
-                bg-transparent
-                px-4 py-3
-                text-sm text-white
-                outline-none
-                placeholder:text-white/30
-                sm:text-base
-              "
-                        />
-
-                        <button
-                            type="button"
-                            className="
-                shrink-0 rounded-xl
-                bg-orange-500
-                px-5 py-3
-                text-sm font-semibold text-white
-                transition-colors duration-300
-                hover:bg-orange-400
-              "
-                        >
-                            Search
-                        </button>
-                    </div>
-                </div>
-
-                {/* Popular skills */}
-                <div
-                    className="
-            mt-4 flex flex-wrap
-            items-center justify-center gap-2
-          "
-                >
-                    <span className="mr-1 text-xs text-white/35">
-                        Popular:
-                    </span>
-
-                    {popularSkills.map((skill) => (
-                        <button
-                            key={skill}
-                            type="button"
-                            onClick={() => setSearch(skill)}
-                            className="
-                rounded-full
-                border border-white/10
-                bg-[#111218]
-                px-4 py-2
-                text-xs text-white/55
-                transition-all duration-300
-                hover:border-orange-400/40
-                hover:text-orange-300
-              "
-                        >
-                            {skill}
-                        </button>
-                    ))}
                 </div>
             </div>
         </section>
