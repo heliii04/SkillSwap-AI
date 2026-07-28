@@ -31,9 +31,10 @@ import {
 |
 | Backend integration ke baad:
 |
-| GET  /api/conversations
-| GET  /api/conversations/:conversationId/messages
-| POST /api/conversations/:conversationId/messages
+| GET  /api/v1/chats
+  POST /api/v1/chats
+  GET  /api/v1/chats/:chatId/messages
+  POST /api/v1/chats/:chatId/messages
 |
 | Aur real-time messaging ke liye Socket.IO use karenge.
 |
@@ -85,7 +86,10 @@ export default function Messages() {
             import.meta.env.VITE_API_URL ||
             "http://localhost:5000/api";
 
-        const fetchConversations = async () => {
+        const fetchConversations = async (showLoading = false) => {
+            if (showLoading) {
+                setLoading(true);
+            }
             try {
                 const token = getAccessToken();
                 const headers = {
@@ -100,27 +104,35 @@ export default function Messages() {
 
                     if (isMounted) {
                         setConversations(chats);
-                        setLoading(false);
-
-                        if (queryChatId) {
-                            setSelectedConversationId(queryChatId);
-                            setMobileChatOpen(true);
-                        } else if (chats.length > 0 && !selectedConversationId) {
-                            setSelectedConversationId(chats[0].id);
+                        
+                        if (showLoading) {
+                            if (queryChatId) {
+                                setSelectedConversationId(queryChatId);
+                                setMobileChatOpen(true);
+                            } else if (chats.length > 0 && !selectedConversationId) {
+                                setSelectedConversationId(chats[0].id);
+                            }
                         }
                     }
                 }
             } catch (err) {
                 console.error("Error fetching conversations:", err);
-                if (isMounted) {
+            } finally {
+                if (isMounted && showLoading) {
                     setLoading(false);
                 }
             }
         };
 
-        fetchConversations();
+        fetchConversations(true);
+
+        const interval = setInterval(() => {
+            fetchConversations(false);
+        }, 5000);
+
         return () => {
             isMounted = false;
+            clearInterval(interval);
         };
     }, [queryChatId]);
 
@@ -131,13 +143,15 @@ export default function Messages() {
         }
 
         let isMounted = true;
-        setMessagesLoading(true);
 
         const API_URL =
             import.meta.env.VITE_API_URL ||
             "http://localhost:5000/api";
 
-        const fetchMessages = async () => {
+        const fetchMessages = async (showLoading = false) => {
+            if (showLoading) {
+                setMessagesLoading(true);
+            }
             try {
                 const token = getAccessToken();
                 const headers = {
@@ -149,21 +163,28 @@ export default function Messages() {
                 if (response.ok) {
                     const resData = await response.json();
                     if (isMounted) {
-                        setMessages(resData?.data?.messages || []);
-                        setMessagesLoading(false);
+                        const fetchedMessages = resData?.data?.messages || [];
+                        setMessages(fetchedMessages);
                     }
                 }
             } catch (err) {
                 console.error("Error fetching messages:", err);
-                if (isMounted) {
+            } finally {
+                if (isMounted && showLoading) {
                     setMessagesLoading(false);
                 }
             }
         };
 
-        fetchMessages();
+        fetchMessages(true);
+        
+        const interval = setInterval(() => {
+            fetchMessages(false);
+        }, 4000);
+
         return () => {
             isMounted = false;
+            clearInterval(interval);
         };
     }, [selectedConversationId]);
 
@@ -318,14 +339,14 @@ export default function Messages() {
                         current.map((c) =>
                             c.id === selectedConversation.id
                                 ? {
-                                      ...c,
-                                      lastMessage: {
-                                          id: newMsg.id,
-                                          text: newMsg.text,
-                                          createdAt: newMsg.createdAt,
-                                          sender: "me",
-                                      },
-                                  }
+                                    ...c,
+                                    lastMessage: {
+                                        id: newMsg.id,
+                                        text: newMsg.text,
+                                        createdAt: newMsg.createdAt,
+                                        sender: "me",
+                                    },
+                                }
                                 : c
                         )
                     );
@@ -653,7 +674,7 @@ function ConversationItem({
             type="button"
             onClick={onClick}
             className={`flex w-full gap-3 border-b border-white/[0.06] p-4 text-left transition sm:p-5 ${active
-                ? "bg-orange-500/10"
+                ? ""
                 : "hover:bg-white/[0.025]"
                 }`}
         >

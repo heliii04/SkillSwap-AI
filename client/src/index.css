@@ -88,15 +88,15 @@ a:hover {
 input:hover,
 textarea:hover,
 select:hover {
-    border-color: #6366f1;
+    border-color: #f97316;
 }
 
 input:focus,
 textarea:focus,
 select:focus {
     outline: none;
-    border-color: #6366f1;
-    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+    border-color: #f97316;
+    box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.15);
 }
 
 /* Disabled */
@@ -132,7 +132,7 @@ button:focus-visible,
 input:focus-visible,
 textarea:focus-visible,
 select:focus-visible {
-    outline: 3px solid rgba(99, 102, 241, 0.35);
+    outline: 3px solid rgba(249, 115, 22, 0.35);
     outline-offset: 3px;
 }
 
@@ -251,7 +251,7 @@ select:focus-visible {
 
 /* ==========================================================
    Reduce Motion
-========================================================== */
+   ========================================================== */
 
 @media (prefers-reduced-motion: reduce) {
 
@@ -262,4 +262,49 @@ select:focus-visible {
         transition: none !important;
         scroll-behavior: auto;
     }
+}
+
+/* ==========================================================
+   Premium Toast Notifications Customization
+   ========================================================== */
+
+.Toastify__toast-container {
+    padding: 12px !important;
+}
+
+.Toastify__toast-theme--dark {
+    background: rgba(13, 14, 23, 0.85) !important;
+    backdrop-filter: blur(16px) saturate(180%) !important;
+    -webkit-backdrop-filter: blur(16px) saturate(180%) !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    border-radius: 16px !important;
+    box-shadow: 0 10px 40px 0 rgba(0, 0, 0, 0.45) !important;
+    color: #ffffff !important;
+    padding: 14px 18px !important;
+}
+
+.Toastify__toast-theme--dark:hover {
+    border-color: rgba(249, 115, 22, 0.35) !important;
+}
+
+.Toastify__toast-body {
+    padding: 0 !important;
+    margin: 0 !important;
+    font-family: inherit !important;
+}
+
+.Toastify__progress-bar--theme-dark {
+    background: linear-gradient(90deg, #6366f1 0%, #a855f7 50%, #ec4899 100%) !important;
+    height: 3px !important;
+}
+
+.Toastify__close-button {
+    color: rgba(255, 255, 255, 0.4) !important;
+    opacity: 1 !important;
+    transition: color 0.2s ease !important;
+    align-self: center !important;
+}
+
+.Toastify__close-button:hover {
+    color: #ffffff !important;
 }

@@ -119,9 +119,9 @@ export default function Footer() {
               {[
                 { name: "Privacy Policy", path: "/privacy" },
                 { name: "Terms & Conditions", path: "/terms" },
-                { name: "Help Center", path: "/contact" },
-                { name: "FAQ", path: "/how-it-works#faq" },
-                { name: "Support", path: "/contact" },
+                { name: "Help Center", path: "/help" },
+                { name: "FAQ", path: "/faq" },
+                { name: "Support", path: "/support" },
               ].map((item) => (
 
                 <Link
@@ -227,7 +227,7 @@ export default function Footer() {
             </Link>
 
             <Link
-              to="/cookies"
+              to="/privacy"
               className="text-sm text-white/35 hover:text-orange-400 transition"
             >
               Cookies

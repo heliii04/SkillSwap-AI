@@ -13,6 +13,7 @@ import {
     FiBookOpen,
     FiCheckCircle,
     FiMessageCircle,
+    FiPlus,
     FiRepeat,
     FiSearch,
     FiShield,
@@ -165,7 +166,7 @@ export default function HowItWorks() {
     return (
         <main className="min-h-screen overflow-x-hidden bg-[#07080d] text-white">
             {/* Hero Section */}
-            <section className="relative overflow-hidden border-b border-white/10">
+            <section className="relative overflow-hidden">
 
 
                 <div className="relative mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8 lg:py-28">
@@ -191,7 +192,7 @@ export default function HowItWorks() {
 
                         <h1 className="text-4xl font-bold tracking-tight sm:text-5xl lg:text-7xl">
                             How does
-                            <span className="mx-3 bg-gradient-to-r from-orange-400 via-amber-400 to-orange-500 bg-clip-text text-transparent">
+                            <span className="mx-3 text-orange-500">
                                 SkillSwap AI
                             </span>
                             work?
@@ -225,25 +226,30 @@ export default function HowItWorks() {
             </section>
 
             {/* Small Overview */}
-            <section className="border-b border-white/10 bg-white/[0.015]">
-                <div className="mx-auto grid max-w-7xl gap-6 px-4 py-10 sm:grid-cols-3 sm:px-6 lg:px-8">
-                    <OverviewItem
-                        number="01"
-                        title="Share"
-                        text="Add the skills you can teach."
-                    />
+            <section className="px-5 py-10 sm:px-8 lg:px-12">
+                <div className="mx-auto max-w-7xl">
+                    <div className="grid overflow-hidden rounded-[28px] border border-white/10 sm:grid-cols-3">
+                        <OverviewItem
+                            number="01"
+                            title="Share"
+                            text="Add the skills you can teach."
+                            isLast={false}
+                        />
 
-                    <OverviewItem
-                        number="02"
-                        title="Match"
-                        text="Find the right learning partner."
-                    />
+                        <OverviewItem
+                            number="02"
+                            title="Match"
+                            text="Find the right learning partner."
+                            isLast={false}
+                        />
 
-                    <OverviewItem
-                        number="03"
-                        title="Learn"
-                        text="Exchange knowledge and grow."
-                    />
+                        <OverviewItem
+                            number="03"
+                            title="Learn"
+                            text="Exchange knowledge and grow."
+                            isLast={true}
+                        />
+                    </div>
                 </div>
             </section>
 
@@ -278,7 +284,7 @@ export default function HowItWorks() {
 
                             <h2 className="mt-6 text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl">
                                 AI helps you discover
-                                <span className="block bg-gradient-to-r from-orange-400 to-amber-500 bg-clip-text text-transparent">
+                                <span className="block text-orange-500">
                                     better skill matches
                                 </span>
                             </h2>
@@ -497,8 +503,8 @@ export default function HowItWorks() {
                                 <summary className="flex cursor-pointer list-none items-center justify-between gap-4 font-medium">
                                     {faq.question}
 
-                                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/5 text-lg text-gray-400 transition group-open:rotate-45 group-open:bg-orange-500/10 group-open:text-orange-400">
-                                        +
+                                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/5 text-gray-400 transition group-open:rotate-45 group-open:bg-orange-500/10 group-open:text-orange-400">
+                                        <FiPlus className="text-xl" />
                                     </span>
                                 </summary>
 
@@ -652,8 +658,8 @@ function AnimatedProcessStep({ step, index }) {
             <motion.div
                 variants={dotVariants}
                 className={`absolute top-1/2 z-20 hidden -translate-y-1/2 rounded-full border border-orange-500/30 bg-orange-500 px-3 py-1 text-xs font-bold text-black shadow-lg shadow-orange-500/20 lg:block ${isLeft
-                        ? "left-[calc(50%+28px)]"
-                        : "right-[calc(50%+28px)]"
+                    ? "left-[calc(50%+28px)]"
+                    : "right-[calc(50%+28px)]"
                     }`}
             >
                 STEP {String(step.id).padStart(2, "0")}
@@ -671,8 +677,8 @@ function AnimatedProcessStep({ step, index }) {
             <motion.div
                 variants={cardVariants}
                 className={`pl-14 lg:pl-0 ${isLeft
-                        ? "lg:col-start-1 lg:pr-3"
-                        : "lg:col-start-2 lg:pl-3"
+                    ? "lg:col-start-1 lg:pr-3"
+                    : "lg:col-start-2 lg:pl-3"
                     }`}
             >
                 <div className="group relative overflow-hidden rounded-[28px] border border-white/10 bg-[#0d0e14]/95 p-6 shadow-2xl shadow-black/30 backdrop-blur-xl transition duration-500 hover:-translate-y-2 hover:border-orange-500/40 hover:shadow-[0_24px_70px_rgba(249,115,22,0.12)] sm:p-8">
@@ -784,7 +790,7 @@ function AnimatedProcessStep({ step, index }) {
     );
 }
 
-function OverviewItem({ number, title, text }) {
+function OverviewItem({ number, title, text, isLast }) {
     return (
         <motion.div
             initial={{
@@ -802,16 +808,26 @@ function OverviewItem({ number, title, text }) {
             transition={{
                 duration: 0.5,
             }}
-            className="flex items-center justify-center gap-4 border-white/10 sm:border-r sm:last:border-r-0"
+            className={`
+                relative
+                flex min-h-[145px]
+                items-center
+                justify-center
+                gap-5
+                px-6 py-8
+                ${!isLast ? "border-b border-white/10 sm:border-b-0 sm:border-r" : ""}
+            `}
         >
-            <span className="bg-gradient-to-r from-orange-400 to-amber-500 bg-clip-text text-3xl font-bold text-transparent">
+            <span className="text-3xl font-bold tracking-tight text-orange-500 sm:text-4xl shrink-0">
                 {number}
             </span>
 
-            <div>
-                <h3 className="font-semibold">{title}</h3>
+            <div className="text-left">
+                <h3 className="font-semibold text-white text-base sm:text-lg">
+                    {title}
+                </h3>
 
-                <p className="mt-1 text-sm text-gray-500">
+                <p className="mt-1 text-sm text-white/45 leading-relaxed">
                     {text}
                 </p>
             </div>

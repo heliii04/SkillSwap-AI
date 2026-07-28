@@ -537,7 +537,7 @@ function ProfileProgress({
     user,
     onComplete,
 }) {
-    const completion = 25;
+    const completion = user?.profileCompletion ?? 0;
 
     return (
         <article className="rounded-2xl border border-orange-500/20 bg-gradient-to-br from-orange-500/10 to-[#101117] p-5 sm:p-6">

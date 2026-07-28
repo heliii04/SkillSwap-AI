@@ -87,7 +87,7 @@ export default function About() {
 
                         <h1 className="text-4xl font-bold tracking-tight sm:text-5xl lg:text-7xl pb-2 leading-[1.2]">
                             About
-                            <span className="mx-3 bg-gradient-to-r from-orange-400 via-amber-400 to-orange-500 bg-clip-text text-transparent py-1">
+                            <span className="mx-3 text-orange-500 py-1">
                                 SkillSwap AI
                             </span>
                         </h1>
@@ -130,7 +130,7 @@ export default function About() {
                                     : ""
                                 }`}
                         >
-                            <span className="bg-gradient-to-r from-orange-400 to-amber-500 bg-clip-text text-3xl font-bold text-transparent">
+                            <span className="text-orange-500 text-3xl font-bold">
                                 {item.number}
                             </span>
 
@@ -157,7 +157,7 @@ export default function About() {
 
                         <h2 className="mt-4 text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl pb-1 leading-[1.25]">
                             Learning should be
-                            <span className="block bg-gradient-to-r from-orange-400 to-amber-500 bg-clip-text text-transparent py-1">
+                            <span className="block text-orange-500 py-1">
                                 accessible to everyone
                             </span>
                         </h2>
@@ -355,7 +355,7 @@ export default function About() {
 
                         <h2 className="mt-4 text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl pb-1 leading-[1.25]">
                             Smarter connections,
-                            <span className="block bg-gradient-to-r from-orange-400 to-amber-500 bg-clip-text text-transparent py-1">
+                            <span className="block text-orange-500 py-1">
                                 better learning
                             </span>
                         </h2>

@@ -1,10 +1,14 @@
-import mongoose from "mongoose";
-
 import SwapRequest from "../models/SwapRequest.js";
 import Skill from "../models/Skill.js";
 import User from "../models/User.js";
 import Chat from "../models/Chat.js";
 import Notification from "../models/Notification.js";
+
+/*
+|--------------------------------------------------------------------------
+| Populate swap request
+|--------------------------------------------------------------------------
+*/
 
 const populateSwapRequest = (query) => {
     return query
@@ -28,6 +32,12 @@ const populateSwapRequest = (query) => {
         });
 };
 
+/*
+|--------------------------------------------------------------------------
+| Format helpers
+|--------------------------------------------------------------------------
+*/
+
 const formatUser = (user) => {
     if (!user) {
         return null;
@@ -37,8 +47,7 @@ const formatUser = (user) => {
         id: user._id,
         name: user.name,
         email: user.email,
-        avatar:
-            user.avatar || null,
+        avatar: user.avatar || null,
     };
 };
 
@@ -50,65 +59,48 @@ const formatSkill = (skill) => {
     return {
         id: skill._id,
         title: skill.title,
-        category:
-            skill.category,
+        category: skill.category,
         level: skill.level,
-        teachingMode:
-            skill.teachingMode,
-        availability:
-            skill.availability,
+        teachingMode: skill.teachingMode,
+        availability: skill.availability,
         tags: skill.tags || [],
-        isActive:
-            skill.isActive,
+        isActive: skill.isActive,
     };
 };
 
-const formatSwapRequest = (
-    request
-) => ({
+const formatSwapRequest = (request) => ({
     id: request._id,
 
-    sender:
-        formatUser(
-            request.sender
-        ),
+    sender: formatUser(
+        request.sender
+    ),
 
-    receiver:
-        formatUser(
-            request.receiver
-        ),
+    receiver: formatUser(
+        request.receiver
+    ),
 
-    senderSkill:
-        formatSkill(
-            request.senderSkill
-        ),
+    senderSkill: formatSkill(
+        request.senderSkill
+    ),
 
-    receiverSkill:
-        formatSkill(
-            request.receiverSkill
-        ),
+    receiverSkill: formatSkill(
+        request.receiverSkill
+    ),
 
-    message:
-        request.message,
-
-    status:
-        request.status,
-
-    expiresAt:
-        request.expiresAt,
-
-    respondedAt:
-        request.respondedAt,
-
-    cancelledAt:
-        request.cancelledAt,
-
-    createdAt:
-        request.createdAt,
-
-    updatedAt:
-        request.updatedAt,
+    message: request.message,
+    status: request.status,
+    expiresAt: request.expiresAt,
+    respondedAt: request.respondedAt,
+    cancelledAt: request.cancelledAt,
+    createdAt: request.createdAt,
+    updatedAt: request.updatedAt,
 });
+
+/*
+|--------------------------------------------------------------------------
+| Expire old pending requests
+|--------------------------------------------------------------------------
+*/
 
 const expireOldPendingRequests =
     async (filter = {}) => {
@@ -275,8 +267,7 @@ export const createSwapRequest =
                             receiverSkillId,
 
                         message:
-                            message ||
-                            "",
+                            message || "",
                     }
                 );
 
@@ -287,21 +278,35 @@ export const createSwapRequest =
                     )
                 );
 
-            await Notification.create({
-                recipient: receiverId,
-                sender: senderId,
-                type: "swap_request",
-                title: "New Swap Request",
-                message: `${req.user.name} wants to swap skills with you!`,
-                link: "/requests"
-            });
+            await Notification.create(
+                {
+                    recipient:
+                        receiverId,
+
+                    sender:
+                        senderId,
+
+                    type:
+                        "swap_request",
+
+                    title:
+                        "New Swap Request",
+
+                    message: `${req.user.name} wants to swap skills with you!`,
+
+                    link:
+                        "/requests",
+                }
+            );
 
             return res
                 .status(201)
                 .json({
                     success: true,
+
                     message:
                         "Swap request sent successfully",
+
                     data: {
                         request:
                             formatSwapRequest(
@@ -318,6 +323,7 @@ export const createSwapRequest =
                     .status(409)
                     .json({
                         success: false,
+
                         message:
                             "A pending request for this skill exchange already exists",
                     });
@@ -400,6 +406,7 @@ export const getSentSwapRequests =
                 .status(200)
                 .json({
                     success: true,
+
                     message:
                         "Sent swap requests retrieved successfully",
 
@@ -413,10 +420,11 @@ export const getSentSwapRequests =
                             page,
                             limit,
                             total,
+
                             totalPages:
                                 Math.ceil(
                                     total /
-                                        limit
+                                    limit
                                 ),
                         },
                     },
@@ -499,6 +507,7 @@ export const getReceivedSwapRequests =
                 .status(200)
                 .json({
                     success: true,
+
                     message:
                         "Received swap requests retrieved successfully",
 
@@ -512,10 +521,11 @@ export const getReceivedSwapRequests =
                             page,
                             limit,
                             total,
+
                             totalPages:
                                 Math.ceil(
                                     total /
-                                        limit
+                                    limit
                                 ),
                         },
                     },
@@ -540,8 +550,9 @@ export const getSwapRequestById =
         try {
             await expireOldPendingRequests(
                 {
-                    _id: req.params
-                        .requestId,
+                    _id:
+                        req.params
+                            .requestId,
                 }
             );
 
@@ -549,8 +560,9 @@ export const getSwapRequestById =
                 await populateSwapRequest(
                     SwapRequest.findOne(
                         {
-                            _id: req.params
-                                .requestId,
+                            _id:
+                                req.params
+                                    .requestId,
 
                             $or: [
                                 {
@@ -575,6 +587,7 @@ export const getSwapRequestById =
                     .status(404)
                     .json({
                         success: false,
+
                         message:
                             "Swap request was not found",
                     });
@@ -584,8 +597,10 @@ export const getSwapRequestById =
                 .status(200)
                 .json({
                     success: true,
+
                     message:
                         "Swap request retrieved successfully",
+
                     data: {
                         request:
                             formatSwapRequest(
@@ -613,16 +628,18 @@ export const acceptSwapRequest =
         try {
             await expireOldPendingRequests(
                 {
-                    _id: req.params
-                        .requestId,
+                    _id:
+                        req.params
+                            .requestId,
                 }
             );
 
             const request =
                 await SwapRequest.findOneAndUpdate(
                     {
-                        _id: req.params
-                            .requestId,
+                        _id:
+                            req.params
+                                .requestId,
 
                         receiver:
                             req.user
@@ -632,7 +649,8 @@ export const acceptSwapRequest =
                             "pending",
 
                         expiresAt: {
-                            $gt: new Date(),
+                            $gt:
+                                new Date(),
                         },
                     },
                     {
@@ -656,8 +674,97 @@ export const acceptSwapRequest =
                     .status(409)
                     .json({
                         success: false,
+
                         message:
                             "Request was not found, has expired, or is no longer pending",
+                    });
+            }
+
+            /*
+            |--------------------------------------------------------------------------
+            | Find or create chat using exact swap request
+            |--------------------------------------------------------------------------
+            */
+
+            let chat =
+                await Chat.findOne(
+                    {
+                        swapRequest:
+                            request._id,
+                    }
+                );
+
+            if (!chat) {
+                try {
+                    chat =
+                        await Chat.create(
+                            {
+                                participants:
+                                    [
+                                        request.sender,
+                                        request.receiver,
+                                    ],
+
+                                swapRequest:
+                                    request._id,
+                            }
+                        );
+                } catch (error) {
+                    /*
+                    Duplicate key can happen when two requests hit almost together.
+                    In that case, fetch the chat that was already created.
+                    */
+
+                    if (
+                        error.code ===
+                        11000
+                    ) {
+                        chat =
+                            await Chat.findOne(
+                                {
+                                    swapRequest:
+                                        request._id,
+                                }
+                            );
+                    } else {
+                        throw error;
+                    }
+                }
+            }
+
+            if (!chat) {
+                const rollbackResult =
+                    await SwapRequest.updateOne(
+                        {
+                            _id:
+                                request._id,
+
+                            status:
+                                "accepted",
+                        },
+                        {
+                            $set: {
+                                status:
+                                    "pending",
+                            },
+
+                            $unset: {
+                                respondedAt:
+                                    1,
+                            },
+                        }
+                    );
+
+                return res
+                    .status(500)
+                    .json({
+                        success: false,
+
+                        message:
+                            rollbackResult.modifiedCount >
+                                0
+                                ? "Chat could not be created. The request was restored to pending."
+                                : "Chat could not be created after accepting the request.",
                     });
             }
 
@@ -668,36 +775,44 @@ export const acceptSwapRequest =
                     )
                 );
 
-            let chat = await Chat.findOne({
-                participants: { $all: [populatedRequest.sender._id, populatedRequest.receiver._id] }
-            });
-            if (!chat) {
-                chat = await Chat.create({
-                    participants: [populatedRequest.sender._id, populatedRequest.receiver._id],
-                    swapRequest: populatedRequest._id
-                });
-            }
+            await Notification.create(
+                {
+                    recipient:
+                        request.sender,
 
-            await Notification.create({
-                recipient: populatedRequest.sender._id,
-                sender: req.user._id,
-                type: "swap_accepted",
-                title: "Swap Request Accepted",
-                message: `${req.user.name} accepted your skill exchange request!`,
-                link: `/messages?chatId=${chat._id}`
-            });
+                    sender:
+                        req.user._id,
+
+                    type:
+                        "swap_accepted",
+
+                    title:
+                        "Swap Request Accepted",
+
+                    message: `${req.user.name} accepted your skill exchange request!`,
+
+                    link: `/messages?chatId=${chat._id}`,
+                }
+            );
 
             return res
                 .status(200)
                 .json({
                     success: true,
+
                     message:
                         "Swap request accepted successfully",
+
                     data: {
                         request:
                             formatSwapRequest(
                                 populatedRequest
                             ),
+
+                        chat: {
+                            id:
+                                chat._id,
+                        },
                     },
                 });
         } catch (error) {
@@ -720,16 +835,18 @@ export const rejectSwapRequest =
         try {
             await expireOldPendingRequests(
                 {
-                    _id: req.params
-                        .requestId,
+                    _id:
+                        req.params
+                            .requestId,
                 }
             );
 
             const request =
                 await SwapRequest.findOneAndUpdate(
                     {
-                        _id: req.params
-                            .requestId,
+                        _id:
+                            req.params
+                                .requestId,
 
                         receiver:
                             req.user
@@ -739,7 +856,8 @@ export const rejectSwapRequest =
                             "pending",
 
                         expiresAt: {
-                            $gt: new Date(),
+                            $gt:
+                                new Date(),
                         },
                     },
                     {
@@ -753,6 +871,7 @@ export const rejectSwapRequest =
                     },
                     {
                         new: true,
+
                         runValidators:
                             true,
                     }
@@ -763,6 +882,7 @@ export const rejectSwapRequest =
                     .status(409)
                     .json({
                         success: false,
+
                         message:
                             "Request was not found, has expired, or is no longer pending",
                     });
@@ -775,21 +895,35 @@ export const rejectSwapRequest =
                     )
                 );
 
-            await Notification.create({
-                recipient: populatedRequest.sender._id,
-                sender: req.user._id,
-                type: "swap_rejected",
-                title: "Swap Request Declined",
-                message: `${req.user.name} declined your skill exchange request.`,
-                link: "/requests"
-            });
+            await Notification.create(
+                {
+                    recipient:
+                        request.sender,
+
+                    sender:
+                        req.user._id,
+
+                    type:
+                        "swap_rejected",
+
+                    title:
+                        "Swap Request Declined",
+
+                    message: `${req.user.name} declined your skill exchange request.`,
+
+                    link:
+                        "/requests",
+                }
+            );
 
             return res
                 .status(200)
                 .json({
                     success: true,
+
                     message:
                         "Swap request rejected successfully",
+
                     data: {
                         request:
                             formatSwapRequest(
@@ -817,16 +951,18 @@ export const cancelSwapRequest =
         try {
             await expireOldPendingRequests(
                 {
-                    _id: req.params
-                        .requestId,
+                    _id:
+                        req.params
+                            .requestId,
                 }
             );
 
             const request =
                 await SwapRequest.findOneAndUpdate(
                     {
-                        _id: req.params
-                            .requestId,
+                        _id:
+                            req.params
+                                .requestId,
 
                         sender:
                             req.user
@@ -836,7 +972,8 @@ export const cancelSwapRequest =
                             "pending",
 
                         expiresAt: {
-                            $gt: new Date(),
+                            $gt:
+                                new Date(),
                         },
                     },
                     {
@@ -850,6 +987,7 @@ export const cancelSwapRequest =
                     },
                     {
                         new: true,
+
                         runValidators:
                             true,
                     }
@@ -860,6 +998,7 @@ export const cancelSwapRequest =
                     .status(409)
                     .json({
                         success: false,
+
                         message:
                             "Request was not found, has expired, or is no longer pending",
                     });
@@ -876,8 +1015,10 @@ export const cancelSwapRequest =
                 .status(200)
                 .json({
                     success: true,
+
                     message:
                         "Swap request cancelled successfully",
+
                     data: {
                         request:
                             formatSwapRequest(

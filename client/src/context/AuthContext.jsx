@@ -49,6 +49,13 @@ export function AuthProvider({ children }) {
     const [isAuthLoading, setIsAuthLoading] =
         useState(true);
 
+    const updateUser = useCallback((userData) => {
+        setUser((prev) => {
+            if (!prev) return userData;
+            return { ...prev, ...userData };
+        });
+    }, []);
+
     const isAuthenticated = Boolean(user);
 
     const clearSession = useCallback(() => {
@@ -230,6 +237,7 @@ export function AuthProvider({ children }) {
             login,
             logout,
             refreshUser,
+            updateUser,
         }),
         [
             user,
@@ -241,6 +249,7 @@ export function AuthProvider({ children }) {
             login,
             logout,
             refreshUser,
+            updateUser,
         ]
     );
 

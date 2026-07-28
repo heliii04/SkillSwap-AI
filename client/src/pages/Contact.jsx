@@ -167,7 +167,7 @@ export default function Contact() {
 
                         <h1 className="text-4xl font-bold tracking-tight sm:text-5xl lg:text-7xl">
                             Get in
-                            <span className="ml-3 bg-gradient-to-r from-orange-400 via-amber-400 to-orange-500 bg-clip-text text-transparent">
+                            <span className="ml-3 text-orange-500">
                                 touch
                             </span>
                         </h1>
@@ -226,7 +226,7 @@ export default function Contact() {
 
                         <h2 className="mt-4 text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl">
                             Tell us how we
-                            <span className="block bg-gradient-to-r from-orange-400 to-amber-400 bg-clip-text text-transparent">
+                            <span className="block text-orange-500">
                                 can help you
                             </span>
                         </h2>

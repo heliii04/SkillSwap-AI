@@ -250,7 +250,7 @@ export default function BrowseSkills() {
 
                         <h1 className="text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl pb-2 leading-[1.2]">
                             Find the right skill.
-                            <span className="block bg-gradient-to-r from-orange-400 via-amber-400 to-orange-500 bg-clip-text text-transparent py-1.5">
+                            <span className="block text-orange-500 py-1.5">
                                 Meet the right mentor.
                             </span>
                         </h1>

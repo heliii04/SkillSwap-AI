@@ -1,10 +1,12 @@
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
 import {
   NavLink,
   Outlet,
   useLocation,
   useNavigate,
 } from "react-router-dom";
+import { toast } from "react-toastify";
+
 
 import {
   HiOutlineAcademicCap,
@@ -122,6 +124,26 @@ export default function DashboardLayout() {
 
   const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(0);
 
+  // For notification popups (in-app and system-level)
+  const knownNotificationsRef = useRef(new Set());
+  const currentUserRef = useRef(null);
+  const isFirstFetchRef = useRef(true);
+
+  if (user?._id !== currentUserRef.current && user?.id !== currentUserRef.current) {
+    knownNotificationsRef.current = new Set();
+    currentUserRef.current = user?._id || user?.id;
+    isFirstFetchRef.current = true;
+  }
+
+  // Request browser notification permission
+  useEffect(() => {
+    if (typeof window !== "undefined" && "Notification" in window) {
+      if (Notification.permission === "default") {
+        Notification.requestPermission();
+      }
+    }
+  }, []);
+
   useEffect(() => {
     let isMounted = true;
 
@@ -147,6 +169,56 @@ export default function DashboardLayout() {
 
           if (isMounted) {
             setUnreadNotificationsCount(unreadCount);
+
+            // Handle Toast / Push notification for new notifications
+            const unreadList = list.filter(n => !n.isRead);
+
+            unreadList.forEach(n => {
+              if (!knownNotificationsRef.current.has(n.id)) {
+                if (!isFirstFetchRef.current) {
+                  // Trigger toast popup in-app
+                  toast(
+                    <div className="flex flex-col gap-1 cursor-pointer" onClick={() => {
+                      if (n.link) {
+                        navigate(n.link);
+                      }
+                    }}>
+                      <span className="font-semibold text-white/95">{n.title}</span>
+                      <span className="text-xs text-white/70 line-clamp-2">{n.message}</span>
+                    </div>,
+                    {
+                      position: "top-right",
+                      autoClose: 5000,
+                      hideProgressBar: false,
+                      closeOnClick: true,
+                      pauseOnHover: true,
+                      draggable: true,
+                      theme: "dark",
+                    }
+                  );
+
+                  // Trigger system/browser notification if not active
+                  if (!document.hasFocus() && "Notification" in window && Notification.permission === "granted") {
+                    try {
+                      const sysNotif = new Notification(n.title, {
+                        body: n.message,
+                      });
+                      sysNotif.onclick = () => {
+                        window.focus();
+                        if (n.link) {
+                          navigate(n.link);
+                        }
+                      };
+                    } catch (err) {
+                      console.error("System notification error:", err);
+                    }
+                  }
+                }
+                knownNotificationsRef.current.add(n.id);
+              }
+            });
+
+            isFirstFetchRef.current = false;
           }
         }
       } catch (err) {
@@ -162,7 +234,7 @@ export default function DashboardLayout() {
       isMounted = false;
       clearInterval(interval);
     };
-  }, [location.pathname]);
+  }, [location.pathname, user]);
 
   const initials = useMemo(() => {
     const name =
@@ -400,6 +472,17 @@ export default function DashboardLayout() {
             </div>
 
             <div className="ml-auto flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() =>
+                  navigate("/")
+                }
+                title="Go to Home"
+                className="rounded-xl border border-white/10 p-3 text-white/55 transition hover:bg-white/5 hover:text-white"
+              >
+                <HiOutlineHome className="text-xl" />
+              </button>
+
               <button
                 type="button"
                 onClick={() =>

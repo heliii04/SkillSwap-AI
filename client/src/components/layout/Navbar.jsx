@@ -3,7 +3,9 @@ import {
   Link,
   NavLink,
   useNavigate,
+  useLocation,
 } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
 
 import { HiOutlineMenuAlt3 } from "react-icons/hi";
 import { IoClose } from "react-icons/io5";
@@ -16,13 +18,45 @@ import { useAuth } from "../../context/AuthContext";
 
 export default function Navbar() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const isHomePage = location.pathname === "/";
 
   const [menuOpen, setMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [showSplash, setShowSplash] = useState(isHomePage);
+  const [isMoving, setIsMoving] = useState(false);
 
   const { user, authLoading, logout } = useAuth();
 
   const isAuthenticated = Boolean(user);
+
+  useEffect(() => {
+    if (isHomePage) {
+      const moveTimer = setTimeout(() => {
+        setIsMoving(true);
+      }, 900);
+
+      const closeTimer = setTimeout(() => {
+        setShowSplash(false);
+      }, 2600);
+
+      return () => {
+        clearTimeout(moveTimer);
+        clearTimeout(closeTimer);
+      };
+    }
+  }, [isHomePage]);
+
+  useEffect(() => {
+    if (showSplash) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [showSplash]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -84,19 +118,19 @@ export default function Navbar() {
           className="flex items-center gap-3"
           onClick={closeMenu}
         >
-          <div
+          <motion.div
+            layoutId="logo-box"
             className="
               flex h-10 w-10 items-center justify-center
               rounded-xl
               bg-gradient-to-br from-orange-400 to-orange-600
               text-sm font-black text-white
-              shadow-[0_0_25px_rgba(249,115,22,0.35)]
             "
           >
             S
-          </div>
+          </motion.div>
 
-          <div>
+          <motion.div layoutId="logo-text">
             <p className="text-xl font-bold tracking-tight text-white">
               SkillSwap
               <span className="text-orange-400"> AI</span>
@@ -105,12 +139,17 @@ export default function Navbar() {
             <p className="hidden text-[9px] uppercase tracking-[0.28em] text-white/35 sm:block">
               Learn · Teach · Grow
             </p>
-          </div>
+          </motion.div>
         </Link>
 
         {/* Desktop links */}
 
-        <ul className="hidden items-center gap-8 text-sm font-medium lg:flex">
+        <motion.ul
+          initial={{ opacity: 0 }}
+          animate={{ opacity: showSplash ? 0 : 1 }}
+          transition={{ duration: 0.5 }}
+          className="hidden items-center gap-8 text-sm font-medium lg:flex"
+        >
           <li>
             <NavLink to="/" className={navLinkClass}>
               Home
@@ -140,11 +179,16 @@ export default function Navbar() {
               Contact
             </NavLink>
           </li>
-        </ul>
+        </motion.ul>
 
         {/* Desktop actions */}
 
-        <div className="hidden items-center gap-4 lg:flex">
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: showSplash ? 0 : 1 }}
+          transition={{ duration: 0.5 }}
+          className="hidden items-center gap-4 lg:flex"
+        >
           {authLoading ? (
             <div className="h-11 w-36 animate-pulse rounded-full bg-white/10" />
           ) : isAuthenticated ? (
@@ -218,11 +262,14 @@ export default function Navbar() {
               </Link>
             </>
           )}
-        </div>
+        </motion.div>
 
         {/* Mobile menu button */}
 
-        <button
+        <motion.button
+          initial={{ opacity: 0 }}
+          animate={{ opacity: showSplash ? 0 : 1 }}
+          transition={{ duration: 0.5 }}
           type="button"
           aria-label="Toggle navigation menu"
           aria-expanded={menuOpen}
@@ -239,7 +286,7 @@ export default function Navbar() {
           "
         >
           {menuOpen ? <IoClose /> : <HiOutlineMenuAlt3 />}
-        </button>
+        </motion.button>
       </nav>
 
       {/* Mobile menu */}
@@ -365,6 +412,65 @@ export default function Navbar() {
           </div>
         </div>
       </div>
+
+      <AnimatePresence>
+        {showSplash && (
+          <motion.div
+            initial={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.6, ease: "easeInOut" }}
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-[#07080d]"
+          >
+            <div className="relative w-[500px] h-[150px] flex items-center justify-center">
+              <motion.div
+                layoutId="logo-box"
+                className="z-10 absolute flex h-20 w-20 shrink-0 items-center justify-center rounded-3xl bg-gradient-to-br from-orange-400 to-orange-600 text-3xl font-black text-white"
+                initial={{ scale: 0, x: 0 }}
+                animate={{ 
+                  scale: 1.25,
+                  x: isMoving ? -110 : 0
+                }}
+                transition={{ 
+                  scale: { type: "spring", stiffness: 100, damping: 15 },
+                  x: { duration: 0.8, ease: [0.16, 1, 0.3, 1] }
+                }}
+              >
+                S
+              </motion.div>
+
+              <div 
+                className="absolute overflow-hidden py-2 pl-2 pr-2 z-0"
+                style={{
+                  left: "calc(50% - 40px)",
+                  width: "260px",
+                  height: "100px",
+                  display: "flex",
+                  alignItems: "center"
+                }}
+              >
+                <motion.div
+                  layoutId="logo-text"
+                  initial={{ x: "-100%", opacity: 0 }}
+                  animate={{ 
+                    x: isMoving ? 0 : "-100%", 
+                    opacity: isMoving ? 1 : 0 
+                  }}
+                  transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+                  className="flex flex-col text-left"
+                >
+                  <p className="text-4xl font-extrabold tracking-tight text-white leading-none">
+                    SkillSwap
+                    <span className="text-orange-400"> AI</span>
+                  </p>
+                  <p className="mt-2 text-xs uppercase tracking-[0.3em] text-white/45">
+                    Learn · Teach · Grow
+                  </p>
+                </motion.div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </header >
   );
 }

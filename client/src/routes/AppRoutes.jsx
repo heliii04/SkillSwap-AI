@@ -27,6 +27,10 @@ import About from "../pages/About";
 import Contact from "../pages/Contact";
 import NotFound from "../pages/NotFound";
 import VerifyOtp from "../pages/VerifyOtp";
+import PrivacyPolicy from "../pages/PrivacyPolicy";
+import Terms from "../pages/Terms";
+import Faq from "../pages/Faq";
+import HelpCenter from "../pages/HelpCenter";
 
 
 export default function AppRoutes() {
@@ -45,6 +49,11 @@ export default function AppRoutes() {
                 <Route path="/how-it-works" element={<HowItWorks />} />
                 <Route path="/about" element={<About />} />
                 <Route path="/contact" element={<Contact />} />
+                <Route path="/privacy" element={<PrivacyPolicy />} />
+                <Route path="/terms" element={<Terms />} />
+                <Route path="/faq" element={<Faq />} />
+                <Route path="/help" element={<HelpCenter />} />
+                <Route path="/support" element={<Contact />} />
             </Route>
 
             {/* Authentication pages */}
