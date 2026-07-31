@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import "./PushSubscription.js";
 
 const notificationSchema = new mongoose.Schema(
     {
@@ -40,6 +41,61 @@ const notificationSchema = new mongoose.Schema(
         versionKey: false,
     }
 );
+
+// Register Web Push notification post-save hook
+notificationSchema.post("save", async function (doc) {
+    try {
+        const env = doc.constructor.db.base.env || process.env;
+        const vapidPublicKey = env.VAPID_PUBLIC_KEY;
+        const vapidPrivateKey = env.VAPID_PRIVATE_KEY;
+        const vapidMailto = env.VAPID_MAILTO || "mailto:support@skillswap.ai";
+
+        if (!vapidPublicKey || !vapidPrivateKey) {
+            return;
+        }
+
+        const PushSubscription = mongoose.model("PushSubscription");
+        const subscriptions = await PushSubscription.find({ user: doc.recipient });
+        if (subscriptions.length === 0) return;
+
+        // Configure webpush details dynamically to ensure environment loading has finished
+        const webpush = (await import("web-push")).default;
+        webpush.setVapidDetails(
+            vapidMailto,
+            vapidPublicKey,
+            vapidPrivateKey
+        );
+
+        const pushPayload = JSON.stringify({
+            title: doc.title,
+            message: doc.message,
+            link: doc.link
+        });
+
+        const promises = subscriptions.map(async (sub) => {
+            const pushSub = {
+                endpoint: sub.endpoint,
+                keys: {
+                    p256dh: sub.keys.p256dh,
+                    auth: sub.keys.auth
+                }
+            };
+            try {
+                await webpush.sendNotification(pushSub, pushPayload);
+            } catch (err) {
+                if (err.statusCode === 404 || err.statusCode === 410) {
+                    await PushSubscription.deleteOne({ _id: sub._id });
+                } else {
+                    console.error("Error sending web push to endpoint:", sub.endpoint, err);
+                }
+            }
+        });
+
+        await Promise.all(promises);
+    } catch (err) {
+        console.error("Error in Notification Schema post-save hook:", err);
+    }
+});
 
 const Notification = mongoose.models.Notification || mongoose.model("Notification", notificationSchema);
 export default Notification;

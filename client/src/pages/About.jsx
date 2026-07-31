@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { motion } from "framer-motion";
 import {
     FiArrowRight,
     FiBookOpen,
@@ -79,7 +80,21 @@ export default function About() {
             {/* Hero Section */}
             <section className="relative border-b border-white/10">
                 <div className="relative mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8 lg:py-28">
-                    <div className="mx-auto max-w-4xl text-center">
+                    <motion.div
+                        initial={{
+                            opacity: 0,
+                            y: 30,
+                        }}
+                        animate={{
+                            opacity: 1,
+                            y: 0,
+                        }}
+                        transition={{
+                            duration: 0.7,
+                            ease: [0.22, 1, 0.36, 1],
+                        }}
+                        className="mx-auto max-w-4xl text-center"
+                    >
                         <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-orange-500/20 bg-orange-500/10 px-4 py-2 text-sm text-orange-300">
                             <FiHeart />
                             Built for collaborative learning
@@ -115,7 +130,7 @@ export default function About() {
                                 How It Works
                             </Link>
                         </div>
-                    </div>
+                    </motion.div>
                 </div>
             </section>
 

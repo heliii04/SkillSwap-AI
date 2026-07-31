@@ -1,5 +1,16 @@
 import Notification from "../models/Notification.js";
 import Skill from "../models/Skill.js";
+import PushSubscription from "../models/PushSubscription.js";
+import webpush from "web-push";
+import { env } from "../config/env.js";
+
+if (env.vapidPublicKey && env.vapidPrivateKey) {
+    webpush.setVapidDetails(
+        env.vapidMailto,
+        env.vapidPublicKey,
+        env.vapidPrivateKey
+    );
+}
 
 const generateAiSuggestions = async (userId) => {
     try {
@@ -80,18 +91,23 @@ export const getNotifications = async (req, res, next) => {
 export const markAsRead = async (req, res, next) => {
     try {
         const currentUserId = req.user._id;
-        const { notificationId } = req.body;
+        const { notificationId } = req.body || {};
 
-        const filter = { recipient: currentUserId };
         if (notificationId) {
-            filter._id = notificationId;
+            await Notification.updateOne(
+                { _id: notificationId, recipient: currentUserId },
+                { $set: { isRead: true } }
+            );
+        } else {
+            // Delete all notifications for the user to completely clear the page
+            await Notification.deleteMany({ recipient: currentUserId });
         }
-
-        await Notification.updateMany(filter, { $set: { isRead: true } });
 
         return res.status(200).json({
             success: true,
-            message: "Notifications marked as read successfully"
+            message: notificationId
+                ? "Notification marked as read successfully"
+                : "All notifications cleared successfully"
         });
     } catch (error) {
         return next(error);
@@ -121,5 +137,73 @@ export const deleteNotification = async (req, res, next) => {
         });
     } catch (error) {
         return next(error);
+    }
+};
+
+export const subscribePush = async (req, res, next) => {
+    try {
+        const currentUserId = req.user._id;
+        const subscriptionData = req.body;
+
+        if (!subscriptionData || !subscriptionData.endpoint) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid subscription payload"
+            });
+        }
+
+        await PushSubscription.findOneAndUpdate(
+            { endpoint: subscriptionData.endpoint },
+            {
+                user: currentUserId,
+                endpoint: subscriptionData.endpoint,
+                keys: subscriptionData.keys
+            },
+            { upsert: true, new: true }
+        );
+
+        return res.status(200).json({
+            success: true,
+            message: "Push subscription registered successfully"
+        });
+    } catch (error) {
+        return next(error);
+    }
+};
+
+export const sendWebPush = async (recipientId, payload) => {
+    try {
+        if (!env.vapidPublicKey || !env.vapidPrivateKey) {
+            console.warn("VAPID keys not configured. Skipping push notification.");
+            return;
+        }
+
+        const subscriptions = await PushSubscription.find({ user: recipientId });
+        if (subscriptions.length === 0) return;
+
+        const pushPayload = JSON.stringify(payload);
+
+        const promises = subscriptions.map(async (sub) => {
+            const pushSub = {
+                endpoint: sub.endpoint,
+                keys: {
+                    p256dh: sub.keys.p256dh,
+                    auth: sub.keys.auth
+                }
+            };
+            try {
+                await webpush.sendNotification(pushSub, pushPayload);
+            } catch (err) {
+                if (err.statusCode === 404 || err.statusCode === 410) {
+                    await PushSubscription.deleteOne({ _id: sub._id });
+                } else {
+                    console.error("Error sending web push to endpoint:", sub.endpoint, err);
+                }
+            }
+        });
+
+        await Promise.all(promises);
+    } catch (err) {
+        console.error("Error in sendWebPush:", err);
     }
 };

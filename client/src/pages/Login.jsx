@@ -35,16 +35,23 @@ export default function Login() {
         setError("");
 
         try {
-            await login({
+            const result = await login({
                 email: formData.email
                     .trim()
                     .toLowerCase(),
                 password: formData.password,
             });
 
-            navigate("/dashboard", {
-                replace: true,
-            });
+            const loggedInUser = result?.data?.user;
+            if (loggedInUser?.role === "admin") {
+                navigate("/admin", {
+                    replace: true,
+                });
+            } else {
+                navigate("/dashboard", {
+                    replace: true,
+                });
+            }
         } catch (error) {
             setError(error.message);
         } finally {

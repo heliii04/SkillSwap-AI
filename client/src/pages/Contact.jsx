@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
+import { motion } from "framer-motion";
 import {
     FiArrowRight,
     FiCheckCircle,
@@ -10,6 +11,7 @@ import {
     FiSend,
     FiUser,
 } from "react-icons/fi";
+import axiosClient from "../api/axiosClient";
 
 const contactMethods = [
     {
@@ -73,6 +75,8 @@ export default function Contact() {
     const [formData, setFormData] = useState(initialForm);
     const [errors, setErrors] = useState({});
     const [submitted, setSubmitted] = useState(false);
+    const [loading, setLoading] = useState(false);
+    const [submitError, setSubmitError] = useState("");
 
     const handleChange = (event) => {
         const { name, value } = event.target;
@@ -127,7 +131,7 @@ export default function Contact() {
         return newErrors;
     };
 
-    const handleSubmit = (event) => {
+    const handleSubmit = async (event) => {
         event.preventDefault();
 
         const validationErrors = validateForm();
@@ -137,19 +141,24 @@ export default function Contact() {
             return;
         }
 
-        /*
-         * Replace this section with your backend API request later.
-         *
-         * Example:
-         *
-         * await axios.post("/api/contact", formData);
-         */
+        setLoading(true);
+        setSubmitError("");
+        setSubmitted(false);
 
-        console.log("Contact form submitted:", formData);
-
-        setSubmitted(true);
-        setErrors({});
-        setFormData(initialForm);
+        try {
+            await axiosClient.post("/contact", formData);
+            setSubmitted(true);
+            setErrors({});
+            setFormData(initialForm);
+        } catch (error) {
+            console.error("Contact form submit error:", error);
+            setSubmitError(
+                error.response?.data?.message ||
+                "Failed to send message. Please try again later."
+            );
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
@@ -159,7 +168,21 @@ export default function Contact() {
 
 
                 <div className="relative mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8 lg:py-28">
-                    <div className="mx-auto max-w-4xl text-center">
+                    <motion.div
+                        initial={{
+                            opacity: 0,
+                            y: 30,
+                        }}
+                        animate={{
+                            opacity: 1,
+                            y: 0,
+                        }}
+                        transition={{
+                            duration: 0.7,
+                            ease: [0.22, 1, 0.36, 1],
+                        }}
+                        className="mx-auto max-w-4xl text-center"
+                    >
                         <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-orange-400/20 bg-orange-500/10 px-4 py-2 text-sm text-orange-200">
                             <FiMessageCircle />
                             We are here to help
@@ -177,7 +200,7 @@ export default function Contact() {
                             Send us a message and the SkillSwap AI team will
                             help you.
                         </p>
-                    </div>
+                    </motion.div>
                 </div>
             </section>
 
@@ -303,8 +326,23 @@ export default function Contact() {
                                     </p>
 
                                     <p className="mt-1 text-sm leading-6 text-gray-400">
-                                        Your message has been recorded. Backend
-                                        email integration can be connected later.
+                                        Your support ticket has been recorded. Our team will review it and reply soon.
+                                    </p>
+                                </div>
+                            </div>
+                        )}
+
+                        {submitError && (
+                            <div className="mb-6 flex items-start gap-3 rounded-2xl border border-red-500/20 bg-red-500/10 p-4">
+                                <div className="text-xl text-red-400 shrink-0">⚠️</div>
+
+                                <div>
+                                    <p className="text-sm font-semibold text-red-300">
+                                        Failed to send message
+                                    </p>
+
+                                    <p className="mt-1 text-sm leading-6 text-gray-400">
+                                        {submitError}
                                     </p>
                                 </div>
                             </div>
@@ -349,73 +387,21 @@ export default function Contact() {
                                     icon={FiMessageCircle}
                                 />
 
-                                <div>
-                                    <label
-                                        htmlFor="category"
-                                        className="mb-2 block text-sm font-medium text-gray-300"
-                                    >
-                                        Support Category
-                                    </label>
-
-                                    <select
-                                        id="category"
-                                        name="category"
-                                        value={formData.category}
-                                        onChange={handleChange}
-                                        className={`w-full rounded-xl border bg-white/[0.035] px-4 py-3.5 text-sm text-white outline-none transition ${errors.category
-                                                ? "border-red-500/60"
-                                                : "border-white/10 focus:border-orange-500"
-                                            }`}
-                                    >
-                                        <option
-                                            value=""
-                                            className="bg-[#111111]"
-                                        >
-                                            Select a category
-                                        </option>
-
-                                        <option
-                                            value="account"
-                                            className="bg-[#111111]"
-                                        >
-                                            Account Support
-                                        </option>
-
-                                        <option
-                                            value="technical"
-                                            className="bg-[#111111]"
-                                        >
-                                            Technical Support
-                                        </option>
-
-                                        <option
-                                            value="feature"
-                                            className="bg-[#111111]"
-                                        >
-                                            Feature Suggestion
-                                        </option>
-
-                                        <option
-                                            value="safety"
-                                            className="bg-[#111111]"
-                                        >
-                                            Safety and Reporting
-                                        </option>
-
-                                        <option
-                                            value="other"
-                                            className="bg-[#111111]"
-                                        >
-                                            Other
-                                        </option>
-                                    </select>
-
-                                    {errors.category && (
-                                        <p className="mt-2 text-xs text-red-400">
-                                            {errors.category}
-                                        </p>
-                                    )}
-                                </div>
+                                <ContactSelect
+                                    label="Support Category"
+                                    name="category"
+                                    value={formData.category}
+                                    onChange={handleChange}
+                                    error={errors.category}
+                                    options={[
+                                        { value: "", label: "Select a category" },
+                                        { value: "account", label: "Account Support" },
+                                        { value: "technical", label: "Technical Support" },
+                                        { value: "feature", label: "Feature Suggestion" },
+                                        { value: "safety", label: "Safety and Reporting" },
+                                        { value: "other", label: "Other" }
+                                    ]}
+                                />
                             </div>
 
                             <div>
@@ -455,9 +441,10 @@ export default function Contact() {
 
                             <button
                                 type="submit"
-                                className="flex w-full items-center justify-center gap-2 rounded-xl bg-orange-500 px-5 py-3.5 text-sm font-semibold text-black shadow-lg shadow-orange-500/15 hover:bg-orange-400"
+                                disabled={loading}
+                                className="flex w-full items-center justify-center gap-2 rounded-xl bg-orange-500 px-5 py-3.5 text-sm font-semibold text-black shadow-lg shadow-orange-500/15 hover:bg-orange-400 disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                                Send Message
+                                {loading ? "Sending..." : "Send Message"}
                                 <FiSend />
                             </button>
 
@@ -531,6 +518,106 @@ function SupportPoint({ title, description }) {
                     {description}
                 </p>
             </div>
+        </div>
+    );
+}
+
+function ContactSelect({
+    label,
+    name,
+    value,
+    onChange,
+    error,
+    options,
+}) {
+    const [isOpen, setIsOpen] = useState(false);
+    const dropdownRef = useRef(null);
+
+    const selectedOption = options.find((opt) => opt.value === value) || options[0];
+
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+                setIsOpen(false);
+            }
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside);
+        };
+    }, []);
+
+    const handleSelect = (val) => {
+        onChange({
+            target: {
+                name,
+                value: val,
+            },
+        });
+        setIsOpen(false);
+    };
+
+    return (
+        <div className="relative block" ref={dropdownRef}>
+            <span className="mb-2 block text-sm font-medium text-gray-300">
+                {label}
+            </span>
+
+            <button
+                type="button"
+                onClick={() => setIsOpen(!isOpen)}
+                className={`flex w-full items-center justify-between rounded-xl border bg-white/[0.035] px-4 py-3.5 text-sm text-white outline-none transition duration-200 ${
+                    error
+                        ? "border-red-500/60"
+                        : "border-white/10 hover:border-orange-500/50 focus:border-orange-500/60"
+                }`}
+            >
+                <span className={value ? "text-white" : "text-gray-400"}>
+                    {selectedOption?.label || ""}
+                </span>
+                <svg
+                    className={`h-4 w-4 shrink-0 text-white/40 transition-transform duration-200 ${
+                        isOpen ? "rotate-180 text-orange-500" : ""
+                    }`}
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                >
+                    <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2.5"
+                        d="M19 9l-7 7-7-7"
+                    />
+                </svg>
+            </button>
+
+            {isOpen && (
+                <ul className="absolute left-0 z-50 mt-2 max-h-60 w-full overflow-y-auto rounded-xl border border-white/10 bg-[#111218] py-1.5 shadow-2xl shadow-black/80 backdrop-blur-xl">
+                    {options.map((option) => {
+                        const isSelected = option.value === value;
+                        return (
+                            <li key={option.value}>
+                                <button
+                                    type="button"
+                                    onClick={() => handleSelect(option.value)}
+                                    className={`flex w-full items-center px-4 py-3 text-left text-sm transition duration-150 hover:bg-orange-500/10 hover:text-orange-400 ${
+                                        isSelected
+                                            ? "bg-orange-500/5 text-orange-400 font-semibold"
+                                            : "text-white/80"
+                                    }`}
+                                >
+                                    {option.label}
+                                </button>
+                            </li>
+                        );
+                    })}
+                </ul>
+            )}
+
+            {error && (
+                <p className="mt-2 text-xs text-red-400">{error}</p>
+            )}
         </div>
     );
 }

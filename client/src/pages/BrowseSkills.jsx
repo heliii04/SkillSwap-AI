@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { motion } from "framer-motion";
 import {
     FiSearch,
     FiFilter,
@@ -242,7 +243,21 @@ export default function BrowseSkills() {
             {/* Hero Section */}
             <section className="relative overflow-hidden border-b border-white/10">
                 <div className="relative mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-20">
-                    <div className="mx-auto max-w-3xl text-center">
+                    <motion.div
+                        initial={{
+                            opacity: 0,
+                            y: 30,
+                        }}
+                        animate={{
+                            opacity: 1,
+                            y: 0,
+                        }}
+                        transition={{
+                            duration: 0.7,
+                            ease: [0.22, 1, 0.36, 1],
+                        }}
+                        className="mx-auto max-w-3xl text-center"
+                    >
                         <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-orange-500/20 bg-orange-500/10 px-4 py-2 text-sm text-orange-300" style={{ marginTop: '25px' }}>
                             <FiBookOpen />
                             Discover skills from our community
@@ -354,7 +369,7 @@ export default function BrowseSkills() {
                                 </button>
                             ))}
                         </div>
-                    </div>
+                    </motion.div>
                 </div>
             </section>
 

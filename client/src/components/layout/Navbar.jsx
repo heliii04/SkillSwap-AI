@@ -118,8 +118,7 @@ export default function Navbar() {
           className="flex items-center gap-3"
           onClick={closeMenu}
         >
-          <motion.div
-            layoutId="logo-box"
+          <div
             className="
               flex h-10 w-10 items-center justify-center
               rounded-xl
@@ -128,9 +127,9 @@ export default function Navbar() {
             "
           >
             S
-          </motion.div>
+          </div>
 
-          <motion.div layoutId="logo-text">
+          <div>
             <p className="text-xl font-bold tracking-tight text-white">
               SkillSwap
               <span className="text-orange-400"> AI</span>
@@ -139,7 +138,7 @@ export default function Navbar() {
             <p className="hidden text-[9px] uppercase tracking-[0.28em] text-white/35 sm:block">
               Learn · Teach · Grow
             </p>
-          </motion.div>
+          </div>
         </Link>
 
         {/* Desktop links */}
@@ -194,7 +193,7 @@ export default function Navbar() {
           ) : isAuthenticated ? (
             <>
               <Link
-                to="/dashboard"
+                to={user?.role === "admin" ? "/admin" : "/dashboard"}
                 className="
                   group flex items-center gap-3
                   rounded-full
@@ -351,7 +350,7 @@ export default function Navbar() {
             ) : isAuthenticated ? (
               <div className="grid grid-cols-2 gap-3">
                 <Link
-                  to="/dashboard"
+                  to={user?.role === "admin" ? "/admin" : "/dashboard"}
                   onClick={closeMenu}
                   className="
                     rounded-xl
@@ -377,10 +376,10 @@ export default function Navbar() {
                     hover:text-orange-400
                   "
                 >
-                  <FaSignOutAlt />
-                  Logout
-                </button>
-              </div>
+                    <FaSignOutAlt />
+                    Logout
+                  </button>
+                </div>
             ) : (
               <div className="grid grid-cols-2 gap-3">
                 <Link

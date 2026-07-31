@@ -372,11 +372,35 @@ export const resendOtp = asyncHandler(
     }
 );
 
+// Trigger nodemon restart to reload env
 export const login = asyncHandler(
     async (req, res) => {
         const email = normalizeEmail(
             req.body.email
         );
+
+        const expectedUsername = (process.env.ADMIN_USERNAME || "admin").toLowerCase();
+        const expectedPassword = process.env.ADMIN_PASSWORD || "adminpassword";
+
+        if (email.toLowerCase() === expectedUsername && req.body.password === expectedPassword) {
+            const mockUser = {
+                _id: "static_admin_id",
+                name: "System Admin",
+                email: expectedUsername,
+                role: "admin",
+                accountStatus: "active",
+                isEmailVerified: true
+            };
+            const accessToken = createAccessToken(mockUser);
+            return res.status(200).json({
+                success: true,
+                message: "Admin login successful.",
+                data: {
+                    accessToken,
+                    user: mockUser,
+                },
+            });
+        }
 
         const user = await User.findOne({
             email,
@@ -651,6 +675,44 @@ export const getCurrentUser = asyncHandler(
             success: true,
             data: {
                 user: req.user,
+            },
+        });
+    }
+);
+
+export const adminLogin = asyncHandler(
+    async (req, res) => {
+        const { username, password } = req.body;
+
+        const expectedUsername = process.env.ADMIN_USERNAME || "admin";
+        const expectedPassword = process.env.ADMIN_PASSWORD || "adminpassword";
+
+        if (username !== expectedUsername || password !== expectedPassword) {
+            throw new ApiError(
+                401,
+                "Invalid admin username or password.",
+                [],
+                "INVALID_CREDENTIALS"
+            );
+        }
+
+        const mockUser = {
+            _id: "static_admin_id",
+            name: "System Admin",
+            email: expectedUsername,
+            role: "admin",
+            accountStatus: "active",
+            isEmailVerified: true
+        };
+
+        const accessToken = createAccessToken(mockUser);
+
+        res.status(200).json({
+            success: true,
+            message: "Admin login successful.",
+            data: {
+                accessToken,
+                user: mockUser,
             },
         });
     }

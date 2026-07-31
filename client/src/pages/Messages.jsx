@@ -5,8 +5,10 @@ import {
     useState,
 } from "react";
 import { useSearchParams } from "react-router-dom";
+import { io } from "socket.io-client";
 
 import { getAccessToken } from "../api/tokenStore";
+import { useAuth } from "../context/AuthContext";
 
 import {
     HiOutlineArrowLeft,
@@ -22,6 +24,13 @@ import {
     HiOutlineUserGroup,
     HiOutlineVideoCamera,
     HiOutlineXMark,
+    HiOutlineLockClosed,
+    HiOutlineStar,
+    HiOutlineFlag,
+    HiOutlineNoSymbol,
+    HiOutlineTrash,
+    HiOutlineLink,
+    HiOutlineUser,
 } from "react-icons/hi2";
 
 /*
@@ -43,6 +52,7 @@ import {
 
 
 export default function Messages() {
+    const { user } = useAuth();
     const [searchParams] = useSearchParams();
     const queryChatId = searchParams.get("chatId");
 
@@ -104,7 +114,7 @@ export default function Messages() {
 
                     if (isMounted) {
                         setConversations(chats);
-                        
+
                         if (showLoading) {
                             if (queryChatId) {
                                 setSelectedConversationId(queryChatId);
@@ -126,15 +136,36 @@ export default function Messages() {
 
         fetchConversations(true);
 
-        const interval = setInterval(() => {
-            fetchConversations(false);
-        }, 5000);
+        const socketHost = API_URL.replace("/api", "");
+        const socket = io(socketHost, {
+            withCredentials: true,
+        });
+
+        const currentUserId = user?.id || user?._id;
+        if (currentUserId) {
+            socket.emit("register_user", currentUserId);
+        }
+
+        socket.on("chat_list_update", (updatedChat) => {
+            if (isMounted) {
+                setConversations((prev) => {
+                    const exists = prev.some((c) => c.id === updatedChat.id);
+                    if (exists) {
+                        return [
+                            updatedChat,
+                            ...prev.filter((c) => c.id !== updatedChat.id),
+                        ];
+                    }
+                    return [updatedChat, ...prev];
+                });
+            }
+        });
 
         return () => {
             isMounted = false;
-            clearInterval(interval);
+            socket.disconnect();
         };
-    }, [queryChatId]);
+    }, [queryChatId, user]);
 
     useEffect(() => {
         if (!selectedConversationId) {
@@ -177,14 +208,62 @@ export default function Messages() {
         };
 
         fetchMessages(true);
-        
-        const interval = setInterval(() => {
-            fetchMessages(false);
-        }, 4000);
+
+        const socketHost = API_URL.replace("/api", "");
+        const socket = io(socketHost, {
+            withCredentials: true,
+        });
+
+        socket.emit("join_chat", selectedConversationId);
+
+        socket.on("new_message", (msg) => {
+            if (isMounted) {
+                const currentUserId = user?.id || user?._id;
+                const formattedMsg = {
+                    id: msg.id,
+                    text: msg.text,
+                    createdAt: msg.createdAt,
+                    status: msg.status,
+                    sender: msg.senderId?.toString() === currentUserId?.toString() ? "me" : "other"
+                };
+
+                setMessages((prev) => {
+                    if (prev.some((m) => String(m.id) === String(formattedMsg.id))) return prev;
+                    return [...prev, formattedMsg];
+                });
+            }
+        });
+
+        socket.on("chat_block_update", ({ chatId, blockedBy }) => {
+            if (isMounted && chatId === selectedConversationId) {
+                setConversations(prev => prev.map(c => {
+                    if (c.id === chatId) {
+                        return { ...c, blockedBy };
+                    }
+                    return c;
+                }));
+            }
+        });
+
+        socket.on("chat_cleared", ({ chatId }) => {
+            if (isMounted && chatId === selectedConversationId) {
+                setMessages([]);
+            }
+        });
+
+        socket.on("chat_deleted", ({ chatId, deleteType, userId }) => {
+            if (isMounted && chatId === selectedConversationId) {
+                const currentUserId = user?.id || user?._id;
+                if (deleteType === "everyone" || userId?.toString() !== currentUserId?.toString()) {
+                    setConversations(prev => prev.filter(c => c.id !== chatId));
+                    setSelectedConversationId(null);
+                }
+            }
+        });
 
         return () => {
             isMounted = false;
-            clearInterval(interval);
+            socket.disconnect();
         };
     }, [selectedConversationId]);
 
@@ -334,7 +413,10 @@ export default function Messages() {
                 const newMsg = resData?.data?.message;
 
                 if (newMsg) {
-                    setMessages((prev) => [...prev, newMsg]);
+                    setMessages((prev) => {
+                        if (prev.some((m) => String(m.id) === String(newMsg.id))) return prev;
+                        return [...prev, newMsg];
+                    });
                     setConversations((current) =>
                         current.map((c) =>
                             c.id === selectedConversation.id
@@ -430,6 +512,19 @@ export default function Messages() {
                                                 false
                                             )
                                         }
+                                        onClear={() => setMessages([])}
+                                        onDelete={() => {
+                                            setConversations(prev => prev.filter(c => c.id !== selectedConversation.id));
+                                            setSelectedConversationId(null);
+                                        }}
+                                        onBlockToggle={(blockedBy) => {
+                                            setConversations(prev => prev.map(c => {
+                                                if (c.id === selectedConversation.id) {
+                                                    return { ...c, blockedBy };
+                                                }
+                                                return c;
+                                            }));
+                                        }}
                                     />
 
                                     {messagesLoading ? (
@@ -463,6 +558,12 @@ export default function Messages() {
                                         }
                                         onSend={
                                             handleSendMessage
+                                        }
+                                        blockedBy={
+                                            selectedConversation.blockedBy
+                                        }
+                                        currentUserId={
+                                            user?.id || user?._id
                                         }
                                     />
                                 </>
@@ -786,12 +887,100 @@ function ConversationItem({
 function ChatHeader({
     conversation,
     onBack,
+    onClear,
+    onDelete,
+    onBlockToggle,
 }) {
-    const { user } =
-        conversation;
+    const { user } = conversation;
+    const { user: currentUser } = useAuth();
+    const [dropdownOpen, setDropdownOpen] = useState(false);
+    const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+    const dropdownRef = useRef(null);
+
+    const token = getAccessToken();
+    const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+
+    const isBlockedByMe = conversation.blockedBy?.some(
+        (id) => id.toString() === (currentUser?._id?.toString() || currentUser?.id?.toString())
+    );
+
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+                setDropdownOpen(false);
+            }
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside);
+        };
+    }, []);
+
+    const handleBlock = async () => {
+        setDropdownOpen(false);
+        try {
+            const response = await fetch(`${API_URL}/chats/${conversation.id}/block`, {
+                method: "PATCH",
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+                credentials: "include"
+            });
+            if (response.ok) {
+                const resData = await response.json();
+                onBlockToggle(resData.data.blockedBy);
+            }
+        } catch (err) {
+            console.error("Error blocking chat:", err);
+        }
+    };
+
+    const handleClear = async () => {
+        setDropdownOpen(false);
+        if (!window.confirm("Are you sure you want to clear all messages in this chat?")) return;
+        try {
+            const response = await fetch(`${API_URL}/chats/${conversation.id}/clear`, {
+                method: "DELETE",
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+                credentials: "include"
+            });
+            if (response.ok) {
+                onClear();
+            }
+        } catch (err) {
+            console.error("Error clearing chat:", err);
+        }
+    };
+
+    const handleDelete = async (deleteType) => {
+        setDeleteModalOpen(false);
+        try {
+            const response = await fetch(`${API_URL}/chats/${conversation.id}`, {
+                method: "DELETE",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`,
+                },
+                credentials: "include",
+                body: JSON.stringify({ deleteType })
+            });
+            if (response.ok) {
+                onDelete();
+            }
+        } catch (err) {
+            console.error("Error deleting chat:", err);
+        }
+    };
+
+    const handleDummyClick = () => {
+        setDropdownOpen(false);
+        alert("This option is currently mock/disabled.");
+    };
 
     return (
-        <header className="flex min-h-[82px] items-center justify-between gap-4 border-b border-white/10 px-4 py-4 sm:px-6">
+        <header className="relative flex min-h-[82px] items-center justify-between gap-4 border-b border-white/10 px-4 py-4 sm:px-6">
             <div className="flex min-w-0 items-center gap-3">
                 <button
                     type="button"
@@ -835,28 +1024,64 @@ function ChatHeader({
             </div>
 
             <div className="flex items-center gap-2">
-                <HeaderAction
-                    label="Voice call"
-                    icon={
-                        HiOutlinePhone
-                    }
-                />
+                <div className="relative" ref={dropdownRef}>
+                    <button
+                        type="button"
+                        onClick={() => setDropdownOpen(!dropdownOpen)}
+                        aria-label="More options"
+                        className="rounded-xl border border-white/10 p-2.5 text-white/40 transition hover:border-orange-500/30 hover:bg-orange-500/5 hover:text-orange-400"
+                    >
+                        <HiOutlineEllipsisVertical className="text-xl" />
+                    </button>
 
-                <HeaderAction
-                    label="Video call"
-                    icon={
-                        HiOutlineVideoCamera
-                    }
-                    hideOnSmall
-                />
-
-                <HeaderAction
-                    label="More options"
-                    icon={
-                        HiOutlineEllipsisVertical
-                    }
-                />
+                    {dropdownOpen && (
+                        <div className="absolute right-0 top-12 z-50 w-44 rounded-2xl border border-white/10 bg-[#0f1015] p-2 shadow-2xl backdrop-blur-xl">
+                            <div className="space-y-0.5">
+                                <button onClick={handleBlock} className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-xs text-white/70 transition hover:bg-white/5 hover:text-white">
+                                    <HiOutlineNoSymbol className="text-base text-red-500/80" /> {isBlockedByMe ? "Unblock" : "Block"}
+                                </button>
+                                <button onClick={handleClear} className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-xs text-white/70 transition hover:bg-white/5 hover:text-white">
+                                    <HiOutlineTrash className="text-base text-red-500/80" /> Clear chat
+                                </button>
+                                <button onClick={() => { setDropdownOpen(false); setDeleteModalOpen(true); }} className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-xs text-white/70 transition hover:bg-white/5 hover:text-white">
+                                    <HiOutlineTrash className="text-base text-red-500/80" /> Delete chat
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                </div>
             </div>
+
+            {deleteModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+                    <div className="w-full max-w-sm rounded-2xl border border-white/10 bg-[#0f1015] p-6 shadow-2xl">
+                        <h3 className="text-lg font-semibold text-white">Delete Chat</h3>
+                        <p className="mt-2 text-sm text-white/50 leading-relaxed">
+                            Do you want to delete this chat only for yourself, or delete it for everyone?
+                        </p>
+                        <div className="mt-6 flex flex-col gap-2">
+                            <button
+                                onClick={() => handleDelete("me")}
+                                className="w-full rounded-xl bg-white/5 py-3 text-sm font-semibold text-white transition hover:bg-white/10"
+                            >
+                                Delete for me
+                            </button>
+                            <button
+                                onClick={() => handleDelete("everyone")}
+                                className="w-full rounded-xl bg-red-500/10 border border-red-500/20 py-3 text-sm font-semibold text-red-400 transition hover:bg-red-500/20"
+                            >
+                                Delete for everyone
+                            </button>
+                            <button
+                                onClick={() => setDeleteModalOpen(false)}
+                                className="mt-2 w-full rounded-xl py-3 text-sm font-semibold text-white/30 transition hover:text-white/50"
+                            >
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </header>
     );
 }
@@ -1130,7 +1355,24 @@ function MessageComposer({
     onChange,
     onKeyDown,
     onSend,
+    blockedBy = [],
+    currentUserId,
 }) {
+    const isBlocked = blockedBy.length > 0;
+    const blockedByMe = blockedBy.some(id => id.toString() === currentUserId?.toString());
+
+    if (isBlocked) {
+        return (
+            <footer className="border-t border-white/10 bg-[#101117] p-6 text-center">
+                <p className="text-sm font-medium text-white/50">
+                    {blockedByMe
+                        ? "You have blocked this user. Unblock this user from the menu option to send messages."
+                        : "This chat is blocked. You cannot send messages."}
+                </p>
+            </footer>
+        );
+    }
+
     const canSend =
         value.trim().length > 0 &&
         !sending;
@@ -1345,22 +1587,27 @@ function groupMessagesByDate(
 function formatMessageTime(
     dateValue
 ) {
+    if (!dateValue) return "";
+    const date = new Date(dateValue);
+    if (isNaN(date.getTime())) return "";
     return new Intl.DateTimeFormat(
         "en-IN",
         {
             hour: "2-digit",
             minute: "2-digit",
         }
-    ).format(
-        new Date(dateValue)
-    );
+    ).format(date);
 }
 
 function formatConversationTime(
     dateValue
 ) {
+    if (!dateValue) return "";
     const messageDate =
         new Date(dateValue);
+    if (isNaN(messageDate.getTime())) {
+        return "";
+    }
 
     const today = new Date();
 

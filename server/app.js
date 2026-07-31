@@ -12,6 +12,8 @@ import skillRoutes from "./routes/skillRoutes.js";
 import swapRequestRoutes from "./routes/swapRequest.routes.js";
 import chatRoutes from "./routes/chat.routes.js";
 import notificationRoutes from "./routes/notification.routes.js";
+import contactRoutes from "./routes/contact.routes.js";
+import adminRoutes from "./routes/adminRoutes.js";
 
 import {
     errorHandler,
@@ -114,6 +116,12 @@ app.use(
     "/api/notifications",
     notificationRoutes
 );
+
+app.use("/api/v1/contact", contactRoutes);
+app.use("/api/contact", contactRoutes);
+
+app.use("/api/v1/admin", adminRoutes);
+app.use("/api/admin", adminRoutes);
 
 app.use(notFoundHandler);
 app.use(errorHandler);

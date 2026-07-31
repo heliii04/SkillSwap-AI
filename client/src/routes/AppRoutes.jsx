@@ -31,6 +31,8 @@ import PrivacyPolicy from "../pages/PrivacyPolicy";
 import Terms from "../pages/Terms";
 import Faq from "../pages/Faq";
 import HelpCenter from "../pages/HelpCenter";
+import AdminRoute from "../components/AdminRoute";
+import AdminDashboard from "../pages/AdminDashboard";
 
 
 export default function AppRoutes() {
@@ -114,6 +116,15 @@ export default function AppRoutes() {
                 </Route>
             </Route>
 
+            {/* Admin dashboard pages */}
+            <Route element={<AdminRoute />}>
+                <Route element={<DashboardLayout />}>
+                    <Route
+                        path="/admin"
+                        element={<AdminDashboard />}
+                    />
+                </Route>
+            </Route>
 
             {/* 404 page */}
             <Route

@@ -9,6 +9,7 @@ import {
     register,
     resendOtp,
     verifyEmail,
+    adminLogin,
 } from "../controllers/authController.js";
 
 import { requireAuth } from "../middleware/authMiddleware.js";
@@ -77,6 +78,12 @@ router.post(
     sensitiveAuthLimiter,
     validate(loginSchema),
     login
+);
+
+router.post(
+    "/admin-login",
+    sensitiveAuthLimiter,
+    adminLogin
 );
 
 router.post(

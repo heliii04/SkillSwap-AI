@@ -16,7 +16,7 @@ import {
     verifyUserEmail,
 } from "../api/authApi";
 
-import {
+import axiosClient, {
     refreshAccessTokenRequest,
 } from "../api/axiosClient";
 
@@ -203,6 +203,32 @@ export function AuthProvider({ children }) {
         []
     );
 
+    const adminLogin = useCallback(
+        async (formData) => {
+            try {
+                const result = await axiosClient.post("/auth/admin-login", formData);
+                const accessToken = result?.data?.data?.accessToken;
+                const authenticatedUser = result?.data?.data?.user;
+
+                if (!accessToken || !authenticatedUser) {
+                    throw new Error("Invalid admin login response.");
+                }
+
+                setAccessToken(accessToken);
+                setUser(authenticatedUser);
+
+                return result;
+            } catch (error) {
+                const message =
+                    error.response?.data?.message ||
+                    error.message ||
+                    "Admin login failed.";
+                throw new Error(message);
+            }
+        },
+        []
+    );
+
     const logout = useCallback(async () => {
         try {
             await logoutUser();
@@ -235,6 +261,7 @@ export function AuthProvider({ children }) {
             verifyEmail,
             resendOtp,
             login,
+            adminLogin,
             logout,
             refreshUser,
             updateUser,
@@ -247,6 +274,7 @@ export function AuthProvider({ children }) {
             verifyEmail,
             resendOtp,
             login,
+            adminLogin,
             logout,
             refreshUser,
             updateUser,

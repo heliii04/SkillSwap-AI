@@ -21,12 +21,19 @@ import {
   HiOutlineXMark,
   HiOutlineChevronLeft,
   HiOutlineChevronRight,
+  HiOutlineFlag,
+  HiOutlineCog6Tooth,
+  HiOutlineChartBar,
+  HiOutlineCpuChip,
+  HiOutlineListBullet,
+  HiOutlineArrowPath
 } from "react-icons/hi2";
 
 import { FiLogOut } from "react-icons/fi";
 
 import { useAuth } from "../context/AuthContext";
 import { getAccessToken } from "../api/tokenStore";
+import { io } from "socket.io-client";
 
 const navigationItems = [
   {
@@ -63,6 +70,74 @@ const navigationItems = [
     label: "Messages",
     path: "/messages",
     icon: HiOutlineChatBubbleLeftRight,
+  },
+];
+
+const adminNavigationItems = [
+  {
+    label: "Dashboard",
+    path: "/admin?section=dashboard",
+    icon: HiOutlineHome,
+  },
+  {
+    label: "All Users",
+    path: "/admin?section=users",
+    icon: HiOutlineUser,
+  },
+  {
+    label: "Suspended Users",
+    path: "/admin?section=suspended-users",
+    icon: HiOutlineXMark,
+  },
+  {
+    label: "All Skills",
+    path: "/admin?section=skills",
+    icon: HiOutlineAcademicCap,
+  },
+  {
+    label: "Reported Skills",
+    path: "/admin?section=reported-skills",
+    icon: HiOutlineFlag,
+  },
+  {
+    label: "Swap Requests",
+    path: "/admin?section=swaps",
+    icon: HiOutlineArrowPath,
+  },
+  {
+    label: "Reports & Moderation",
+    path: "/admin?section=reports",
+    icon: HiOutlineFlag,
+  },
+  {
+    label: "Reported Messages",
+    path: "/admin?section=reported-messages",
+    icon: HiOutlineChatBubbleLeftRight,
+  },
+  // {
+  //   label: "Notifications",
+  //   path: "/admin?section=notifications",
+  //   icon: HiOutlineBell,
+  // },
+  {
+    label: "Analytics",
+    path: "/admin?section=analytics",
+    icon: HiOutlineChartBar,
+  },
+  {
+    label: "AI Insights",
+    path: "/admin?section=ai-insights",
+    icon: HiOutlineCpuChip,
+  },
+  // {
+  //   label: "Settings",
+  //   path: "/admin?section=settings",
+  //   icon: HiOutlineCog6Tooth,
+  // },
+  {
+    label: "Audit Logs",
+    path: "/admin?section=audit-logs",
+    icon: HiOutlineListBullet,
   },
 ];
 
@@ -124,6 +199,22 @@ export default function DashboardLayout() {
 
   const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(0);
 
+  useEffect(() => {
+    const handleServiceWorkerMessage = (event) => {
+      if (event.data && event.data.type === "NAVIGATE") {
+        navigate(event.data.url);
+      }
+    };
+    if (navigator.serviceWorker) {
+      navigator.serviceWorker.addEventListener("message", handleServiceWorkerMessage);
+    }
+    return () => {
+      if (navigator.serviceWorker) {
+        navigator.serviceWorker.removeEventListener("message", handleServiceWorkerMessage);
+      }
+    };
+  }, [navigate]);
+
   // For notification popups (in-app and system-level)
   const knownNotificationsRef = useRef(new Set());
   const currentUserRef = useRef(null);
@@ -144,12 +235,10 @@ export default function DashboardLayout() {
     }
   }, []);
 
+  // Initial load of unread notifications count
   useEffect(() => {
     let isMounted = true;
-
-    const API_URL =
-      import.meta.env.VITE_API_URL ||
-      "http://localhost:5000/api";
+    const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 
     const fetchUnreadCount = async () => {
       try {
@@ -162,79 +251,92 @@ export default function DashboardLayout() {
         };
 
         const response = await fetch(`${API_URL}/notifications`, { credentials: "include", headers });
-        if (response.ok) {
+        if (response.ok && isMounted) {
           const resData = await response.json();
           const list = resData?.data?.notifications || [];
           const unreadCount = list.filter(n => !n.isRead).length;
-
-          if (isMounted) {
-            setUnreadNotificationsCount(unreadCount);
-
-            // Handle Toast / Push notification for new notifications
-            const unreadList = list.filter(n => !n.isRead);
-
-            unreadList.forEach(n => {
-              if (!knownNotificationsRef.current.has(n.id)) {
-                if (!isFirstFetchRef.current) {
-                  // Trigger toast popup in-app
-                  toast(
-                    <div className="flex flex-col gap-1 cursor-pointer" onClick={() => {
-                      if (n.link) {
-                        navigate(n.link);
-                      }
-                    }}>
-                      <span className="font-semibold text-white/95">{n.title}</span>
-                      <span className="text-xs text-white/70 line-clamp-2">{n.message}</span>
-                    </div>,
-                    {
-                      position: "top-right",
-                      autoClose: 5000,
-                      hideProgressBar: false,
-                      closeOnClick: true,
-                      pauseOnHover: true,
-                      draggable: true,
-                      theme: "dark",
-                    }
-                  );
-
-                  // Trigger system/browser notification if not active
-                  if (!document.hasFocus() && "Notification" in window && Notification.permission === "granted") {
-                    try {
-                      const sysNotif = new Notification(n.title, {
-                        body: n.message,
-                      });
-                      sysNotif.onclick = () => {
-                        window.focus();
-                        if (n.link) {
-                          navigate(n.link);
-                        }
-                      };
-                    } catch (err) {
-                      console.error("System notification error:", err);
-                    }
-                  }
-                }
-                knownNotificationsRef.current.add(n.id);
-              }
-            });
-
-            isFirstFetchRef.current = false;
-          }
+          setUnreadNotificationsCount(unreadCount);
         }
       } catch (err) {
-        console.error("Error fetching notifications count:", err);
+        console.error("Error fetching initial notifications count:", err);
       }
     };
 
     fetchUnreadCount();
 
-    const interval = setInterval(fetchUnreadCount, 10000);
-
     return () => {
       isMounted = false;
-      clearInterval(interval);
     };
-  }, [location.pathname, user]);
+  }, [user]);
+
+  // Real-time notifications via Socket.io
+  useEffect(() => {
+    const token = getAccessToken();
+    if (!token || !user) return;
+
+    const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+    const socketHost = API_URL.replace("/api", "");
+
+    const socket = io(socketHost, {
+      withCredentials: true,
+    });
+
+    const currentUserId = user.id || user._id;
+    socket.emit("register_user", currentUserId);
+
+    socket.on("new_notification", (notification) => {
+      // 1. Increment count
+      setUnreadNotificationsCount(prev => prev + 1);
+
+      // 2. Skip showing toast alerts for new messages if the user is currently on the Messages page
+      if (notification.type === "message" && window.location.pathname === "/messages") {
+        return;
+      }
+
+      // 3. Trigger toast popup in-app
+      toast(
+        <div className="flex flex-col gap-1 cursor-pointer" onClick={() => {
+          if (notification.link) {
+            navigate(notification.link);
+          }
+        }}>
+          <span className="font-semibold text-white/95">{notification.title}</span>
+          <span className="text-xs text-white/70 line-clamp-2">{notification.message}</span>
+        </div>,
+        {
+          position: "top-right",
+          autoClose: 5000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+          theme: "dark",
+        }
+      );
+
+      // 4. Trigger system/browser notification if not active/focused
+      if (!document.hasFocus() && "Notification" in window && Notification.permission === "granted") {
+        try {
+          const sysNotif = new Notification(notification.title, {
+            body: notification.message,
+            icon: "/favicon.svg",
+          });
+          sysNotif.onclick = () => {
+            window.focus();
+            if (notification.link) {
+              navigate(notification.link);
+            }
+          };
+        } catch (err) {
+          console.error("System notification error:", err);
+        }
+      }
+    });
+
+    return () => {
+      socket.disconnect();
+    };
+  }, [user, navigate]);
 
   const initials = useMemo(() => {
     const name =
@@ -354,12 +456,12 @@ export default function DashboardLayout() {
 
           {!collapsed && (
             <p className="mb-3 px-3 text-xs font-semibold uppercase tracking-[0.24em] text-white/25">
-              Workspace
+              {user?.role === "admin" && location.pathname.startsWith("/admin") ? "Admin Panel" : "Workspace"}
             </p>
           )}
 
           <div className="space-y-1">
-            {navigationItems.map(
+            {(user?.role === "admin" && location.pathname.startsWith("/admin") ? adminNavigationItems : navigationItems).map(
               ({
                 label,
                 path,
@@ -374,14 +476,14 @@ export default function DashboardLayout() {
                       false
                     )
                   }
-                  className={({
-                    isActive,
-                  }) =>
-                    `flex items-center ${collapsed ? "justify-center px-0 py-3" : "gap-3 px-3 py-3"} rounded-xl text-sm font-medium transition ${isActive
-                      ? "bg-orange-500 text-black"
+                  className={() => {
+                    const isItemActive = location.pathname + location.search === path ||
+                      (path === "/admin?section=dashboard" && location.pathname === "/admin" && location.search === "");
+                    return `flex items-center ${collapsed ? "justify-center px-0 py-3" : "gap-3 px-3 py-3"} rounded-xl text-sm font-medium transition ${isItemActive
+                      ? "bg-orange-500 text-black shadow-lg shadow-orange-500/20"
                       : "text-white/55 hover:bg-white/5 hover:text-white"
-                    }`
-                  }
+                      }`;
+                  }}
                 >
                   <Icon className="text-xl shrink-0" />
 

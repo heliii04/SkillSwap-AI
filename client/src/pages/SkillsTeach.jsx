@@ -3,6 +3,7 @@ import {
     useEffect,
     useMemo,
     useState,
+    useRef,
 } from "react";
 
 import { getAccessToken } from "../api/tokenStore";
@@ -215,6 +216,17 @@ export default function SkillsTeach() {
     useEffect(() => {
         loadSkills();
     }, [loadSkills]);
+
+    useEffect(() => {
+        if (modalOpen) {
+            document.body.style.overflow = "hidden";
+        } else {
+            document.body.style.overflow = "";
+        }
+        return () => {
+            document.body.style.overflow = "";
+        };
+    }, [modalOpen]);
 
     const openCreateModal = () => {
         setEditingSkill(null);
@@ -736,8 +748,8 @@ function SkillCard({
 
                 <span
                     className={`rounded-full border px-3 py-1.5 text-xs ${skill.isActive
-                            ? "border-green-500/25 bg-green-500/10 text-green-300"
-                            : "border-white/10 bg-white/[0.03] text-white/35"
+                        ? "border-green-500/25 bg-green-500/10 text-green-300"
+                        : "border-white/10 bg-white/[0.03] text-white/35"
                         }`}
                 >
                     {skill.isActive
@@ -982,8 +994,8 @@ function SkillModal({
                                                 )
                                             }
                                             className={`rounded-xl border px-3 py-2 text-xs font-medium capitalize transition ${selected
-                                                    ? "border-orange-500 bg-orange-500 text-black"
-                                                    : "border-white/10 text-white/40 hover:border-orange-500/30 hover:text-white"
+                                                ? "border-orange-500 bg-orange-500 text-black"
+                                                : "border-white/10 text-white/40 hover:border-orange-500/30 hover:text-white"
                                                 }`}
                                         >
                                             {day.slice(
@@ -1163,8 +1175,8 @@ function Alert({
     return (
         <div
             className={`mt-5 flex items-start justify-between gap-4 rounded-xl border px-4 py-3 text-sm ${success
-                    ? "border-green-500/30 bg-green-500/10 text-green-300"
-                    : "border-red-500/30 bg-red-500/10 text-red-300"
+                ? "border-green-500/30 bg-green-500/10 text-green-300"
+                : "border-red-500/30 bg-red-500/10 text-red-300"
                 }`}
         >
             <p>{message}</p>
@@ -1207,35 +1219,90 @@ function FormField({
 
 function SelectField({
     label,
+    name,
+    value,
+    onChange,
     options,
-    ...props
 }) {
+    const [isOpen, setIsOpen] = useState(false);
+    const dropdownRef = useRef(null);
+
+    const selectedOption = options.find((opt) => opt.value === value) || options[0];
+
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+                setIsOpen(false);
+            }
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside);
+        };
+    }, []);
+
+    const handleSelect = (val) => {
+        onChange({
+            target: {
+                name,
+                value: val,
+            },
+        });
+        setIsOpen(false);
+    };
+
     return (
-        <label className="block">
+        <div className="relative block animate-fade-in" ref={dropdownRef}>
             <span className="mb-2 block text-sm font-medium text-white/60">
                 {label}
             </span>
 
-            <select
-                {...props}
-                className="w-full rounded-xl border border-white/10 bg-[#090a0f] px-4 py-3.5 text-sm text-white outline-none focus:border-orange-500/60"
+            <button
+                type="button"
+                onClick={() => setIsOpen(!isOpen)}
+                className="flex w-full items-center justify-between rounded-xl border border-white/10 bg-[#090a0f] px-4 py-3.5 text-sm text-white outline-none transition duration-200 hover:border-orange-500/50 focus:border-orange-500/60"
             >
-                {options.map(
-                    (option) => (
-                        <option
-                            key={
-                                option.value
-                            }
-                            value={
-                                option.value
-                            }
-                        >
-                            {option.label}
-                        </option>
-                    )
-                )}
-            </select>
-        </label>
+                <span className="truncate">{selectedOption?.label || ""}</span>
+                <svg
+                    className={`h-4 w-4 shrink-0 text-white/40 transition-transform duration-200 ${
+                        isOpen ? "rotate-180 text-orange-500" : ""
+                    }`}
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                >
+                    <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2.5"
+                        d="M19 9l-7 7-7-7"
+                    />
+                </svg>
+            </button>
+
+            {isOpen && (
+                <ul className="absolute left-0 z-50 mt-2 max-h-60 w-full overflow-y-auto rounded-xl border border-white/10 bg-[#111218] py-1.5 shadow-2xl shadow-black/80 backdrop-blur-xl">
+                    {options.map((option) => {
+                        const isSelected = option.value === value;
+                        return (
+                            <li key={option.value}>
+                                <button
+                                    type="button"
+                                    onClick={() => handleSelect(option.value)}
+                                    className={`flex w-full items-center px-4 py-3 text-left text-sm transition duration-150 hover:bg-orange-500/10 hover:text-orange-400 ${
+                                        isSelected
+                                            ? "bg-orange-500/5 text-orange-400 font-semibold"
+                                            : "text-white/80"
+                                    }`}
+                                >
+                                    {option.label}
+                                </button>
+                            </li>
+                        );
+                    })}
+                </ul>
+            )}
+        </div>
     );
 }
 

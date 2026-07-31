@@ -57,6 +57,14 @@ const chatSchema = new mongoose.Schema(
             default: null,
             index: true,
         },
+        blockedBy: {
+            type: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
+            default: [],
+        },
+        deletedBy: {
+            type: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
+            default: [],
+        },
     },
     {
         timestamps: true,

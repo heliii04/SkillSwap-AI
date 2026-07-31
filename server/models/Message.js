@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { encryptMessage, decryptMessage } from "../utils/encryption.js";
 
 const messageSchema =
     new mongoose.Schema(
@@ -34,10 +35,8 @@ const messageSchema =
                     1,
                     "Message cannot be empty",
                 ],
-                maxlength: [
-                    2000,
-                    "Message cannot exceed 2000 characters",
-                ],
+                get: decryptMessage,
+                set: encryptMessage,
             },
 
             readBy: {
@@ -58,6 +57,8 @@ const messageSchema =
         {
             timestamps: true,
             versionKey: false,
+            toJSON: { getters: true },
+            toObject: { getters: true },
         }
     );
 

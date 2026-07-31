@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { FaArrowRight } from "react-icons/fa";
 import { HiSparkles } from "react-icons/hi2";
+import { motion } from "framer-motion";
 
 export default function Hero() {
     return (
@@ -22,7 +23,19 @@ export default function Hero() {
         "
             />
 
-            <div
+            <motion.div
+                initial={{
+                    opacity: 0,
+                    y: 30,
+                }}
+                animate={{
+                    opacity: 1,
+                    y: 0,
+                }}
+                transition={{
+                    duration: 0.7,
+                    ease: [0.22, 1, 0.36, 1],
+                }}
                 className="
           relative z-10 mx-auto
           w-full max-w-[1500px]
@@ -132,7 +145,7 @@ export default function Hero() {
                         <FaArrowRight className="transition-transform duration-300 group-hover:translate-x-1" />
                     </Link>
                 </div>
-            </div>
+            </motion.div>
         </section>
     );
 }

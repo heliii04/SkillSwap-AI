@@ -1,5 +1,6 @@
 import http from "http";
 import mongoose from "mongoose";
+import { Server } from "socket.io";
 
 import app from "./app.js";
 import { connectDatabase } from "./config/db.js";
@@ -15,6 +16,33 @@ async function startServer() {
 
     server = http.createServer(app);
 
+    const io = new Server(server, {
+        cors: {
+            origin: env.clientUrl || "http://localhost:5173",
+            credentials: true,
+        },
+    });
+
+    app.set("io", io);
+
+    io.on("connection", (socket) => {
+        socket.on("register_user", (userId) => {
+            if (userId) {
+                socket.join(userId.toString());
+            }
+        });
+
+        socket.on("join_chat", (chatId) => {
+            if (chatId) {
+                socket.join(chatId.toString());
+            }
+        });
+
+        socket.on("disconnect", () => {
+            // Can be expanded later for online status indicators
+        });
+    });
+
     server.listen(env.port, () => {
         console.log(
             `SkillSwap AI API running on port ${env.port}`
@@ -25,6 +53,7 @@ async function startServer() {
         );
     });
 }
+
 
 async function shutdown(signal) {
     console.log(

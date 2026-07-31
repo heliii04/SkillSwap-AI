@@ -59,10 +59,11 @@ export default function Notifications() {
                     Authorization: `Bearer ${token}`,
                 },
                 credentials: "include",
+                body: JSON.stringify({}),
             });
 
             if (response.ok) {
-                setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+                setNotifications([]);
             }
         } catch (err) {
             console.error("Error marking all read:", err);

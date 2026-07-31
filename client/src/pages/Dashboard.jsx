@@ -38,6 +38,11 @@ export default function Dashboard() {
     });
 
     useEffect(() => {
+        if (user?.role === "admin") {
+            navigate("/admin", { replace: true });
+            return;
+        }
+
         let isMounted = true;
 
         const API_URL =

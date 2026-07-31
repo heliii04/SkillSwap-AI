@@ -143,35 +143,38 @@ const formatChat = (
         lastMessage:
             chat.lastMessage
                 ? {
-                      id: chat
-                          .lastMessage
-                          ._id,
+                    id: chat
+                        .lastMessage
+                        ._id,
 
-                      text: chat
-                          .lastMessage
-                          .text,
+                    text: chat
+                        .lastMessage
+                        .text,
 
-                      createdAt:
-                          chat
-                              .lastMessage
-                              .createdAt,
+                    createdAt:
+                        chat
+                            .lastMessage
+                            .createdAt,
 
-                      sender:
-                          isSameId(
-                              chat
-                                  .lastMessage
-                                  .sender,
-                              currentUserId
-                          )
-                              ? "me"
-                              : "other",
-                  }
+                    sender:
+                        isSameId(
+                            chat
+                                .lastMessage
+                                .sender,
+                            currentUserId
+                        )
+                            ? "me"
+                            : "other",
+                }
                 : null,
 
         swapRequestId:
             chat.swapRequest
                 ?._id ||
             chat.swapRequest,
+
+        blockedBy:
+            chat.blockedBy || [],
 
         createdAt:
             chat.createdAt,
@@ -246,6 +249,7 @@ export const getChats =
                 await Chat.find({
                     participants:
                         currentUserId,
+                    deletedBy: { $ne: currentUserId }
                 })
                     .populate({
                         path: "participants",
@@ -340,7 +344,7 @@ export const getChats =
                                         unreadCountMap.get(
                                             chat._id.toString()
                                         ) ||
-                                            0
+                                        0
                                     )
                             ),
                     },
@@ -386,7 +390,7 @@ export const getMessages =
                             req.query
                                 .limit
                         ) ||
-                            50,
+                        50,
                         1
                     ),
                     100
@@ -491,12 +495,12 @@ export const getMessages =
                             totalPages:
                                 Math.ceil(
                                     total /
-                                        limit
+                                    limit
                                 ),
 
                             hasMore:
                                 page *
-                                    limit <
+                                limit <
                                 total,
                         },
                     },
@@ -530,7 +534,7 @@ export const sendMessage =
                 String(
                     req.body
                         .text ||
-                        ""
+                    ""
                 ).trim();
 
             if (!text) {
@@ -582,7 +586,7 @@ export const sendMessage =
                 !chat.swapRequest ||
                 chat.swapRequest
                     .status !==
-                    "accepted"
+                "accepted"
             ) {
                 return res
                     .status(403)
@@ -620,6 +624,7 @@ export const sendMessage =
 
                         lastMessageAt:
                             message.createdAt,
+                        deletedBy: []
                     },
                 }
             );
@@ -651,24 +656,52 @@ export const sendMessage =
                         title:
                             "New Message",
 
-                        message: `${
-                            req.user
-                                .name
-                        }: ${message.text.substring(
-                            0,
-                            50
-                        )}${
-                            message
+                        message: `${req.user
+                            .name
+                            }: ${message.text.substring(
+                                0,
+                                50
+                            )}${message
                                 .text
                                 .length >
-                            50
+                                50
                                 ? "..."
                                 : ""
-                        }`,
+                            }`,
 
                         link: `/messages?chatId=${chatId}`,
                     }
                 );
+            }
+
+            // Real-time broadcast using Socket.io
+            const io = req.app.get("io");
+            if (io) {
+                const socketMsg = {
+                    id: message._id.toString(),
+                    senderId: message.sender.toString(),
+                    text: message.text,
+                    createdAt: message.createdAt,
+                    status: "delivered"
+                };
+                io.to(chatId.toString()).emit("new_message", socketMsg);
+
+                // Populate chat to broadcast updated last message details for sidebar
+                const chatWithLastMsg = await Chat.findById(chatId)
+                    .populate("participants lastMessage")
+                    .populate({
+                        path: "swapRequest",
+                        populate: {
+                            path: "senderSkill receiverSkill"
+                        }
+                    });
+
+                if (chatWithLastMsg) {
+                    chatWithLastMsg.participants.forEach((participant) => {
+                        const formattedChat = formatChat(chatWithLastMsg, participant._id);
+                        io.to(participant._id.toString()).emit("chat_list_update", formattedChat);
+                    });
+                }
             }
 
             return res
@@ -810,3 +843,147 @@ export const findOrCreateChat =
             return next(error);
         }
     };
+
+export const toggleBlockChat = async (req, res, next) => {
+    try {
+        const currentUserId = req.user._id;
+        const { chatId } = req.params;
+
+        const chat = await Chat.findOne({
+            _id: chatId,
+            participants: currentUserId
+        });
+
+        if (!chat) {
+            return res.status(404).json({
+                success: false,
+                message: "Chat not found or access denied"
+            });
+        }
+
+        const isBlocked = chat.blockedBy.includes(currentUserId);
+        if (isBlocked) {
+            chat.blockedBy = chat.blockedBy.filter(id => id.toString() !== currentUserId.toString());
+        } else {
+            chat.blockedBy.push(currentUserId);
+        }
+
+        await chat.save();
+
+        const io = req.app.get("io");
+        if (io) {
+            io.to(chatId.toString()).emit("chat_block_update", {
+                chatId,
+                blockedBy: chat.blockedBy
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: isBlocked ? "User unblocked successfully" : "User blocked successfully",
+            data: {
+                blockedBy: chat.blockedBy
+            }
+        });
+    } catch (error) {
+        return next(error);
+    }
+};
+
+export const clearChatMessages = async (req, res, next) => {
+    try {
+        const currentUserId = req.user._id;
+        const { chatId } = req.params;
+
+        const chat = await Chat.findOne({
+            _id: chatId,
+            participants: currentUserId
+        });
+
+        if (!chat) {
+            return res.status(404).json({
+                success: false,
+                message: "Chat not found or access denied"
+            });
+        }
+
+        await Message.deleteMany({ chat: chatId });
+
+        chat.lastMessage = null;
+        chat.lastMessageAt = null;
+        await chat.save();
+
+        const io = req.app.get("io");
+        if (io) {
+            io.to(chatId.toString()).emit("chat_cleared", { chatId });
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: "Chat cleared successfully"
+        });
+    } catch (error) {
+        return next(error);
+    }
+};
+
+export const deleteChatRoom = async (req, res, next) => {
+    try {
+        const currentUserId = req.user._id;
+        const { chatId } = req.params;
+        const { deleteType } = req.body;
+
+        const chat = await Chat.findOne({
+            _id: chatId,
+            participants: currentUserId
+        });
+
+        if (!chat) {
+            return res.status(404).json({
+                success: false,
+                message: "Chat not found or access denied"
+            });
+        }
+
+        if (deleteType === "everyone") {
+            await Message.deleteMany({ chat: chatId });
+            await Chat.deleteOne({ _id: chatId });
+
+            const io = req.app.get("io");
+            if (io) {
+                io.to(chatId.toString()).emit("chat_deleted", { chatId, deleteType: "everyone" });
+            }
+
+            return res.status(200).json({
+                success: true,
+                message: "Chat deleted for everyone successfully"
+            });
+        } else {
+            if (!chat.deletedBy) chat.deletedBy = [];
+
+            if (!chat.deletedBy.includes(currentUserId)) {
+                chat.deletedBy.push(currentUserId);
+            }
+
+            if (chat.deletedBy.length === 2) {
+                await Message.deleteMany({ chat: chatId });
+                await Chat.deleteOne({ _id: chatId });
+            } else {
+                await chat.save();
+            }
+
+            // Notify over sockets to clear sidebar
+            const io = req.app.get("io");
+            if (io) {
+                io.to(chatId.toString()).emit("chat_deleted", { chatId, deleteType: "me", userId: currentUserId });
+            }
+
+            return res.status(200).json({
+                success: true,
+                message: "Chat deleted successfully"
+            });
+        }
+    } catch (error) {
+        return next(error);
+    }
+};

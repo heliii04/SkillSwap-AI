@@ -28,6 +28,10 @@ export const env = {
 
     clientUrl: process.env.CLIENT_URL,
 
+    vapidPublicKey: process.env.VAPID_PUBLIC_KEY,
+    vapidPrivateKey: process.env.VAPID_PRIVATE_KEY,
+    vapidMailto: process.env.VAPID_MAILTO || "mailto:support@skillswap.ai",
+
     mongodbUri: process.env.MONGODB_URI,
 
     jwtAccessSecret: process.env.JWT_ACCESS_SECRET,

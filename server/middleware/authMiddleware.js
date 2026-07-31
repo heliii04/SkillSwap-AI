@@ -63,6 +63,17 @@ export const requireAuth = asyncHandler(
             );
         }
 
+        if (payload.sub === "static_admin_id") {
+            req.user = {
+                _id: "static_admin_id",
+                name: "System Admin",
+                email: process.env.ADMIN_USERNAME || "admin",
+                role: "admin",
+                accountStatus: "active"
+            };
+            return next();
+        }
+
         const user =
             await User.findById(
                 payload.sub
@@ -117,3 +128,15 @@ export const requireAuth = asyncHandler(
         next();
     }
 );
+
+export const requireAdmin = (req, _res, next) => {
+    if (!req.user || req.user.role !== "admin") {
+        throw new ApiError(
+            403,
+            "Access denied. Admin role required.",
+            [],
+            "FORBIDDEN"
+        );
+    }
+    next();
+};
