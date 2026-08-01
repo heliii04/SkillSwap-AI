@@ -11,6 +11,8 @@ import profileRoutes from "./routes/profileRoutes.js";
 import skillRoutes from "./routes/skillRoutes.js";
 import swapRequestRoutes from "./routes/swapRequest.routes.js";
 import chatRoutes from "./routes/chat.routes.js";
+import matchRoutes from "./routes/match.routes.js";
+import aiRoutes from "./routes/ai.routes.js";
 import notificationRoutes from "./routes/notification.routes.js";
 import contactRoutes from "./routes/contact.routes.js";
 import adminRoutes from "./routes/adminRoutes.js";
@@ -116,6 +118,12 @@ app.use(
     "/api/notifications",
     notificationRoutes
 );
+
+app.use("/api/v1/matches", matchRoutes);
+app.use("/api/matches", matchRoutes);
+
+app.use("/api/v1/ai", aiRoutes);
+app.use("/api/ai", aiRoutes);
 
 app.use("/api/v1/contact", contactRoutes);
 app.use("/api/contact", contactRoutes);

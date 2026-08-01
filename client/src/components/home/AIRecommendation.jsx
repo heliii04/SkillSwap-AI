@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
     FaArrowRight,
     FaCheck,
@@ -6,7 +7,10 @@ import {
 } from "react-icons/fa6";
 import { HiSparkles } from "react-icons/hi2";
 
-const recommendedSkills = [
+import { useAuth } from "../../context/AuthContext";
+import { getMyMatches } from "../../api/matchApi";
+
+const sampleSkills = [
     {
         id: 1,
         name: "React.js",
@@ -33,14 +37,68 @@ const recommendedSkills = [
     },
 ];
 
-export default function AIRecommendation() {
-    const [selectedSkill, setSelectedSkill] = useState(
-        recommendedSkills[0].id
-    );
+const toCard = (match) => ({
+    id: match.user.id,
 
-    const selectedSkillData = recommendedSkills.find(
+    name:
+        match.theyTeach?.title ||
+        match.youTeach?.title ||
+        match.user.name,
+
+    category: match.mutual
+        ? `Two-way swap with ${match.user.name}`
+        : `Taught by ${match.user.name}`,
+
+    match: match.score,
+
+    description:
+        match.reasons?.join(" · ") ||
+        "Matched on your skills, level and availability.",
+});
+
+export default function AIRecommendation() {
+    const navigate = useNavigate();
+
+    const {
+        user,
+    } = useAuth();
+
+    const [personalizedSkills, setPersonalizedSkills] = useState([]);
+    const [selectedSkill, setSelectedSkill] = useState(null);
+
+    const isPersonalized = Boolean(user && personalizedSkills.length);
+
+    const recommendedSkills = isPersonalized
+        ? personalizedSkills
+        : sampleSkills;
+
+    const activeSkillId = recommendedSkills.some(
         (skill) => skill.id === selectedSkill
-    );
+    )
+        ? selectedSkill
+        : recommendedSkills[0].id;
+
+    useEffect(() => {
+        if (!user) {
+            return undefined;
+        }
+
+        let isMounted = true;
+
+        getMyMatches(3)
+            .then((matches) => {
+                if (isMounted) {
+                    setPersonalizedSkills(matches.map(toCard));
+                }
+            })
+            .catch(() => {
+                // Keep the sample preview when matching is unavailable.
+            });
+
+        return () => {
+            isMounted = false;
+        };
+    }, [user]);
 
     return (
         <section className="w-full bg-[#0C0D13] pb-10 pt-20 lg:pb-12 lg:pt-24">
@@ -136,6 +194,11 @@ export default function AIRecommendation() {
 
                     <button
                         type="button"
+                        onClick={() =>
+                            navigate(
+                                user ? "/recommendations" : "/register"
+                            )
+                        }
                         className="
               group mt-10
               inline-flex items-center gap-3
@@ -201,7 +264,9 @@ export default function AIRecommendation() {
                                 </h3>
 
                                 <p className="mt-1 text-sm text-white/35">
-                                    Based on your current profile
+                                    {isPersonalized
+                                        ? "Based on your current profile"
+                                        : "Sample preview — sign in for your own matches"}
                                 </p>
                             </div>
                         </div>
@@ -217,14 +282,14 @@ export default function AIRecommendation() {
                 text-white/40
               "
                         >
-                            Updated now
+                            {isPersonalized ? "Updated now" : "Demo"}
                         </span>
                     </div>
 
                     {/* Recommendation Cards */}
                     <div className="mt-6 space-y-4">
                         {recommendedSkills.map((skill) => {
-                            const isSelected = selectedSkill === skill.id;
+                            const isSelected = activeSkillId === skill.id;
 
                             return (
                                 <button

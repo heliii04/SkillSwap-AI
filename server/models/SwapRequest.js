@@ -1,5 +1,81 @@
 import mongoose from "mongoose";
 
+const roadmapWeekSchema = new mongoose.Schema(
+    {
+        week: {
+            type: Number,
+            required: true,
+        },
+
+        focus: {
+            type: String,
+            trim: true,
+            default: "",
+        },
+
+        goal: {
+            type: String,
+            trim: true,
+            default: "",
+        },
+
+        activities: {
+            type: [String],
+            default: [],
+        },
+
+        completed: {
+            type: Boolean,
+            default: false,
+        },
+    },
+    {
+        _id: false,
+    }
+);
+
+const roadmapSchema = new mongoose.Schema(
+    {
+        title: {
+            type: String,
+            trim: true,
+            default: "",
+        },
+
+        summary: {
+            type: String,
+            trim: true,
+            default: "",
+        },
+
+        weeks: {
+            type: [roadmapWeekSchema],
+            default: [],
+        },
+
+        // "ai" when the plan came from the model, "template" on fallback.
+        source: {
+            type: String,
+            enum: ["ai", "template"],
+            default: "template",
+        },
+
+        generatedBy: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "User",
+            default: null,
+        },
+
+        generatedAt: {
+            type: Date,
+            default: null,
+        },
+    },
+    {
+        _id: false,
+    }
+);
+
 const swapRequestSchema = new mongoose.Schema(
     {
         sender: {
@@ -79,6 +155,11 @@ const swapRequestSchema = new mongoose.Schema(
 
         cancelledAt: {
             type: Date,
+            default: null,
+        },
+
+        roadmap: {
+            type: roadmapSchema,
             default: null,
         },
     },

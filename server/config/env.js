@@ -60,6 +60,33 @@ export const env = {
         fromEmail: process.env.SMTP_FROM_EMAIL,
     },
 
+    ai: {
+        // AI stays optional: every feature has a rule-based fallback.
+        enabled: process.env.AI_ENABLED !== "false",
+        apiKey: process.env.AI_API_KEY || process.env.OPENAI_API_KEY || "",
+
+        baseUrl:
+            process.env.AI_BASE_URL ||
+            "https://openrouter.ai/api/v1",
+
+        model:
+            process.env.AI_MODEL || "openai/gpt-4o-mini",
+
+        timeoutMs:
+            Number(process.env.AI_TIMEOUT_MS) || 20000,
+
+        cacheTtlMs:
+            Number(process.env.AI_CACHE_TTL_MINUTES || 60) * 60 * 1000,
+
+        breakerThreshold:
+            Number(process.env.AI_BREAKER_THRESHOLD) || 3,
+
+        breakerCooldownMs:
+            Number(process.env.AI_BREAKER_COOLDOWN_MINUTES || 5) *
+            60 *
+            1000,
+    },
+
     isProduction: process.env.NODE_ENV === "production",
 
     // Backwards compatibility mappings

@@ -17,6 +17,7 @@ import {
   HiOutlineHome,
   HiOutlineMagnifyingGlass,
   HiOutlinePaperAirplane,
+  HiOutlineSparkles,
   HiOutlineUser,
   HiOutlineXMark,
   HiOutlineChevronLeft,
@@ -60,6 +61,11 @@ const navigationItems = [
     label: "Discover",
     path: "/search",
     icon: HiOutlineMagnifyingGlass,
+  },
+  {
+    label: "AI Matches",
+    path: "/recommendations",
+    icon: HiOutlineSparkles,
   },
   {
     label: "Requests",
@@ -158,6 +164,12 @@ const getPageTitle = (pathname) => {
     return {
       title: "Discover",
       subtitle: "Explore skills and find mentors",
+    };
+  }
+  if (pathname.startsWith("/recommendations")) {
+    return {
+      title: "AI Matches",
+      subtitle: "People you should swap skills with, and why",
     };
   }
   if (pathname.startsWith("/messages")) {

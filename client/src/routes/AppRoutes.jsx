@@ -17,6 +17,7 @@ import MyProfile from "../pages/MyProfile";
 import SkillsTeach from "../pages/SkillsTeach";
 import SkillsWant from "../pages/SkillsWant";
 import Search from "../pages/Search";
+import Recommendations from "../pages/Recommendations";
 import Requests from "../pages/Requests";
 import Messages from "../pages/Messages";
 import Notifications from "../pages/Notifications";
@@ -100,6 +101,10 @@ export default function AppRoutes() {
                     <Route
                         path="/search"
                         element={<Search />}
+                    />
+                    <Route
+                        path="/recommendations"
+                        element={<Recommendations />}
                     />
                     <Route
                         path="/requests"

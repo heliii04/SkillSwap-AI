@@ -1,4 +1,4 @@
-import { rateLimit } from "express-rate-limit";
+import { ipKeyGenerator, rateLimit } from "express-rate-limit";
 
 const createRateLimitMessage = (message) => ({
     success: false,
@@ -69,4 +69,19 @@ export const resendOtpLimiter = rateLimit({
     message: createRateLimitMessage(
         "Too many OTP requests. Please try again after one hour."
     ),
+});
+
+export const aiLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000,
+    limit: 30,
+
+    standardHeaders: "draft-8",
+    legacyHeaders: false,
+
+    message: createRateLimitMessage(
+        "AI usage limit reached. Please try again in an hour."
+    ),
+
+    keyGenerator: (req, res) =>
+        req.user?._id?.toString() || ipKeyGenerator(req, res),
 });
