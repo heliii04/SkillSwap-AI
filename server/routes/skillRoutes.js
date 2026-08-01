@@ -10,6 +10,7 @@ import {
     deleteLearnSkill,
     getMyLearnSkills,
     updateLearnSkill,
+    getBrowseSkills,
 } from "../controllers/skillController.js";
 
 import { requireAuth } from "../middleware/authMiddleware.js";
@@ -35,6 +36,8 @@ router.use(requireAuth);
 | Teaching skills
 |--------------------------------------------------------------------------
 */
+
+router.get("/browse", getBrowseSkills);
 
 router.get(
     "/teach",

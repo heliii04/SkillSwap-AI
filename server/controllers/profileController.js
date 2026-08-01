@@ -1,5 +1,6 @@
 import User from "../models/User.js";
 import Skill from "../models/Skill.js";
+import Chat from "../models/Chat.js";
 
 import { ApiError } from "../utils/ApiError.js";
 
@@ -207,6 +208,20 @@ export const getUserProfileById = asyncHandler(
         const teachSkills = skills.filter((skill) => skill.type === "teach");
         const learnSkills = skills.filter((skill) => skill.type === "learn");
 
+        let isConnected = false;
+        let chatId = null;
+
+        if (req.user) {
+            const existingChat = await Chat.findOne({
+                participants: { $all: [req.user._id, user._id] }
+            }).lean();
+
+            if (existingChat) {
+                isConnected = true;
+                chatId = existingChat._id;
+            }
+        }
+
         res.status(200).json({
             success: true,
             message: "User profile retrieved successfully.",
@@ -214,6 +229,8 @@ export const getUserProfileById = asyncHandler(
                 user: sanitizeProfile(user),
                 teachSkills,
                 learnSkills,
+                isConnected,
+                chatId,
             },
         });
     }

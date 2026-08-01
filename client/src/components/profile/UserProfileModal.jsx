@@ -29,6 +29,8 @@ export default function UserProfileModal({ userId, matchScore, onClose }) {
     const [learnSkills, setLearnSkills] = useState([]);
     const [loading, setLoading] = useState(true);
     const [imageError, setImageError] = useState(false);
+    const [isConnected, setIsConnected] = useState(false);
+    const [chatId, setChatId] = useState(null);
 
     useEffect(() => {
         if (!userId) return;
@@ -43,11 +45,14 @@ export default function UserProfileModal({ userId, matchScore, onClose }) {
                     setUser(res.data?.data?.user);
                     setTeachSkills(res.data?.data?.teachSkills || []);
                     setLearnSkills(res.data?.data?.learnSkills || []);
+                    setIsConnected(res.data?.data?.isConnected || false);
+                    setChatId(res.data?.data?.chatId || null);
                 }
             })
             .catch((err) => {
                 toast.error(
-                    err?.response?.data?.message || "User profile could not be loaded."
+                    err?.response?.data?.message || "User profile could not be loaded.",
+                    { toastId: "profile-error" }
                 );
                 onClose();
             })
@@ -250,10 +255,25 @@ export default function UserProfileModal({ userId, matchScore, onClose }) {
                     >
                         Close
                     </button>
-                    {user && (
+                    {user && isConnected ? (
                         <button
                             type="button"
-                            onClick={() => navigate("/search")}
+                            onClick={() => {
+                                onClose();
+                                navigate(`/messages?chatId=${chatId}`);
+                            }}
+                            className="inline-flex items-center gap-2 rounded-xl bg-[#ff5a00] px-6 py-3 text-[14px] font-medium text-black hover:bg-[#ff5a00]/90 transition"
+                        >
+                            Open Chat
+                            <HiOutlineArrowRight className="text-[16px]" />
+                        </button>
+                    ) : user && (
+                        <button
+                            type="button"
+                            onClick={() => {
+                                onClose();
+                                navigate("/search");
+                            }}
                             className="inline-flex items-center gap-2 rounded-xl bg-[#ff5a00] px-6 py-3 text-[14px] font-medium text-black hover:bg-[#ff5a00]/90 transition"
                         >
                             Send match request

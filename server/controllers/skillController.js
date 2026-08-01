@@ -574,3 +574,70 @@ export const deleteLearnSkill = async (
         return next(error);
     }
 };
+
+export const getBrowseSkills = async (req, res, next) => {
+    try {
+        const skills = await Skill.find({
+            type: "teach",
+            isActive: true,
+            owner: { $ne: req.user._id }
+        }).populate("owner", "name avatar location rating reviews");
+
+        console.log("Found teach skills for browse:", skills.length);
+
+        const allLearnSkills = await Skill.find({
+            type: "learn",
+            isActive: true,
+            owner: { $in: skills.map((s) => s.owner?._id).filter(Boolean) }
+        }).lean();
+
+        const capitalize = (s) => {
+            if (!s) return "";
+            return s.charAt(0).toUpperCase() + s.slice(1);
+        };
+
+        const formattedSkills = skills.map((skill) => {
+            const ownerWants = allLearnSkills
+                .filter((s) => s.owner.toString() === skill.owner?._id?.toString())
+                .map((s) => s.title)
+                .join(", ") || "Anything";
+
+            const teacherName = skill.owner?.name || "Unknown";
+            const initials = teacherName
+                .split(" ")
+                .map((n) => n[0])
+                .join("")
+                .substring(0, 2)
+                .toUpperCase();
+
+            return {
+                id: skill._id,
+                title: skill.title,
+                category: capitalize(skill.category) || "Other",
+                description: skill.description || "",
+                teacher: {
+                    name: teacherName,
+                    avatar: initials,
+                },
+                teaches: skill.title,
+                wantsToLearn: ownerWants,
+                level: capitalize(skill.level) || "Beginner",
+                mode: capitalize(skill.teachingMode) || "Online",
+                location: skill.owner?.location?.city || "Unknown",
+                rating: skill.owner?.rating || 5.0,
+                reviews: skill.owner?.reviews || 0,
+                learners: Math.floor(Math.random() * 100) + 10,
+                availability: capitalize(skill.availability?.timeSlot) || "Flexible",
+                tags: skill.tags || [],
+                userId: skill.owner?._id,
+            };
+        });
+
+        return res.status(200).json({
+            success: true,
+            data: formattedSkills,
+        });
+    } catch (error) {
+        return next(error);
+    }
+};

@@ -63,7 +63,7 @@ const navigationItems = [
     icon: HiOutlineMagnifyingGlass,
   },
   {
-    label: "AI Matches",
+    label: "AI Recommendation",
     path: "/recommendations",
     icon: HiOutlineSparkles,
   },

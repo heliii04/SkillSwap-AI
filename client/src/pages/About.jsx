@@ -78,7 +78,7 @@ export default function About() {
     return (
         <main className="min-h-screen overflow-hidden bg-[#07080d] text-white">
             {/* Hero Section */}
-            <section className="relative border-b border-white/10">
+            <section className="relative">
                 <div className="relative mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8 lg:py-28">
                     <motion.div
                         initial={{
@@ -135,28 +135,33 @@ export default function About() {
             </section>
 
             {/* Highlights */}
-            <section className="border-b border-white/10 bg-white/[0.015]">
-                <div className="mx-auto grid max-w-7xl gap-6 px-4 py-10 sm:grid-cols-2 sm:px-6 lg:grid-cols-4 lg:px-8">
-                    {highlights.map((item, index) => (
-                        <div
-                            key={item.number}
-                            className={`flex items-start gap-4 ${index !== highlights.length - 1
-                                    ? "lg:border-r lg:border-white/10"
-                                    : ""
-                                }`}
-                        >
-                            <span className="text-orange-500 text-3xl font-bold">
-                                {item.number}
-                            </span>
+            <section className="px-5 py-10 sm:px-8 lg:px-12">
+                <div className="mx-auto max-w-7xl">
+                    <div className="grid overflow-hidden rounded-[28px] border border-white/10 sm:grid-cols-2 lg:grid-cols-4">
+                        {highlights.map((item, index) => (
+                            <div
+                                key={item.number}
+                                className={`relative flex min-h-[145px] items-center justify-center gap-5 px-6 py-8 border-white/10 ${
+                                    index !== highlights.length - 1 ? "border-b lg:border-b-0 lg:border-r" : ""
+                                } ${index === 2 ? "sm:border-b-0" : ""} ${
+                                    index === 0 || index === 2 ? "sm:border-r" : ""
+                                } ${index === 1 ? "sm:border-r-0 lg:border-r" : ""}`}
+                            >
+                                <span className="shrink-0 text-3xl font-bold tracking-tight text-orange-500 sm:text-4xl">
+                                    {item.number}
+                                </span>
 
-                            <div>
-                                <h3 className="font-semibold">{item.title}</h3>
-                                <p className="mt-1 text-sm leading-6 text-gray-500">
-                                    {item.text}
-                                </p>
+                                <div className="text-left">
+                                    <h3 className="text-base font-semibold text-white sm:text-lg">
+                                        {item.title}
+                                    </h3>
+                                    <p className="mt-1 text-sm leading-relaxed text-white/45">
+                                        {item.text}
+                                    </p>
+                                </div>
                             </div>
-                        </div>
-                    ))}
+                        ))}
+                    </div>
                 </div>
             </section>
 

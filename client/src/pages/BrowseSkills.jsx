@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
@@ -15,6 +15,7 @@ import {
 } from "react-icons/fi";
 
 import UserProfileModal from "../components/profile/UserProfileModal";
+import axiosClient from "../api/axiosClient";
 
 const popularSkills = [
     "React",
@@ -52,134 +53,6 @@ const interactionModes = [
     "Both",
 ];
 
-const skillsData = [
-    {
-        id: 1,
-        title: "React Development",
-        category: "Technology",
-        description:
-            "Learn React fundamentals, components, hooks, routing and real-world project development.",
-        teacher: {
-            name: "Aarav Shah",
-            avatar: "AS",
-        },
-        teaches: "React Development",
-        wantsToLearn: "UI/UX Design",
-        level: "Advanced",
-        mode: "Online",
-        location: "Ahmedabad",
-        rating: 4.9,
-        reviews: 38,
-        learners: 124,
-        availability: "Evening",
-        tags: ["React", "JavaScript", "Frontend"],
-    },
-    {
-        id: 2,
-        title: "UI/UX Design",
-        category: "Design",
-        description:
-            "Understand user research, wireframes, prototypes and modern interface design using Figma.",
-        teacher: {
-            name: "Diya Patel",
-            avatar: "DP",
-        },
-        teaches: "UI/UX Design",
-        wantsToLearn: "Digital Marketing",
-        level: "Intermediate",
-        mode: "Both",
-        location: "Surat",
-        rating: 4.8,
-        reviews: 26,
-        learners: 86,
-        availability: "Flexible",
-        tags: ["Figma", "UI Design", "Prototyping"],
-    },
-    {
-        id: 3,
-        title: "Python Programming",
-        category: "Technology",
-        description:
-            "Learn Python from basics to object-oriented programming, APIs and practical projects.",
-        teacher: {
-            name: "Rohan Mehta",
-            avatar: "RM",
-        },
-        teaches: "Python Programming",
-        wantsToLearn: "Public Speaking",
-        level: "Expert",
-        mode: "Online",
-        location: "Mumbai",
-        rating: 4.9,
-        reviews: 52,
-        learners: 173,
-        availability: "Morning",
-        tags: ["Python", "API", "Backend"],
-    },
-    {
-        id: 4,
-        title: "Spoken English",
-        category: "Languages",
-        description:
-            "Improve your vocabulary, pronunciation, confidence and everyday English communication.",
-        teacher: {
-            name: "Ananya Joshi",
-            avatar: "AJ",
-        },
-        teaches: "Spoken English",
-        wantsToLearn: "Photography",
-        level: "Intermediate",
-        mode: "Both",
-        location: "Vadodara",
-        rating: 4.7,
-        reviews: 31,
-        learners: 98,
-        availability: "Afternoon",
-        tags: ["English", "Communication", "Speaking"],
-    },
-    {
-        id: 5,
-        title: "Digital Marketing",
-        category: "Marketing",
-        description:
-            "Learn social media marketing, content strategy, SEO and campaign planning.",
-        teacher: {
-            name: "Krisha Desai",
-            avatar: "KD",
-        },
-        teaches: "Digital Marketing",
-        wantsToLearn: "Web Development",
-        level: "Advanced",
-        mode: "Online",
-        location: "Rajkot",
-        rating: 4.8,
-        reviews: 22,
-        learners: 75,
-        availability: "Evening",
-        tags: ["SEO", "Social Media", "Content"],
-    },
-    {
-        id: 6,
-        title: "Guitar Basics",
-        category: "Music",
-        description:
-            "Start playing guitar with basic chords, rhythm practice and beginner-friendly songs.",
-        teacher: {
-            name: "Kabir Verma",
-            avatar: "KV",
-        },
-        teaches: "Guitar Basics",
-        wantsToLearn: "Video Editing",
-        level: "Beginner",
-        mode: "Offline",
-        location: "Ahmedabad",
-        rating: 4.6,
-        reviews: 18,
-        learners: 46,
-        availability: "Weekend",
-        tags: ["Guitar", "Music", "Chords"],
-    },
-];
 
 export default function BrowseSkills() {
     const [searchTerm, setSearchTerm] = useState("");
@@ -188,6 +61,32 @@ export default function BrowseSkills() {
     const [selectedMode, setSelectedMode] = useState("All Modes");
     const [showMobileFilters, setShowMobileFilters] = useState(false);
     const [selectedUserId, setSelectedUserId] = useState(null);
+    const [skillsData, setSkillsData] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        let isMounted = true;
+        
+        axiosClient.get("/skills/browse")
+            .then(res => {
+                if (isMounted) {
+                    console.log("BrowseSkills API response:", res.data);
+                    setSkillsData(res.data.data || []);
+                }
+            })
+            .catch(err => {
+                console.error("Failed to load skills:", err.response ? err.response.data : err);
+            })
+            .finally(() => {
+                if (isMounted) {
+                    setLoading(false);
+                }
+            });
+            
+        return () => {
+            isMounted = false;
+        };
+    }, []);
 
     const filteredSkills = useMemo(() => {
         return skillsData.filter((skill) => {
@@ -227,6 +126,7 @@ export default function BrowseSkills() {
         selectedCategory,
         selectedLevel,
         selectedMode,
+        skillsData,
     ]);
 
     const clearFilters = () => {
@@ -455,7 +355,7 @@ export default function BrowseSkills() {
                                     <SkillCard
                                         key={skill.id}
                                         skill={skill}
-                                        onViewProfile={() => setSelectedUserId("64b9f2d1e2a1b9442a8b9e5c")} // Hardcoded dummy object ID or let it fail gracefully
+                                        onViewProfile={() => setSelectedUserId(skill.userId)}
                                     />
                                 ))}
                             </div>
@@ -708,12 +608,6 @@ function SkillCard({ skill, onViewProfile }) {
             </div>
 
             <div className="mt-5 flex gap-2">
-                <Link
-                    to={`/skills/${skill.id}`}
-                    className="flex-1 flex items-center justify-center gap-2 rounded-xl border border-white/10 px-4 py-3 text-sm font-semibold text-white hover:bg-white/5 transition"
-                >
-                    View Skill
-                </Link>
                 <button
                     type="button"
                     onClick={onViewProfile}
