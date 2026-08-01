@@ -29,170 +29,9 @@ import {
 |
 */
 
-const mentors = [
-    {
-        id: "mentor-1",
-        name: "Aarav Sharma",
-        initials: "AS",
-        role: "Full Stack Developer",
-        location: "Ahmedabad, Gujarat",
-        rating: 4.9,
-        reviews: 128,
-        completedSessions: 94,
-        matchPercentage: 96,
-        verified: true,
-        availability: "Available this week",
-        mode: "online",
-        level: "expert",
-        category: "technology",
-        teaches: [
-            "React",
-            "Node.js",
-            "MongoDB",
-        ],
-        wants: [
-            "UI/UX Design",
-            "Figma",
-        ],
-        bio:
-            "Full-stack developer with practical experience in building scalable MERN applications. I focus on project-based learning and clean production architecture.",
-    },
-    {
-        id: "mentor-2",
-        name: "Meera Patel",
-        initials: "MP",
-        role: "UI/UX Designer",
-        location: "Surat, Gujarat",
-        rating: 4.8,
-        reviews: 86,
-        completedSessions: 71,
-        matchPercentage: 92,
-        verified: true,
-        availability: "Available evenings",
-        mode: "both",
-        level: "advanced",
-        category: "design",
-        teaches: [
-            "Figma",
-            "UI Design",
-            "Prototyping",
-        ],
-        wants: [
-            "React",
-            "Frontend Development",
-        ],
-        bio:
-            "Product designer helping beginners understand user research, wireframing, modern interfaces and interactive prototypes.",
-    },
-    {
-        id: "mentor-3",
-        name: "Rohan Verma",
-        initials: "RV",
-        role: "Digital Marketing Specialist",
-        location: "Delhi, India",
-        rating: 4.7,
-        reviews: 64,
-        completedSessions: 52,
-        matchPercentage: 88,
-        verified: false,
-        availability: "Available weekends",
-        mode: "online",
-        level: "advanced",
-        category: "marketing",
-        teaches: [
-            "SEO",
-            "Content Marketing",
-            "Google Ads",
-        ],
-        wants: [
-            "Data Analytics",
-            "Excel",
-        ],
-        bio:
-            "Digital marketing professional focused on SEO strategy, paid advertising and practical content growth systems.",
-    },
-    {
-        id: "mentor-4",
-        name: "Ananya Joshi",
-        initials: "AJ",
-        role: "English Communication Coach",
-        location: "Pune, Maharashtra",
-        rating: 4.9,
-        reviews: 147,
-        completedSessions: 118,
-        matchPercentage: 85,
-        verified: true,
-        availability: "Available mornings",
-        mode: "both",
-        level: "expert",
-        category: "languages",
-        teaches: [
-            "English Speaking",
-            "Interview Skills",
-            "Communication",
-        ],
-        wants: [
-            "Photography",
-            "Photo Editing",
-        ],
-        bio:
-            "Communication coach helping students improve spoken English, confidence, interview skills and professional presentation.",
-    },
-    {
-        id: "mentor-5",
-        name: "Kabir Mehta",
-        initials: "KM",
-        role: "Data Science Mentor",
-        location: "Bengaluru, Karnataka",
-        rating: 4.8,
-        reviews: 102,
-        completedSessions: 83,
-        matchPercentage: 82,
-        verified: true,
-        availability: "Available on weekends",
-        mode: "online",
-        level: "expert",
-        category: "technology",
-        teaches: [
-            "Python",
-            "Machine Learning",
-            "Data Analysis",
-        ],
-        wants: [
-            "Public Speaking",
-            "Leadership",
-        ],
-        bio:
-            "Data science mentor teaching Python, data analysis and beginner-friendly machine learning through real-world examples.",
-    },
-    {
-        id: "mentor-6",
-        name: "Isha Kapoor",
-        initials: "IK",
-        role: "Fitness & Wellness Coach",
-        location: "Mumbai, Maharashtra",
-        rating: 4.6,
-        reviews: 59,
-        completedSessions: 46,
-        matchPercentage: 78,
-        verified: false,
-        availability: "Available early mornings",
-        mode: "offline",
-        level: "advanced",
-        category: "fitness",
-        teaches: [
-            "Yoga",
-            "Home Workouts",
-            "Wellness",
-        ],
-        wants: [
-            "Social Media Marketing",
-            "Content Creation",
-        ],
-        bio:
-            "Fitness coach helping learners build sustainable workout routines, improve mobility and maintain healthy daily habits.",
-    },
-];
+
+import useLockBodyScroll from "../hooks/useLockBodyScroll";
+import axiosClient from "../api/axiosClient";
 
 const categoryOptions = [
     {
@@ -315,8 +154,50 @@ const defaultFilters = {
 };
 
 export default function Search() {
-    const [filters, setFilters] =
-        useState(defaultFilters);
+    const [filters, setFilters] = useState(defaultFilters);
+    const [mentors, setMentors] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+
+    useEffect(() => {
+        let isMounted = true;
+
+        axiosClient.get("/profile/all")
+            .then(res => {
+                if (isMounted) {
+                    const dynamicMentors = res.data.data.map(user => ({
+                        id: user.id || user._id || Math.random().toString(),
+                        name: user.name,
+                        initials: user.name ? user.name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2) : "U",
+                        avatar: user.avatar,
+                        role: user.headline || "SkillSwap member",
+                        location: user.location?.city ? `${user.location.city}${user.location.country ? `, ${user.location.country}` : ''}` : "Online",
+                        rating: user.rating || 0,
+                        reviews: user.reviews || 0,
+                        completedSessions: user.sessions || 0,
+                        matchPercentage: Math.floor(Math.random() * (99 - 50) + 50),
+                        verified: user.isEmailVerified,
+                        availability: "Available",
+                        mode: user.mode || "online",
+                        level: user.level || "all",
+                        category: user.category || "all",
+                        teaches: user.teaches || [],
+                        wants: user.wants || [],
+                        bio: user.bio || "",
+                    }));
+                    setMentors(dynamicMentors);
+                }
+            })
+            .catch(err => {
+                console.error("Error fetching mentors:", err);
+                if (isMounted) setError(err.message || "Failed to fetch mentors");
+            })
+            .finally(() => {
+                if (isMounted) setLoading(false);
+            });
+
+        return () => { isMounted = false; };
+    }, []);
 
     const [
         selectedMentor,
@@ -401,7 +282,6 @@ export default function Search() {
                             first.name
                         );
 
-                    case "match":
                     default:
                         return (
                             second.matchPercentage -
@@ -410,7 +290,7 @@ export default function Search() {
                 }
             }
         );
-    }, [filters]);
+    }, [mentors, filters]);
 
     const activeFilterCount =
         useMemo(() => {
@@ -580,7 +460,16 @@ export default function Search() {
                     <div className="mt-6">
 
 
-                        {filteredMentors.length === 0 ? (
+                        {loading ? (
+                            <div className="mt-10 flex flex-col items-center justify-center text-orange-500">
+                                <span className="h-8 w-8 animate-spin rounded-full border-[3px] border-orange-500 border-t-transparent" />
+                                <p className="mt-4 text-sm font-medium">Discovering profiles...</p>
+                            </div>
+                        ) : error ? (
+                            <div className="mt-10 flex flex-col items-center justify-center text-red-500">
+                                <p className="mt-4 text-sm font-medium">{error}</p>
+                            </div>
+                        ) : filteredMentors.length === 0 ? (
                             <EmptyResults onClear={clearFilters} />
                         ) : (
                             <div className="mt-5 grid gap-5 xl:grid-cols-2">
@@ -964,6 +853,7 @@ function MentorModal({
     mentor,
     onClose,
 }) {
+    useLockBodyScroll();
     return (
         <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
             <button

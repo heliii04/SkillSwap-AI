@@ -1,4 +1,5 @@
 import User from "../models/User.js";
+import Skill from "../models/Skill.js";
 
 import { ApiError } from "../utils/ApiError.js";
 
@@ -182,6 +183,75 @@ export const changeMyPassword = asyncHandler(
         res.status(200).json({
             success: true,
             message: "Password changed successfully.",
+        });
+    }
+);
+
+export const getUserProfileById = asyncHandler(
+    async (req, res) => {
+        const { id } = req.params;
+
+        const user = await User.findById(id);
+
+        if (!user || user.accountStatus !== "active") {
+            throw new ApiError(
+                404,
+                "User profile was not found.",
+                [],
+                "PROFILE_NOT_FOUND"
+            );
+        }
+
+        const skills = await Skill.find({ owner: id, isActive: true }).lean();
+        
+        const teachSkills = skills.filter((skill) => skill.type === "teach");
+        const learnSkills = skills.filter((skill) => skill.type === "learn");
+
+        res.status(200).json({
+            success: true,
+            message: "User profile retrieved successfully.",
+            data: {
+                user: sanitizeProfile(user),
+                teachSkills,
+                learnSkills,
+            },
+        });
+    }
+);
+
+export const getAllProfiles = asyncHandler(
+    async (req, res) => {
+        const users = await User.find({
+            _id: { $ne: req.user._id },
+            accountStatus: "active",
+        }).lean();
+
+        const allSkills = await Skill.find({ isActive: true }).lean();
+
+        const formattedUsers = users.map(user => {
+            const userSkills = allSkills.filter(
+                skill => skill.owner.toString() === user._id.toString()
+            );
+
+            const teachSkills = userSkills.filter(s => s.type === "teach");
+            const learnSkills = userSkills.filter(s => s.type === "learn");
+            
+            const mainSkill = teachSkills[0] || learnSkills[0] || {};
+
+            return {
+                ...sanitizeProfile(user),
+                teaches: teachSkills.map(s => s.title),
+                wants: learnSkills.map(s => s.title),
+                category: mainSkill.category || "all",
+                level: mainSkill.level || "all",
+                mode: mainSkill.teachingMode || mainSkill.learningMode || "all",
+            };
+        });
+
+        res.status(200).json({
+            success: true,
+            message: "Profiles retrieved successfully.",
+            data: formattedUsers,
         });
     }
 );

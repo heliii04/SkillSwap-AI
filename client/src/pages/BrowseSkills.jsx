@@ -4,14 +4,17 @@ import { motion } from "framer-motion";
 import {
     FiSearch,
     FiFilter,
-    FiMapPin,
+    FiX,
     FiStar,
+    FiBookOpen,
+    FiMapPin,
+    FiClock,
     FiUsers,
     FiArrowRight,
-    FiBookOpen,
-    FiClock,
-    FiX,
+    FiUser,
 } from "react-icons/fi";
+
+import UserProfileModal from "../components/profile/UserProfileModal";
 
 const popularSkills = [
     "React",
@@ -184,6 +187,7 @@ export default function BrowseSkills() {
     const [selectedLevel, setSelectedLevel] = useState("All Levels");
     const [selectedMode, setSelectedMode] = useState("All Modes");
     const [showMobileFilters, setShowMobileFilters] = useState(false);
+    const [selectedUserId, setSelectedUserId] = useState(null);
 
     const filteredSkills = useMemo(() => {
         return skillsData.filter((skill) => {
@@ -451,6 +455,7 @@ export default function BrowseSkills() {
                                     <SkillCard
                                         key={skill.id}
                                         skill={skill}
+                                        onViewProfile={() => setSelectedUserId("64b9f2d1e2a1b9442a8b9e5c")} // Hardcoded dummy object ID or let it fail gracefully
                                     />
                                 ))}
                             </div>
@@ -537,6 +542,13 @@ export default function BrowseSkills() {
                     </div>
                 </div>
             )}
+            
+            {selectedUserId && (
+                <UserProfileModal 
+                    userId={selectedUserId} 
+                    onClose={() => setSelectedUserId(null)} 
+                />
+            )}
         </main>
     );
 }
@@ -610,7 +622,7 @@ function FilterContent({
     );
 }
 
-function SkillCard({ skill }) {
+function SkillCard({ skill, onViewProfile }) {
     return (
         <article className="group flex h-full flex-col rounded-3xl border border-white/10 bg-white/[0.035] p-5 transition duration-300 hover:-translate-y-1 hover:border-orange-500/40 hover:bg-white/[0.055] hover:shadow-2xl hover:shadow-orange-950/10">
             <div className="flex items-start justify-between gap-4">
@@ -695,13 +707,21 @@ function SkillCard({ skill }) {
                 </div>
             </div>
 
-            <Link
-                to={`/skills/${skill.id}`}
-                className="mt-5 flex items-center justify-center gap-2 rounded-xl bg-orange-500 px-4 py-3 text-sm font-semibold text-black hover:bg-orange-400"
-            >
-                View Skill
-                <FiArrowRight />
-            </Link>
+            <div className="mt-5 flex gap-2">
+                <Link
+                    to={`/skills/${skill.id}`}
+                    className="flex-1 flex items-center justify-center gap-2 rounded-xl border border-white/10 px-4 py-3 text-sm font-semibold text-white hover:bg-white/5 transition"
+                >
+                    View Skill
+                </Link>
+                <button
+                    type="button"
+                    onClick={onViewProfile}
+                    className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-orange-500 px-4 py-3 text-sm font-semibold text-black hover:bg-orange-400 transition"
+                >
+                    View Profile
+                </button>
+            </div>
         </article>
     );
 }

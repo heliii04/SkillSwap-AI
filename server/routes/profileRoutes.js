@@ -4,6 +4,8 @@ import {
     changeMyPassword,
     getMyProfile,
     updateMyProfile,
+    getUserProfileById,
+    getAllProfiles,
 } from "../controllers/profileController.js";
 
 import { requireAuth } from "../middleware/authMiddleware.js";
@@ -33,5 +35,9 @@ router
     ),
     changeMyPassword
 );
+
+router.get("/all", getAllProfiles);
+
+router.get("/user/:id", getUserProfileById);
 
 export default router;

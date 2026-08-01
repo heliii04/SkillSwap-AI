@@ -48,7 +48,7 @@ export default function Login() {
                     replace: true,
                 });
             } else {
-                navigate("/dashboard", {
+                navigate("/", {
                     replace: true,
                 });
             }

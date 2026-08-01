@@ -1,5 +1,6 @@
 import Skill from "../models/Skill.js";
 import User from "../models/User.js";
+import SwapRequest from "../models/SwapRequest.js";
 
 import {
     arraySimilarity,
@@ -96,8 +97,8 @@ const availabilityScore = (teachSkill, learnSkill) => {
 
     const slotScore =
         teachSlot === learnSlot ||
-        teachSlot === "flexible" ||
-        learnSlot === "flexible"
+            teachSlot === "flexible" ||
+            learnSlot === "flexible"
             ? 1
             : 0;
 
@@ -123,13 +124,13 @@ const locationScore = (viewer, candidate, needsOffline) => {
         viewerLocation.city &&
         candidateLocation.city &&
         viewerLocation.city.toLowerCase() ===
-            candidateLocation.city.toLowerCase();
+        candidateLocation.city.toLowerCase();
 
     const sameState =
         viewerLocation.state &&
         candidateLocation.state &&
         viewerLocation.state.toLowerCase() ===
-            candidateLocation.state.toLowerCase();
+        candidateLocation.state.toLowerCase();
 
     if (sameCity) {
         return 1;
@@ -333,6 +334,22 @@ export const findMatchesForUser = async (
         candidateUsers.map((user) => [user._id.toString(), user])
     );
 
+    const acceptedRequests = await SwapRequest.find({
+        status: "accepted",
+        $or: [
+            { sender: userId, receiver: { $in: candidateUserIds } },
+            { receiver: userId, sender: { $in: candidateUserIds } },
+        ],
+    }).lean();
+
+    const connectedUserIds = new Set(
+        acceptedRequests.map((req) =>
+            req.sender.toString() === userId.toString()
+                ? req.receiver.toString()
+                : req.sender.toString()
+        )
+    );
+
     const skillsByOwner = candidateSkills.reduce((map, skill) => {
         const ownerId = skill.owner.toString();
 
@@ -412,7 +429,9 @@ export const findMatchesForUser = async (
             }
         }
 
-        if (!bestIncoming && !bestOutgoing) {
+        // User strictly wants candidates who teach what they want to learn
+        // (Includes related skills)
+        if (!bestIncoming) {
             continue;
         }
 
@@ -461,6 +480,7 @@ export const findMatchesForUser = async (
             user: formatUserRef(candidate),
             score: Math.round(finalScore * 100),
             mutual: isMutual,
+            isConnected: connectedUserIds.has(ownerId),
 
             theyTeach: bestIncoming
                 ? formatSkillRef(bestIncoming.teachSkill)

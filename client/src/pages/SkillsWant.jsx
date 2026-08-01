@@ -7,6 +7,7 @@ import {
 } from "react";
 
 import { getAccessToken } from "../api/tokenStore";
+import useLockBodyScroll from "../hooks/useLockBodyScroll";
 
 import {
     HiOutlineBookOpen,
@@ -893,6 +894,7 @@ function SkillModal({
     onClose,
     onSubmit,
 }) {
+    useLockBodyScroll();
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
             <div className="max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-[28px] border border-white/10 bg-[#101117]">

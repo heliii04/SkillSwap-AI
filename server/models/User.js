@@ -104,6 +104,31 @@ const userSchema = new mongoose.Schema(
             default: 0,
         },
 
+        rating: {
+            type: Number,
+            min: 0,
+            max: 5,
+            default: 0,
+        },
+
+        reviews: {
+            type: Number,
+            default: 0,
+            min: 0,
+        },
+
+        sessions: {
+            type: Number,
+            default: 0,
+            min: 0,
+        },
+
+        preferredMode: {
+            type: String,
+            enum: ["Online", "Offline", "Hybrid"],
+            default: "Online",
+        },
+
         role: {
             type: String,
             enum: ["user", "admin"],

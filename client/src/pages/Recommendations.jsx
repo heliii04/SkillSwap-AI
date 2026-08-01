@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
+import UserProfileModal from "../components/profile/UserProfileModal";
 
 import {
     HiOutlineArrowPath,
@@ -31,6 +32,8 @@ export default function Recommendations() {
     const [loading, setLoading] = useState(true);
     const [drafting, setDrafting] = useState(null);
     const [reloadKey, setReloadKey] = useState(0);
+    const [selectedUserId, setSelectedUserId] = useState(null);
+    const [selectedUserScore, setSelectedUserScore] = useState(null);
 
     useEffect(() => {
         let isMounted = true;
@@ -259,30 +262,68 @@ export default function Recommendations() {
                                 </ul>
 
                                 <footer className="mt-5 flex flex-wrap gap-3 border-t border-white/10 pt-4">
-                                    <button
-                                        type="button"
-                                        onClick={() => navigate("/search")}
-                                        className="inline-flex items-center gap-2 rounded-full bg-orange-500 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-orange-400"
-                                    >
-                                        Send swap request
-                                        <HiOutlineArrowRight />
-                                    </button>
+                                    {match.isConnected ? (
+                                        <>
+                                            <button
+                                                type="button"
+                                                onClick={() => navigate("/messages")}
+                                                className="inline-flex items-center gap-2 rounded-full bg-orange-500 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-orange-400"
+                                            >
+                                                Open Chat
+                                                <HiOutlineChatBubbleLeftRight />
+                                            </button>
 
-                                    <button
-                                        type="button"
-                                        disabled={drafting === match.user.id}
-                                        onClick={() => draftMessage(match)}
-                                        className="inline-flex items-center gap-2 rounded-full border border-white/15 px-5 py-2.5 text-sm font-semibold text-white transition hover:border-white/35 disabled:opacity-50"
-                                    >
-                                        <HiOutlineChatBubbleLeftRight />
-                                        {drafting === match.user.id
-                                            ? "Writing..."
-                                            : "Draft first message"}
-                                    </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setSelectedUserId(match.user.id);
+                                                    setSelectedUserScore(match.score);
+                                                }}
+                                                className="inline-flex items-center gap-2 rounded-full border border-white/15 px-5 py-2.5 text-sm font-semibold text-white transition hover:border-white/35"
+                                            >
+                                                View details
+                                                <HiOutlineArrowRight />
+                                            </button>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <button
+                                                type="button"
+                                                onClick={() => navigate("/search")}
+                                                className="inline-flex items-center gap-2 rounded-full bg-orange-500 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-orange-400"
+                                            >
+                                                Send swap request
+                                                <HiOutlineArrowRight />
+                                            </button>
+
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setSelectedUserId(match.user.id);
+                                                    setSelectedUserScore(match.score);
+                                                }}
+                                                className="inline-flex items-center gap-2 rounded-full border border-white/15 px-5 py-2.5 text-sm font-semibold text-white transition hover:border-white/35"
+                                            >
+                                                View details
+                                                <HiOutlineArrowRight />
+                                            </button>
+                                        </>
+                                    )}
                                 </footer>
                             </article>
                         ))}
                     </div>
+                )}
+                
+                {selectedUserId && (
+                    <UserProfileModal
+                        userId={selectedUserId}
+                        matchScore={selectedUserScore}
+                        onClose={() => {
+                            setSelectedUserId(null);
+                            setSelectedUserScore(null);
+                        }}
+                    />
                 )}
             </div>
         </main>
