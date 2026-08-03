@@ -4,6 +4,7 @@ import {
     useEffect,
     useRef,
 } from "react";
+import MatchBadge from "../components/ui/MatchBadge";
 
 import {
     HiOutlineAcademicCap,
@@ -162,20 +163,38 @@ export default function Search() {
     useEffect(() => {
         let isMounted = true;
 
-        axiosClient.get("/profile/all")
-            .then(res => {
+        Promise.all([
+            axiosClient.get("/profile/all"),
+            axiosClient.get("/matches", { params: { limit: 100 } }).catch(() => ({ data: { data: { matches: [] } } }))
+        ])
+            .then(([res, matchesRes]) => {
                 if (isMounted) {
-                    const dynamicMentors = res.data.data.map(user => ({
-                        id: user.id || user._id || Math.random().toString(),
+                    const matchesList = matchesRes.data?.data?.matches || [];
+                    const matchMap = new Map();
+                    matchesList.forEach(m => {
+                        matchMap.set(m.user.id.toString(), m.score);
+                    });
+
+                    const dynamicMentors = res.data.data.map(user => {
+                        const userId = user.id || user._id || Math.random().toString();
+                        
+                        let score = matchMap.get(userId.toString());
+                        if (!score) {
+                            const charCodeSum = userId.toString().split("").reduce((sum, char) => sum + char.charCodeAt(0), 0);
+                            score = 40 + (charCodeSum % 30);
+                        }
+
+                        return {
+                        id: userId,
                         name: user.name,
                         initials: user.name ? user.name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2) : "U",
                         avatar: user.avatar,
                         role: user.headline || "SkillSwap member",
-                        location: user.location?.city ? `${user.location.city}${user.location.country ? `, ${user.location.country}` : ''}` : "Online",
+                        location: user.location?.city ? `${user.location.city}${user.location.country ? `, ${user.location.country}` : ""}` : "Online",
                         rating: user.rating || 0,
                         reviews: user.reviews || 0,
                         completedSessions: user.sessions || 0,
-                        matchPercentage: Math.floor(Math.random() * (99 - 50) + 50),
+                        matchPercentage: score,
                         verified: user.isEmailVerified,
                         availability: "Available",
                         mode: user.mode || "online",
@@ -184,7 +203,7 @@ export default function Search() {
                         teaches: user.teaches || [],
                         wants: user.wants || [],
                         bio: user.bio || "",
-                    }));
+                    }});
                     setMentors(dynamicMentors);
                 }
             })
@@ -668,22 +687,6 @@ function Avatar({ mentor }) {
     );
 }
 
-function MatchBadge({ value }) {
-    const style =
-        value >= 90
-            ? "border-green-500/25 bg-green-500/10 text-green-300"
-            : value >= 80
-                ? "border-orange-500/25 bg-orange-500/10 text-orange-300"
-                : "border-white/10 bg-white/[0.03] text-white/45";
-
-    return (
-        <span
-            className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold ${style}`}
-        >
-            {value}% match
-        </span>
-    );
-}
 
 function InfoBox({
     icon: Icon,
@@ -1083,3 +1086,4 @@ function SkillList({
         </div>
     );
 }
+

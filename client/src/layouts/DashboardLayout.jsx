@@ -68,6 +68,11 @@ const navigationItems = [
     icon: HiOutlineSparkles,
   },
   {
+    label: "AI Assistant",
+    path: "/ai-assistant",
+    icon: HiOutlineCpuChip,
+  },
+  {
     label: "Requests",
     path: "/requests",
     icon: HiOutlinePaperAirplane,
@@ -188,6 +193,12 @@ const getPageTitle = (pathname) => {
     return {
       title: "Skills",
       subtitle: "Manage your skills and learning goals",
+    };
+  }
+  if (pathname.startsWith("/ai-assistant")) {
+    return {
+      title: "AI Assistant",
+      subtitle: "Your personalized AI companion for learning and skill swapping.",
     };
   }
   return {
@@ -511,7 +522,7 @@ export default function DashboardLayout() {
         </nav>
 
         <div className={`border-t border-white/10 ${collapsed ? "p-2" : "p-4"}`}>
-          <button
+          {/* <button
             type="button"
             onClick={() =>
               navigate("/profile")
@@ -536,7 +547,7 @@ export default function DashboardLayout() {
                 </p>
               </div>
             )}
-          </button>
+          </button> */}
 
           <button
             type="button"

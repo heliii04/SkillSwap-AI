@@ -114,3 +114,4 @@ process.on("uncaughtException", (error) => {
 });
 
 startServer();
+console.log("Restart triggered for env vars");

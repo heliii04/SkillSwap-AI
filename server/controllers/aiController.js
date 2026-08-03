@@ -1,5 +1,6 @@
 import Skill from "../models/Skill.js";
 import SwapRequest from "../models/SwapRequest.js";
+import LearningRoadmap from "../models/LearningRoadmap.js";
 
 import { ApiError } from "../utils/ApiError.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
@@ -12,6 +13,15 @@ import {
     generateLearningRoadmap,
     parseSearchIntent,
 } from "../services/skillAi.service.js";
+
+import {
+    chatWithGemini,
+    generateStructuredContent,
+    roadmapSchema,
+    nextFocusSchema,
+    dailyPlanSchema,
+    quizSchema
+} from "../services/gemini.service.js";
 
 const escapeRegex = (value) =>
     value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -309,5 +319,168 @@ export const getIcebreaker = asyncHandler(async (req, res) => {
             ...icebreaker,
             usedAi: icebreaker.source === "ai",
         },
+    });
+});
+
+export const chatDiscussion = asyncHandler(async (req, res) => {
+    const { message, history } = req.body;
+    
+    // 1. We match for SkillSwap context if user asks about learning a skill.
+    let systemContext = "You are a helpful AI assistant for SkillSwap, a platform for learning and teaching skills. Default to responding in English unless the user explicitly speaks or requests Hindi or Gujarati. STRICT LIMITATION: You MUST ONLY answer questions related to skills, learning, teaching, or the SkillSwap platform itself. If a user asks something unrelated, inappropriate, or uses bad language, give a VERY SHORT and polite apology (e.g., 'Sorry, I can only help with skill-related topics.'), DO NOT explain further, and DO NOT mention any users. NEVER use bad language. NEVER mention any users on the platform unless the user explicitly asks to learn a specific skill.";
+    
+    const lowerMsg = message.toLowerCase();
+    const words = lowerMsg.replace(/[^a-zA-Z0-9\s]/g, '').split(' ').filter(w => w.length > 2 && !['how', 'to', 'learn', 'teach', 'seekhna', 'want', 'can', 'you', 'help', 'me', 'with', 'what', 'is', 'the', 'for', 'and'].includes(w));
+    
+    if (words.length > 0) {
+        const regexes = words.map(w => new RegExp(w, 'i'));
+        const potentialSkills = await Skill.find({ 
+            type: "teach", 
+            isActive: true,
+            $or: [
+                { title: { $in: regexes } },
+                { tags: { $in: regexes } }
+            ]
+        })
+        .populate("owner", "name headline")
+        .limit(5)
+        .lean();
+            
+        if (potentialSkills.length > 0) {
+            const skillContext = potentialSkills.map(s => `${s.owner?.name} teaches ${s.title}`).join(", ");
+            systemContext += ` Important context: Here are up to 5 users who teach skills related to the user's query: ${skillContext}. ONLY mention them IF the user explicitly wants to learn these exact skills.`;
+        }
+    }
+    
+    // Convert history to prompt string for simplicity, or just pass message if no history
+    let prompt = message;
+    if (history && history.length > 0) {
+        prompt = history.map(h => `${h.role}: ${h.content}`).join("\n") + `\nuser: ${message}`;
+    } else {
+        systemContext += " This is the very first message of the conversation. You MUST start your response by warmly welcoming the user to SkillSwap (e.g. 'Welcome to SkillSwap! I am your AI Assistant...'). After the welcome, proceed to answer their question or address their message.";
+    }
+
+    const aiResponse = await chatWithGemini(prompt, systemContext);
+    
+    return res.status(200).json({
+        success: true,
+        data: {
+            reply: aiResponse
+        }
+    });
+});
+
+export const generatePersonalizedRoadmap = asyncHandler(async (req, res) => {
+    const { skill, currentLevel, targetLevel, availableTime, duration, learningStyle } = req.body;
+    
+    const prompt = `Generate a personalized learning roadmap for the following:
+Skill: ${skill}
+Current Level: ${currentLevel}
+Target Level: ${targetLevel}
+Available Time: ${availableTime}
+Duration: ${duration}
+Learning Style: ${learningStyle}
+Create a structured week-by-week plan.`;
+
+    const systemInstruction = "You are an expert tutor. Generate a highly structured roadmap in JSON format matching the schema exactly.";
+    
+    const roadmapData = await generateStructuredContent(prompt, systemInstruction, roadmapSchema);
+    
+    // Save to DB
+    const newRoadmap = await LearningRoadmap.create({
+        user: req.user._id,
+        skill,
+        currentLevel,
+        targetLevel,
+        availableTime,
+        duration,
+        learningStyle,
+        weeks: roadmapData.weeks,
+        progress: 0
+    });
+    
+    return res.status(201).json({
+        success: true,
+        message: "Roadmap generated successfully",
+        data: { roadmap: newRoadmap }
+    });
+});
+
+export const updateRoadmapProgress = asyncHandler(async (req, res) => {
+    const { roadmapId } = req.params;
+    const { weekNumber, taskTitle, isCompleted } = req.body;
+    
+    const roadmap = await LearningRoadmap.findOne({ _id: roadmapId, user: req.user._id });
+    if (!roadmap) {
+        throw new ApiError(404, "Roadmap not found");
+    }
+    
+    let totalTasks = 0;
+    let completedTasks = 0;
+    
+    for (const week of roadmap.weeks) {
+        if (week.weekNumber === weekNumber) {
+            for (const task of week.tasks) {
+                if (task.title === taskTitle) {
+                    task.isCompleted = isCompleted;
+                }
+            }
+        }
+        for (const task of week.tasks) {
+            totalTasks++;
+            if (task.isCompleted) completedTasks++;
+        }
+    }
+    
+    roadmap.progress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+    await roadmap.save();
+    
+    const prompt = `User has updated their progress on ${roadmap.skill}. They are now at ${roadmap.progress}% completion. Last task updated: ${taskTitle} (Completed: ${isCompleted}). Based on this, generate an encouraging message and tell them their next focus area.`;
+    const systemInstruction = "You are an encouraging AI tutor. Return a structured JSON containing a short message and the next focus.";
+    
+    const aiResponse = await generateStructuredContent(prompt, systemInstruction, nextFocusSchema);
+    
+    return res.status(200).json({
+        success: true,
+        data: {
+            roadmap,
+            aiMessage: aiResponse.message,
+            nextFocus: aiResponse.nextFocus
+        }
+    });
+});
+
+export const getDailyPlan = asyncHandler(async (req, res) => {
+    const { roadmapId } = req.params;
+    const { availableMinutes } = req.body;
+    
+    const roadmap = await LearningRoadmap.findOne({ _id: roadmapId, user: req.user._id });
+    if (!roadmap) {
+        throw new ApiError(404, "Roadmap not found");
+    }
+    
+    const currentWeek = roadmap.weeks.find(w => w.tasks.some(t => !t.isCompleted)) || roadmap.weeks[0];
+    
+    const prompt = `The user is studying ${roadmap.skill} and is on week ${currentWeek.weekNumber} focusing on ${currentWeek.focus}. They have ${availableMinutes} minutes today. Create a daily study plan for them dividing this time between concept learning, coding/practice, and quiz/review.`;
+    const systemInstruction = "Return a JSON plan breaking down the available minutes into activities.";
+    
+    const planData = await generateStructuredContent(prompt, systemInstruction, dailyPlanSchema);
+    
+    return res.status(200).json({
+        success: true,
+        data: planData
+    });
+});
+
+export const generateQuiz = asyncHandler(async (req, res) => {
+    const { topic, numQuestions = 5 } = req.body;
+    
+    const prompt = `Generate a ${numQuestions}-question quiz on the topic: ${topic}. Include a mix of MCQs and coding/text-based questions if applicable. For MCQs provide exactly 4 options. For coding/text questions, provide an empty array for options. Ensure the questions are highly varied and different from common examples (Randomized Seed: ${Math.random().toString(36).substring(7)} - ${Date.now()}).`;
+    const systemInstruction = "You are an expert examiner. Return the quiz in the specified JSON format.";
+    
+    const quizData = await generateStructuredContent(prompt, systemInstruction, quizSchema);
+    
+    return res.status(200).json({
+        success: true,
+        data: quizData
     });
 });

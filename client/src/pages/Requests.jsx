@@ -167,9 +167,9 @@ export default function Requests() {
                             initials: req.sender?.name 
                                 ? req.sender.name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)
                                 : "U",
-                            role: req.sender?.headline || "Member",
+                            role: req.sender?.headline || "SkillSwap member",
                             location: req.sender?.location 
-                                ? [req.sender.location.city, req.sender.location.state, req.sender.location.country].filter(Boolean).join(", ")
+                                ? [req.sender.location.city, req.sender.location.country].filter(Boolean).join(", ")
                                 : "Unknown Location",
                             verified: true,
                         },
@@ -187,9 +187,9 @@ export default function Requests() {
                             initials: req.receiver?.name 
                                 ? req.receiver.name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)
                                 : "U",
-                            role: req.receiver?.headline || "Member",
+                            role: req.receiver?.headline || "SkillSwap member",
                             location: req.receiver?.location 
-                                ? [req.receiver.location.city, req.receiver.location.state, req.receiver.location.country].filter(Boolean).join(", ")
+                                ? [req.receiver.location.city, req.receiver.location.country].filter(Boolean).join(", ")
                                 : "Unknown Location",
                             verified: true,
                         },
@@ -1401,3 +1401,4 @@ function formatDate(dateValue) {
         }
     ).format(new Date(dateValue));
 }
+

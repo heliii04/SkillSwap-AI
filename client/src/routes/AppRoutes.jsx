@@ -21,6 +21,7 @@ import Recommendations from "../pages/Recommendations";
 import Requests from "../pages/Requests";
 import Messages from "../pages/Messages";
 import Notifications from "../pages/Notifications";
+import AIAssistant from "../pages/AIAssistant";
 
 import BrowseSkills from "../pages/BrowseSkills";
 import HowItWorks from "../pages/HowItWorks";
@@ -117,6 +118,10 @@ export default function AppRoutes() {
                     <Route
                         path="/notifications"
                         element={<Notifications />}
+                    />
+                    <Route
+                        path="/ai-assistant"
+                        element={<AIAssistant />}
                     />
                 </Route>
             </Route>

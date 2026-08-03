@@ -162,7 +162,7 @@ export default function Contact() {
     };
 
     return (
-        <main className="min-h-screen overflow-hidden bg-[#070707] text-white">
+        <main className="min-h-screen overflow-hidden bg-[#07080d] text-white">
             {/* Hero Section */}
             <section className="relative border-b border-white/10">
 
@@ -304,7 +304,7 @@ export default function Contact() {
                     </div>
 
                     {/* Contact Form */}
-                    <div className="rounded-[32px] border border-white/10 bg-[#0d0d0d] p-5 shadow-2xl shadow-orange-950/10 sm:p-8">
+                    <div className="rounded-[32px] border border-white/10 bg-[#0d0e15] p-5 shadow-2xl shadow-orange-950/10 sm:p-8">
                         <div className="mb-8">
                             <h2 className="text-2xl font-semibold">
                                 Send us a message

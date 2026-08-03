@@ -1,0 +1,337 @@
+import { useState, useEffect } from "react";
+import { generateQuiz } from "../../api/aiApi";
+import { FiCheck, FiX, FiAward, FiClock , FiTrash2 } from "react-icons/fi";
+import { toast } from "react-toastify";
+
+export default function QuizTaker() {
+    const [topic, setTopic] = useState("");
+    const [isLoading, setIsLoading] = useState(false);
+    const [quizData, setQuizData] = useState(null);
+    const [userAnswers, setUserAnswers] = useState({});
+    const [showResults, setShowResults] = useState(false);
+    const [score, setScore] = useState(0);
+
+    const [sessions, setSessions] = useState(() => {
+        const saved = localStorage.getItem("ai_quiz_sessions");
+        return saved ? JSON.parse(saved) : [];
+    });
+    const [currentSessionId, setCurrentSessionId] = useState(null);
+    const [showHistory, setShowHistory] = useState(false);
+
+    const handleGenerate = async (e) => {
+        e.preventDefault();
+        if (!topic.trim()) return;
+        
+        setIsLoading(true);
+        setQuizData(null);
+        setShowResults(false);
+        setUserAnswers({});
+        
+        try {
+            const res = await generateQuiz(topic, 5);
+            if (res.success && res.data?.questions) {
+                setQuizData(res.data.questions);
+                const newId = Date.now().toString();
+                setCurrentSessionId(newId);
+                setSessions(prev => {
+                    const updated = [{ id: newId, topic, quizData: res.data.questions, userAnswers: {}, showResults: false, score: 0, updatedAt: Date.now() }, ...prev];
+                    localStorage.setItem("ai_quiz_sessions", JSON.stringify(updated));
+                    return updated;
+                });
+            }
+        } catch (error) {
+            toast.error("Failed to generate quiz");
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleOptionSelect = (qIndex, option) => {
+        if (showResults) return;
+        setUserAnswers({ ...userAnswers, [qIndex]: option });
+    };
+
+    const handleSubmitQuiz = () => {
+        if (!quizData) return;
+        let newScore = 0;
+        quizData.forEach((q, idx) => {
+            if (userAnswers[idx] === q.correctAnswer) {
+                newScore++;
+            }
+        });
+        setScore(newScore);
+        setShowResults(true);
+
+        if (currentSessionId) {
+            setSessions(prev => {
+                const updated = prev.map(s => s.id === currentSessionId ? { ...s, userAnswers, showResults: true, score: newScore, updatedAt: Date.now() } : s);
+                localStorage.setItem("ai_quiz_sessions", JSON.stringify(updated));
+                return updated;
+            });
+        }
+    };
+
+    const startNewQuiz = () => {
+        setTopic("");
+        setQuizData(null);
+        setUserAnswers({});
+        setShowResults(false);
+        setScore(0);
+        setCurrentSessionId(null);
+        setShowHistory(false);
+    };
+
+    const loadSession = (id) => {
+        const session = sessions.find(s => s.id === id);
+        if (session) {
+            setCurrentSessionId(session.id);
+            setTopic(session.topic);
+            setQuizData(session.quizData);
+            setUserAnswers(session.userAnswers);
+            setShowResults(session.showResults);
+            setScore(session.score);
+        }
+        setShowHistory(false);
+    };
+
+        const deleteSession = (id) => {
+        const newSessions = sessions.filter(s => s.id !== id);
+        setSessions(newSessions);
+        
+        // We need to determine the storage key dynamically based on the file since each file uses a different key
+        const isChat = "client/src/components/ai/QuizTaker.jsx".includes("AIChatbox");
+        const isRoadmap = "client/src/components/ai/QuizTaker.jsx".includes("Roadmap");
+        const isQuiz = "client/src/components/ai/QuizTaker.jsx".includes("Quiz");
+        
+        let storageKey = "";
+        let currentKey = "";
+        if (isChat) { storageKey = "ai_chat_sessions"; currentKey = "ai_current_session_id"; }
+        else if (isRoadmap) { storageKey = "ai_roadmap_sessions"; currentKey = "ai_current_roadmap_id"; }
+        else if (isQuiz) { storageKey = "ai_quiz_sessions"; currentKey = "ai_current_quiz_id"; }
+        
+        localStorage.setItem(storageKey, JSON.stringify(newSessions));
+        
+        if (currentSessionId === id) {
+            if (newSessions.length > 0) {
+                const nextId = newSessions[0].id;
+                setCurrentSessionId(nextId);
+                localStorage.setItem(currentKey, nextId);
+                // Also load the next session data if necessary
+                if (typeof loadSession === 'function') {
+                   loadSession(nextId);
+                   setShowHistory(true); // Keep it open
+                }
+            } else {
+                clearAllHistory();
+            }
+        }
+    };
+
+    const clearAllHistory = () => {
+        setSessions([]);
+        localStorage.removeItem("ai_quiz_sessions");
+        startNewQuiz();
+    };
+
+    return (
+        <div className="relative flex flex-col flex-grow h-full min-h-0 bg-[#0a0a0a] rounded-lg border border-white/10 overflow-hidden shadow-lg">
+            <div className="bg-[#050505] p-4 border-b border-white/10 flex justify-between items-center">
+                <div>
+                    <h2 className="text-lg font-semibold text-white">AI Quiz</h2>
+                    <p className="text-xs text-gray-400">Test your knowledge with AI generated quizzes</p>
+                </div>
+                <div className="flex items-center gap-2">
+                    <button 
+                        onClick={startNewQuiz}
+                        className="flex items-center gap-2 text-sm text-gray-400 hover:text-white transition-colors border border-white/10 hover:border-gray-500 px-3 py-1.5 rounded-md"
+                    >
+                        + New Quiz
+                    </button>
+                    <button 
+                        onClick={() => setShowHistory(true)}
+                        className="flex items-center gap-2 text-sm text-gray-400 hover:text-orange-500 transition-colors border border-white/10 hover:border-orange-500 px-3 py-1.5 rounded-md"
+                    >
+                        <FiClock /> History
+                    </button>
+                </div>
+            </div>
+
+            {showHistory && (
+                <div className="absolute inset-0 bg-black/80 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+                    <div className="bg-[#1a1a1a] w-full max-w-2xl rounded-lg border border-white/10 flex flex-col max-h-[80%]">
+                        <div className="p-4 border-b border-white/10 flex justify-between items-center">
+                            <h3 className="text-white font-semibold flex items-center gap-2"><FiClock /> Saved Quizzes</h3>
+                            <button onClick={() => setShowHistory(false)} className="text-gray-400 hover:text-white text-xl leading-none">&times;</button>
+                        </div>
+                        <div className="p-4 overflow-y-auto flex-1 space-y-2">
+                            {sessions.length === 0 ? (
+                                <p className="text-gray-400 text-center py-8">No saved quizzes found.</p>
+                            ) : (
+                                sessions.map(session => {
+                                    const title = session.topic || "Untitled Quiz";
+                                    const date = new Date(session.updatedAt).toLocaleString();
+                                    
+                                    return (
+                                        <div 
+                                            key={session.id} 
+                                            onClick={() => loadSession(session.id)}
+                                            className={`p-3 rounded-md cursor-pointer border transition-colors ${currentSessionId === session.id ? 'bg-orange-600/10 border-orange-500' : 'bg-[#111111] border-white/10 hover:border-gray-500 hover:bg-[#1a1a1a]'}`}
+                                        >
+                                            <div className="flex justify-between items-center">
+                                                <p className="text-sm text-gray-200 font-medium capitalize">{title} Quiz</p>
+                                                {session.showResults && (
+                                                    <span className="text-xs font-bold text-orange-500">Score: {session.score}/{session.quizData?.length}</span>
+                                                )}
+                                            </div>
+                                            <p className="text-xs text-gray-500 mt-1">{date}</p>
+                                        </div>
+                                    );
+                                })
+                            )}
+                        </div>
+                        <div className="p-4 border-t border-white/10 flex justify-end gap-3">
+                            <button onClick={() => setShowHistory(false)} className="px-4 py-2 text-gray-300 hover:text-white transition">Close</button>
+                            <button onClick={clearAllHistory} className="bg-red-600/20 text-red-500 px-4 py-2 rounded-md hover:bg-red-600/30 transition">
+                                Clear All History
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            <div className="flex-1 overflow-y-auto p-6 flex flex-col min-h-0">
+                {!quizData && !isLoading && (
+                <div className="flex flex-col items-center justify-center h-full py-12">
+                    <FiAward className="text-6xl text-gray-700 mb-4" />
+                    <h2 className="text-xl font-bold text-white mb-2">Generate an AI Quiz</h2>
+                    <p className="text-gray-400 mb-6 text-center max-w-md">Enter a topic to generate a quick 5-question test to evaluate your knowledge.</p>
+                    <form onSubmit={handleGenerate} className="flex gap-2 w-full max-w-md">
+                        <input 
+                            type="text"
+                            value={topic}
+                            onChange={(e) => setTopic(e.target.value)}
+                            placeholder="Topic (e.g. React Hooks)"
+                            className="flex-1 bg-[#111111] text-white rounded-md px-4 py-2 focus:outline-none focus:ring-1 focus:ring-orange-500 border border-white/10"
+                        />
+                        <button 
+                            type="submit"
+                            disabled={!topic.trim()}
+                            className="bg-orange-600 hover:bg-orange-700 text-white px-6 py-2 rounded-md transition-colors disabled:opacity-50"
+                        >
+                            Generate
+                        </button>
+                    </form>
+                </div>
+            )}
+
+            {isLoading && (
+                <div className="flex flex-col items-center justify-center h-full py-20">
+                    <div className="w-12 h-12 border-4 border-orange-500 border-t-transparent rounded-full animate-spin mb-4" />
+                    <p className="text-gray-400">Crafting questions...</p>
+                </div>
+            )}
+
+            {quizData && (
+                <div className="space-y-8">
+                    <div className="flex justify-between items-center border-b border-white/10 pb-4">
+                        <h2 className="text-xl font-bold text-white capitalize">{topic} Quiz</h2>
+                        {showResults && (
+                            <div className="text-lg font-bold text-orange-500">
+                                Score: {score} / {quizData.length}
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="space-y-8">
+                        {quizData.map((q, qIndex) => (
+                            <div key={qIndex} className="bg-[#111111]/50 p-5 rounded-lg border border-white/10">
+                                <h3 className="text-lg font-medium text-white mb-4">
+                                    <span className="text-gray-500 mr-2">{qIndex + 1}.</span>
+                                    {q.questionText}
+                                </h3>
+                                
+                                <div className="space-y-3">
+                                    {q.options && q.options.length > 0 && q.options.some(opt => opt.trim() !== "") ? (
+                                        q.options.map((opt, oIndex) => {
+                                            const isSelected = userAnswers[qIndex] === opt;
+                                            const isCorrect = opt === q.correctAnswer;
+                                            
+                                            let btnClass = "w-full text-left p-3 rounded-md border transition-colors ";
+                                            if (showResults) {
+                                                if (isCorrect) btnClass += "bg-green-900/30 border-green-500 text-white";
+                                                else if (isSelected && !isCorrect) btnClass += "bg-red-900/30 border-red-500 text-white";
+                                                else btnClass += "bg-[#111111] border-white/10 text-gray-400";
+                                            } else {
+                                                if (isSelected) btnClass += "bg-orange-600/20 border-orange-500 text-white";
+                                                else btnClass += "bg-[#111111] border-white/10 hover:border-gray-500 text-gray-200";
+                                            }
+
+                                            return (
+                                                <button
+                                                    key={oIndex}
+                                                    onClick={() => handleOptionSelect(qIndex, opt)}
+                                                    className={btnClass}
+                                                    disabled={showResults}
+                                                >
+                                                    <div className="flex items-center justify-between">
+                                                        <span>{opt}</span>
+                                                        {showResults && isCorrect && <FiCheck className="text-green-500" />}
+                                                        {showResults && isSelected && !isCorrect && <FiX className="text-red-500" />}
+                                                    </div>
+                                                </button>
+                                            );
+                                        })
+                                    ) : (
+                                        <textarea
+                                            value={userAnswers[qIndex] || ""}
+                                            onChange={(e) => handleOptionSelect(qIndex, e.target.value)}
+                                            disabled={showResults}
+                                            placeholder="Type your code or answer here..."
+                                            className="w-full bg-[#0a0a0a] border border-white/10 rounded-md p-3 text-white focus:outline-none focus:border-orange-500 min-h-[120px] font-mono text-sm resize-y"
+                                        />
+                                    )}
+                                </div>
+
+                                {showResults && (
+                                    <div className="mt-4 p-4 bg-[#0a0a0a] rounded-md border border-white/10">
+                                        {(!q.options || q.options.length === 0 || !q.options.some(opt => opt.trim() !== "")) && (
+                                            <div className="mb-3">
+                                                <strong className="text-green-400 block mb-1">Expected Answer / Solution:</strong>
+                                                <div className="p-3 bg-[#050505] rounded border border-white/10 font-mono text-sm text-gray-300 overflow-x-auto whitespace-pre-wrap">
+                                                    {q.correctAnswer}
+                                                </div>
+                                            </div>
+                                        )}
+                                        <p className="text-sm text-gray-400"><strong className="text-gray-200">Explanation:</strong> {q.explanation}</p>
+                                    </div>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+
+                    {!showResults ? (
+                        <button 
+                            onClick={handleSubmitQuiz}
+                            disabled={Object.keys(userAnswers).length < quizData.length}
+                            className="w-full bg-orange-600 hover:bg-orange-700 text-white font-medium py-3 rounded-md transition-colors disabled:opacity-50"
+                        >
+                            Submit Quiz
+                        </button>
+                    ) : (
+                        <button 
+                            onClick={startNewQuiz}
+                            className="w-full bg-[#1a1a1a] hover:bg-[#222222] text-white font-medium py-3 rounded-md transition-colors"
+                        >
+                            Start New Quiz
+                        </button>
+                    )}
+                </div>
+            )}
+            </div>
+        </div>
+    );
+}
+
+
+
+

@@ -11,6 +11,7 @@ import {
     HiOutlineSparkles,
 } from "react-icons/hi2";
 
+import MatchBadge from "../components/ui/MatchBadge";
 import { getIcebreaker, getMyMatches } from "../api/matchApi";
 
 const scoreTone = (score) => {
@@ -205,19 +206,7 @@ export default function Recommendations() {
                                         </div>
                                     </div>
 
-                                    <div className="text-right">
-                                        <p
-                                            className={`text-2xl font-bold ${scoreTone(
-                                                match.score
-                                            )}`}
-                                        >
-                                            {match.score}%
-                                        </p>
-
-                                        <p className="text-[10px] uppercase tracking-[0.14em] text-white/25">
-                                            match score
-                                        </p>
-                                    </div>
+                                    <div className="text-right flex items-center justify-end"><MatchBadge value={match.score} /></div>
                                 </header>
 
                                 {match.mutual && (
@@ -329,3 +318,4 @@ export default function Recommendations() {
         </main>
     );
 }
+
