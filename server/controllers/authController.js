@@ -18,6 +18,7 @@ import {
 
 import {
     createAccessToken,
+    createAdminRefreshToken,
     createRefreshToken,
     verifyRefreshToken,
 } from "../utils/token.utils.js";
@@ -37,7 +38,7 @@ function getRefreshCookieOptions() {
             60 *
             60 *
             1000,
-        path: "/api/v1/auth",
+        path: "/",
     };
 }
 
@@ -392,6 +393,12 @@ export const login = asyncHandler(
                 isEmailVerified: true
             };
             const accessToken = createAccessToken(mockUser);
+            const adminRefreshToken = createAdminRefreshToken(expectedUsername);
+            res.cookie(
+                REFRESH_COOKIE_NAME,
+                adminRefreshToken,
+                getRefreshCookieOptions()
+            );
             return res.status(200).json({
                 success: true,
                 message: "Admin login successful.",
@@ -484,7 +491,7 @@ export const refreshAccessToken = asyncHandler(
         if (!refreshToken) {
             throw new ApiError(
                 401,
-                "Refresh token is required.",
+                "Login is required.",
                 [],
                 "REFRESH_TOKEN_REQUIRED"
             );

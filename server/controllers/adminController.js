@@ -240,3 +240,33 @@ export const deleteSkill = asyncHandler(async (req, res) => {
         message: "Skill and all duplicates deleted successfully."
     });
 });
+
+// @desc    Get users associated with a specific skill
+// @route   GET /api/admin/skills/:id/users
+// @access  Private (Admin)
+export const getSkillUsers = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const skill = await Skill.findById(id).select("+normalizedTitle");
+    if (!skill) {
+        return res.status(404).json({ success: false, message: "Skill not found." });
+    }
+
+    // Find all users that have this skill (by matching normalizedTitle and category)
+    // First, find all skill documents that match
+    const matchingSkills = await Skill.find({
+        normalizedTitle: skill.normalizedTitle,
+        category: skill.category
+    }).populate("owner", "name email");
+
+    // The user might have it in "learn" or "teach"
+    // matchingSkills already has the `type` field ("learn" or "teach") and the populated user.
+    const usersList = matchingSkills.filter(s => s.owner).map(s => ({
+        user: s.owner,
+        type: s.type
+    }));
+
+    res.status(200).json({
+        success: true,
+        data: usersList
+    });
+});

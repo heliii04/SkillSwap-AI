@@ -93,7 +93,7 @@ export default function RoadmapForm({ onRoadmapGenerated }) {
                 <button
                     type="submit"
                     disabled={isLoading}
-                    className="w-full bg-orange-600 hover:bg-orange-700 text-white font-medium py-2 px-4 rounded-md transition-colors disabled:opacity-50 mt-4 flex justify-center items-center gap-2"
+                    className="w-full bg-orange-600 hover:bg-orange-700 text-white  py-2 px-4 rounded-md transition-colors disabled:opacity-50 mt-4 flex justify-center items-center gap-2 font-bold"
                 >
                     {isLoading ? "Generating..." : "Generate Roadmap"}
                 </button>

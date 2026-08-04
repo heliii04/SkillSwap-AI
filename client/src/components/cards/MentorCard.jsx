@@ -133,19 +133,16 @@ export default function MentorCard({
             border border-white/10
             bg-[#0F1016]
             py-3.5
-            font-semibold text-white
+             text-white
             transition-all duration-300
             hover:border-orange-500
             hover:bg-orange-500
-          "
+           font-bold"
                 >
                     View Profile
 
                     <FaArrowRight
-                        className="
-              transition-transform duration-300
-              group-hover/button:translate-x-1
-            "
+                        className="animate-arrow-move"
                     />
                 </button>
             </div>

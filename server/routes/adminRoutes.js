@@ -4,7 +4,8 @@ import {
     getAllUsers,
     toggleUserStatus,
     getAllSkills,
-    deleteSkill
+    deleteSkill,
+    getSkillUsers
 } from "../controllers/adminController.js";
 import { requireAuth, requireAdmin } from "../middleware/authMiddleware.js";
 
@@ -15,5 +16,6 @@ router.get("/users", requireAuth, requireAdmin, getAllUsers);
 router.put("/users/:id/status", requireAuth, requireAdmin, toggleUserStatus);
 router.get("/skills", requireAuth, requireAdmin, getAllSkills);
 router.delete("/skills/:id", requireAuth, requireAdmin, deleteSkill);
+router.get("/skills/:id/users", requireAuth, requireAdmin, getSkillUsers);
 
 export default router;

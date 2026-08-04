@@ -199,16 +199,16 @@ export default function Navbar() {
                   rounded-full
                   bg-gradient-to-r from-orange-500 to-orange-600
                   px-6 py-3
-                  text-sm font-semibold text-white
+                  text-sm  text-white
                   shadow-[0_0_30px_rgba(249,115,22,0.3)]
                   transition-all duration-300
                   hover:-translate-y-0.5
                   hover:from-orange-400 hover:to-orange-500
-                "
+                 font-bold"
               >
                 Dashboard
 
-                <FaArrowRight className="transition-transform duration-300 group-hover:translate-x-1" />
+                <FaArrowRight className="animate-arrow-move" />
               </Link>
 
               <button
@@ -218,11 +218,11 @@ export default function Navbar() {
                   flex items-center gap-2
                   rounded-full border border-white/15
                   px-5 py-3
-                  text-sm font-medium text-white/75
+                  text-sm  text-white/75
                   transition
                   hover:border-orange-500/50
                   hover:text-orange-400
-                "
+                 font-bold"
               >
                 <FaSignOutAlt />
                 Logout
@@ -234,7 +234,7 @@ export default function Navbar() {
                 to="/login"
                 className="
                   px-3 py-2
-                  text-sm font-medium text-white/75
+                  text-sm !font-bold text-white/75
                   transition hover:text-orange-400
                 "
               >
@@ -248,16 +248,16 @@ export default function Navbar() {
                   rounded-full
                   bg-gradient-to-r from-orange-500 to-orange-600
                   px-6 py-3
-                  text-sm font-semibold text-white
+                  text-sm  text-white
                   shadow-[0_0_30px_rgba(249,115,22,0.3)]
                   transition-all duration-300
                   hover:-translate-y-0.5
                   hover:from-orange-400 hover:to-orange-500
-                "
+                 font-bold"
               >
                 Get Started
 
-                <FaArrowRight className="transition-transform duration-300 group-hover:translate-x-1" />
+                <FaArrowRight className="animate-arrow-move" />
               </Link>
             </>
           )}
@@ -356,9 +356,9 @@ export default function Navbar() {
                     rounded-xl
                     bg-orange-500
                     px-4 py-3
-                    text-center font-semibold text-white
+                    text-center  text-white
                     transition hover:bg-orange-400
-                  "
+                   font-bold"
                 >
                   Dashboard
                 </Link>
@@ -370,11 +370,11 @@ export default function Navbar() {
                     flex items-center justify-center gap-2
                     rounded-xl border border-white/15
                     px-4 py-3
-                    font-medium text-white
+                     text-white
                     transition
                     hover:border-orange-500/50
                     hover:text-orange-400
-                  "
+                   font-bold"
                 >
                     <FaSignOutAlt />
                     Logout
@@ -388,8 +388,8 @@ export default function Navbar() {
                   className="
                     rounded-xl border border-white/15
                     px-4 py-3
-                    text-center font-medium text-white
-                  "
+                    text-center  text-white
+                   font-bold"
                 >
                   Login
                 </Link>
@@ -401,8 +401,8 @@ export default function Navbar() {
                     rounded-xl
                     bg-orange-500
                     px-4 py-3
-                    text-center font-semibold text-white
-                  "
+                    text-center  text-white
+                   font-bold"
                 >
                   Register
                 </Link>

@@ -143,11 +143,11 @@ export default function QuizTaker() {
                 <div className="flex items-center gap-2">
                     <button 
                         onClick={startNewQuiz}
-                        className="flex items-center gap-2 text-sm text-gray-400 hover:text-white transition-colors border border-white/10 hover:border-gray-500 px-3 py-1.5 rounded-md"
+                        className="flex items-center gap-2 text-sm text-gray-400 hover:text-white transition-colors border border-white/10 hover:border-gray-500 px-3 py-1.5 rounded-md font-bold"
                     >
                         + New Quiz
                     </button>
-                    <button 
+                    <button className="font-bold" 
                         onClick={() => setShowHistory(true)}
                         className="flex items-center gap-2 text-sm text-gray-400 hover:text-orange-500 transition-colors border border-white/10 hover:border-orange-500 px-3 py-1.5 rounded-md"
                     >
@@ -161,7 +161,7 @@ export default function QuizTaker() {
                     <div className="bg-[#1a1a1a] w-full max-w-2xl rounded-lg border border-white/10 flex flex-col max-h-[80%]">
                         <div className="p-4 border-b border-white/10 flex justify-between items-center">
                             <h3 className="text-white font-semibold flex items-center gap-2"><FiClock /> Saved Quizzes</h3>
-                            <button onClick={() => setShowHistory(false)} className="text-gray-400 hover:text-white text-xl leading-none">&times;</button>
+                            <button className="font-bold" onClick={() => setShowHistory(false)} className="text-gray-400 hover:text-white text-xl leading-none">&times;</button>
                         </div>
                         <div className="p-4 overflow-y-auto flex-1 space-y-2">
                             {sessions.length === 0 ? (
@@ -190,8 +190,8 @@ export default function QuizTaker() {
                             )}
                         </div>
                         <div className="p-4 border-t border-white/10 flex justify-end gap-3">
-                            <button onClick={() => setShowHistory(false)} className="px-4 py-2 text-gray-300 hover:text-white transition">Close</button>
-                            <button onClick={clearAllHistory} className="bg-red-600/20 text-red-500 px-4 py-2 rounded-md hover:bg-red-600/30 transition">
+                            <button className="font-bold" onClick={() => setShowHistory(false)} className="px-4 py-2 text-gray-300 hover:text-white transition">Close</button>
+                            <button onClick={clearAllHistory} className="bg-red-600/20 text-red-500 px-4 py-2 rounded-md hover:bg-red-600/30 transition font-bold">
                                 Clear All History
                             </button>
                         </div>
@@ -216,7 +216,7 @@ export default function QuizTaker() {
                         <button 
                             type="submit"
                             disabled={!topic.trim()}
-                            className="bg-orange-600 hover:bg-orange-700 text-white px-6 py-2 rounded-md transition-colors disabled:opacity-50"
+                            className="bg-orange-600 hover:bg-orange-700 text-white px-6 py-2 rounded-md transition-colors disabled:opacity-50 font-bold"
                         >
                             Generate
                         </button>
@@ -267,7 +267,7 @@ export default function QuizTaker() {
                                             }
 
                                             return (
-                                                <button
+                                                <button className="font-bold"
                                                     key={oIndex}
                                                     onClick={() => handleOptionSelect(qIndex, opt)}
                                                     className={btnClass}
@@ -313,14 +313,14 @@ export default function QuizTaker() {
                         <button 
                             onClick={handleSubmitQuiz}
                             disabled={Object.keys(userAnswers).length < quizData.length}
-                            className="w-full bg-orange-600 hover:bg-orange-700 text-white font-medium py-3 rounded-md transition-colors disabled:opacity-50"
+                            className="w-full bg-orange-600 hover:bg-orange-700 text-white  py-3 rounded-md transition-colors disabled:opacity-50 font-bold"
                         >
                             Submit Quiz
                         </button>
                     ) : (
                         <button 
                             onClick={startNewQuiz}
-                            className="w-full bg-[#1a1a1a] hover:bg-[#222222] text-white font-medium py-3 rounded-md transition-colors"
+                            className="w-full bg-[#1a1a1a] hover:bg-[#222222] text-white  py-3 rounded-md transition-colors font-bold"
                         >
                             Start New Quiz
                         </button>

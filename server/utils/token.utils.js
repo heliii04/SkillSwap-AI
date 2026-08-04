@@ -38,6 +38,22 @@ export function createRefreshToken({
     );
 }
 
+export function createAdminRefreshToken(adminEmail) {
+    return jwt.sign(
+        {
+            sub: "static_admin_id",
+            email: adminEmail,
+            type: "admin-refresh",
+        },
+        env.jwtRefreshSecret,
+        {
+            expiresIn: `${env.jwtRefreshExpiresInDays}d`,
+            issuer: "skillswap-ai",
+            audience: "skillswap-ai-client",
+        }
+    );
+}
+
 export function verifyAccessToken(token) {
     return jwt.verify(
         token,

@@ -126,10 +126,10 @@ function MobileFeatureCard({ feature, index }) {
                         type="button"
                         className="
               mt-5 flex items-center gap-2
-              text-sm font-semibold text-orange-400
+              text-sm  text-orange-400
               transition-all duration-300
               hover:gap-4
-            "
+             font-bold"
                     >
                         Explore feature
                         <span aria-hidden="true">→</span>
@@ -327,10 +327,10 @@ export default function WhyChooseUs() {
                                                 type="button"
                                                 className="
                           mt-5 flex items-center gap-2
-                          text-sm font-semibold text-orange-400
+                          text-sm  text-orange-400
                           transition-all duration-300
                           group-hover:gap-4
-                        "
+                         font-bold"
                                             >
                                                 Explore feature
                                                 <span aria-hidden="true">→</span>

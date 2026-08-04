@@ -22,6 +22,7 @@ import axiosClient, {
 
 import {
     clearAccessToken,
+    getAccessToken,
     setAccessToken,
 } from "../api/tokenStore";
 
@@ -81,6 +82,14 @@ export function AuthProvider({ children }) {
 
     const restoreSession = useCallback(async () => {
         try {
+            if (getAccessToken()) {
+                try {
+                    await loadCurrentUser();
+                    return;
+                } catch (err) {
+                    console.log("Existing access token invalid or expired, refreshing...", err);
+                }
+            }
             await refreshAccessTokenRequest();
             await loadCurrentUser();
         } catch {

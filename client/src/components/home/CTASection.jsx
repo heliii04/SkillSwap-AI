@@ -100,21 +100,21 @@ export default function CTASection() {
                 border-white/10
                 bg-[#18191F]
                 px-8 py-4
-                font-semibold
+                
                 text-white
                 transition-all
                 duration-300
                 hover:border-orange-500
                 hover:text-orange-400
-              "
+               font-bold"
                         >
                             Contact Us
 
                             <FaArrowRight
-                                className="
+                                className="animate-arrow-move 
                   transition-transform
                   duration-300
-                  group-hover:translate-x-1
+                  
                 "
                             />
                         </Link>

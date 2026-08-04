@@ -19,7 +19,7 @@ export default function Button({
         <button
             type={type}
             onClick={onClick}
-            className={`${base} ${styles[variant]} ${className}`}
+            className={`${base} ${styles[variant]} ${className} font-bold`}
         >
             {children}
         </button>

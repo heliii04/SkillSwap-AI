@@ -211,7 +211,7 @@ export const getUserProfileById = asyncHandler(
         let isConnected = false;
         let chatId = null;
 
-        if (req.user) {
+        if (req.user && req.user._id !== "static_admin_id") {
             const existingChat = await Chat.findOne({
                 participants: { $all: [req.user._id, user._id] }
             }).lean();
@@ -238,10 +238,14 @@ export const getUserProfileById = asyncHandler(
 
 export const getAllProfiles = asyncHandler(
     async (req, res) => {
-        const users = await User.find({
-            _id: { $ne: req.user._id },
+        const query = {
             accountStatus: "active",
-        }).lean();
+        };
+        if (req.user && req.user._id !== "static_admin_id") {
+            query._id = { $ne: req.user._id };
+        }
+
+        const users = await User.find(query).lean();
 
         const allSkills = await Skill.find({ isActive: true }).lean();
 

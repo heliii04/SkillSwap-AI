@@ -421,8 +421,21 @@ skillSchema.pre(
     "save",
     function normalizeSkillData() {
         if (this.title) {
-            this.title =
-                this.title.trim();
+            let rawTitle = this.title.trim();
+            
+            // Remove common redundant prefixes and suffixes
+            let cleanTitle = rawTitle.replace(/\b(advanced|beginner|intermediate|intro|introduction to|basics|programming|development|js|tutorial|learn|course)\b/gi, '').trim();
+            
+            // Remove trailing punctuation (like a dot at the end)
+            cleanTitle = cleanTitle.replace(/^[^\w\s]+|[^\w\s]+$/g, '').trim();
+            
+            // Fallback if the user typed ONLY those words
+            if (!cleanTitle) cleanTitle = rawTitle.replace(/^[^\w\s]+|[^\w\s]+$/g, '').trim();
+            
+            // Convert to Title Case
+            cleanTitle = cleanTitle.split(/\s+/).map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+
+            this.title = cleanTitle;
 
             this.normalizedTitle =
                 this.title

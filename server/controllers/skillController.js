@@ -577,11 +577,15 @@ export const deleteLearnSkill = async (
 
 export const getBrowseSkills = async (req, res, next) => {
     try {
-        const skills = await Skill.find({
+        const query = {
             type: "teach",
             isActive: true,
-            owner: { $ne: req.user._id }
-        }).populate("owner", "name avatar location rating reviews");
+        };
+        if (req.user?._id && req.user._id !== "static_admin_id") {
+            query.owner = { $ne: req.user._id };
+        }
+
+        const skills = await Skill.find(query).populate("owner", "name avatar location rating reviews");
 
         console.log("Found teach skills for browse:", skills.length);
 

@@ -70,7 +70,7 @@ export default function RoadmapViewer({ roadmap, onUpdate }) {
                             <div className="space-y-3">
                                 {week.tasks.map((task, idx) => (
                                     <div key={idx} className="flex items-start gap-3 p-3 bg-[#111111] rounded-md">
-                                        <button 
+                                        <button className="font-bold" 
                                             onClick={() => handleToggleTask(week.weekNumber, task.title, task.isCompleted)}
                                             disabled={loadingTask === task.title}
                                             className="mt-1 flex-shrink-0"
@@ -113,7 +113,7 @@ export default function RoadmapViewer({ roadmap, onUpdate }) {
                     <button 
                         onClick={handleGetDailyPlan}
                         disabled={loadingPlan}
-                        className="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-md transition-colors disabled:opacity-50"
+                        className="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-md transition-colors disabled:opacity-50 font-bold"
                     >
                         {loadingPlan ? "Generating..." : "Generate Plan"}
                     </button>

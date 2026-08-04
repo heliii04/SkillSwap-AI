@@ -304,7 +304,7 @@ export default function Testimonials() {
                         {Array.from(
                             { length: maximumIndex + 1 },
                             (_, index) => (
-                                <button
+                                <button className="font-bold"
                                     key={index}
                                     type="button"
                                     onClick={() => setCurrentIndex(index)}
@@ -340,7 +340,7 @@ export default function Testimonials() {
                 transition
                 hover:border-orange-500
                 hover:bg-orange-500
-              "
+               font-bold"
                         >
                             <FaArrowLeft />
                         </button>
@@ -359,9 +359,9 @@ export default function Testimonials() {
                 transition
                 hover:border-orange-500
                 hover:bg-orange-500
-              "
+               font-bold"
                         >
-                            <FaArrowRight />
+                            <FaArrowRight className="animate-arrow-move"  />
                         </button>
                     </div>
 

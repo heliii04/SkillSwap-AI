@@ -13,7 +13,7 @@ import {
     getBrowseSkills,
 } from "../controllers/skillController.js";
 
-import { requireAuth } from "../middleware/authMiddleware.js";
+import { requireAuth, optionalAuth } from "../middleware/authMiddleware.js";
 
 import { validateRequest } from "../middleware/validate.middleware.js";
 
@@ -29,6 +29,8 @@ import {
 
 const router = express.Router();
 
+router.get("/browse", optionalAuth, getBrowseSkills);
+
 router.use(requireAuth);
 
 /*
@@ -37,7 +39,7 @@ router.use(requireAuth);
 |--------------------------------------------------------------------------
 */
 
-router.get("/browse", getBrowseSkills);
+
 
 router.get(
     "/teach",

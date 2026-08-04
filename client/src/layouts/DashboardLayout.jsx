@@ -23,11 +23,11 @@ import {
   HiOutlineChevronLeft,
   HiOutlineChevronRight,
   HiOutlineFlag,
-  HiOutlineCog6Tooth,
   HiOutlineChartBar,
   HiOutlineCpuChip,
   HiOutlineListBullet,
-  HiOutlineArrowPath
+  HiOutlineArrowPath,
+  HiOutlineEnvelope
 } from "react-icons/hi2";
 
 import { FiLogOut } from "react-icons/fi";
@@ -116,6 +116,11 @@ const adminNavigationItems = [
     icon: HiOutlineArrowPath,
   },
   {
+    label: "Contact Messages",
+    path: "/admin?section=support",
+    icon: HiOutlineEnvelope,
+  },
+  {
     label: "Reports & Moderation",
     path: "/admin?section=reports",
     icon: HiOutlineFlag,
@@ -135,11 +140,11 @@ const adminNavigationItems = [
     path: "/admin?section=analytics",
     icon: HiOutlineChartBar,
   },
-  {
-    label: "AI Insights",
-    path: "/admin?section=ai-insights",
-    icon: HiOutlineCpuChip,
-  },
+  // {
+  //   label: "AI Insights",
+  //   path: "/admin?section=ai-insights",
+  //   icon: HiOutlineCpuChip,
+  // },
   // {
   //   label: "Settings",
   //   path: "/admin?section=settings",
@@ -243,11 +248,13 @@ export default function DashboardLayout() {
   const currentUserRef = useRef(null);
   const isFirstFetchRef = useRef(true);
 
-  if (user?._id !== currentUserRef.current && user?.id !== currentUserRef.current) {
-    knownNotificationsRef.current = new Set();
-    currentUserRef.current = user?._id || user?.id;
-    isFirstFetchRef.current = true;
-  }
+  useEffect(() => {
+    if (user?._id !== currentUserRef.current && user?.id !== currentUserRef.current) {
+      knownNotificationsRef.current = new Set();
+      currentUserRef.current = user?._id || user?.id;
+      isFirstFetchRef.current = true;
+    }
+  }, [user]);
 
   // Request browser notification permission
   useEffect(() => {
@@ -500,7 +507,11 @@ export default function DashboardLayout() {
                     )
                   }
                   className={() => {
-                    const isItemActive = location.pathname + location.search === path ||
+                    const currentSection = new URLSearchParams(location.search).get("section");
+                    const itemSection = path.includes("section=") ? path.split("section=")[1] : null;
+                    const isItemActive =
+                      (itemSection !== null && currentSection === itemSection) ||
+                      (itemSection === null && location.pathname === path && !location.search) ||
                       (path === "/admin?section=dashboard" && location.pathname === "/admin" && location.search === "");
                     return `flex items-center ${collapsed ? "justify-center px-0 py-3" : "gap-3 px-3 py-3"} rounded-xl text-sm font-medium transition ${isItemActive
                       ? "bg-orange-500 text-black shadow-lg shadow-orange-500/20"
@@ -522,7 +533,7 @@ export default function DashboardLayout() {
         </nav>
 
         <div className={`border-t border-white/10 ${collapsed ? "p-2" : "p-4"}`}>
-          {/* <button
+          {/* <button className="font-bold"
             type="button"
             onClick={() =>
               navigate("/profile")
@@ -554,7 +565,7 @@ export default function DashboardLayout() {
             onClick={handleLogout}
             disabled={logoutLoading}
             title={collapsed ? "Sign out" : undefined}
-            className={`mt-3 flex w-full items-center ${collapsed ? "justify-center px-0 py-3" : "justify-center gap-2 px-4 py-3"} rounded-xl border border-white/10 text-sm font-semibold text-white/55 transition hover:border-red-500/40 hover:bg-red-500/10 hover:text-red-300 disabled:opacity-50`}
+            className={`mt-3 flex w-full items-center ${collapsed ? "justify-center px-0 py-3" : "justify-center gap-2 px-4 py-3"} rounded-xl border border-white/10 text-sm  text-white/55 transition hover:border-red-500/40 hover:bg-red-500/10 hover:text-red-300 disabled:opacity-50 font-bold`}
           >
             <FiLogOut className="text-lg shrink-0" />
 

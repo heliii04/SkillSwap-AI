@@ -133,19 +133,16 @@ export default function FloatingGetStarted() {
               group flex h-full shrink-0
               items-center justify-center gap-4
               rounded-full bg-blue-600
-              px-7 font-semibold text-white
+              px-7  text-white
               transition-colors duration-300
               hover:bg-blue-700
               sm:px-9
-            "
+             font-bold"
                     >
                         Get Started
 
                         <FaArrowRight
-                            className="
-                text-sm transition-transform duration-300
-                group-hover:translate-x-1.5
-              "
+                            className="animate-arrow-move text-sm"
                         />
                     </Link>
                 </div>

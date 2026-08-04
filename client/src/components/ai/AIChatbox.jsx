@@ -148,11 +148,11 @@ export default function AIChatbox() {
                 <div className="flex items-center gap-2">
                     <button 
                         onClick={startNewChat}
-                        className="flex items-center gap-2 text-sm text-gray-400 hover:text-white transition-colors border border-white/10 hover:border-gray-500 px-3 py-1.5 rounded-md"
+                        className="flex items-center gap-2 text-sm text-gray-400 hover:text-white transition-colors border border-white/10 hover:border-gray-500 px-3 py-1.5 rounded-md font-bold"
                     >
                         + New Chat
                     </button>
-                    <button 
+                    <button className="font-bold" 
                         onClick={() => setShowHistory(true)}
                         className="flex items-center gap-2 text-sm text-gray-400 hover:text-orange-500 transition-colors border border-white/10 hover:border-orange-500 px-3 py-1.5 rounded-md"
                     >
@@ -166,7 +166,7 @@ export default function AIChatbox() {
                     <div className="bg-[#1a1a1a] w-full max-w-2xl rounded-lg border border-white/10 flex flex-col max-h-[80%]">
                         <div className="p-4 border-b border-white/10 flex justify-between items-center">
                             <h3 className="text-white font-semibold flex items-center gap-2"><FiClock /> Previous Chats</h3>
-                            <button onClick={() => setShowHistory(false)} className="text-gray-400 hover:text-white text-xl leading-none">&times;</button>
+                            <button className="font-bold" onClick={() => setShowHistory(false)} className="text-gray-400 hover:text-white text-xl leading-none">&times;</button>
                         </div>
                         <div className="p-4 overflow-y-auto flex-1 space-y-2">
                             {sessions.length === 0 ? (
@@ -188,7 +188,7 @@ export default function AIChatbox() {
         <p className="text-sm text-gray-200 font-medium truncate">{title}</p>
         <p className="text-xs text-gray-500 mt-1">{date}</p>
     </div>
-    <button 
+    <button className="font-bold" 
         onClick={(e) => { e.stopPropagation(); deleteSession(session.id); }}
         className="p-1.5 text-gray-500 hover:text-red-500 hover:bg-red-500/10 rounded-md transition-colors"
         title="Delete this history"
@@ -202,8 +202,8 @@ export default function AIChatbox() {
                             )}
                         </div>
                         <div className="p-4 border-t border-white/10 flex justify-end gap-3">
-                            <button onClick={() => setShowHistory(false)} className="px-4 py-2 text-gray-300 hover:text-white transition">Close</button>
-                            <button onClick={clearAllHistory} className="bg-red-600/20 text-red-500 px-4 py-2 rounded-md hover:bg-red-600/30 transition">
+                            <button className="font-bold" onClick={() => setShowHistory(false)} className="px-4 py-2 text-gray-300 hover:text-white transition">Close</button>
+                            <button onClick={clearAllHistory} className="bg-red-600/20 text-red-500 px-4 py-2 rounded-md hover:bg-red-600/30 transition font-bold">
                                 Clear All History
                             </button>
                         </div>
@@ -246,7 +246,7 @@ export default function AIChatbox() {
                 <button
                     type="submit"
                     disabled={isLoading || !input.trim()}
-                    className="bg-orange-600 hover:bg-orange-700 text-white p-3 rounded-md transition-colors disabled:opacity-50"
+                    className="bg-orange-600 hover:bg-orange-700 text-white p-3 rounded-md transition-colors disabled:opacity-50 font-bold"
                 >
                     <FiSend />
                 </button>

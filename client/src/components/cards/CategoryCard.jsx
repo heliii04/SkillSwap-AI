@@ -59,15 +59,15 @@ export default function CategoryCard({
           items-center
           gap-2
           text-sm
-          font-semibold
+          
           text-orange-400
           transition-all
           duration-300
           group-hover:gap-4
-        "
+         font-bold"
             >
                 Explore
-                <FaArrowRight />
+                <FaArrowRight className="animate-arrow-move"  />
             </button>
         </article>
     );

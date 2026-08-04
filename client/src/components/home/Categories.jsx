@@ -91,7 +91,7 @@ export default function Categories() {
 
                 <div className="max-w-7xl mx-auto px-6">
 
-                    <div className="text-center" style={{ "margin-top": "-50px" }}>
+                    <div className="text-center" style={{ marginTop: "-50px" }}>
 
                         <span
                             className="
@@ -125,7 +125,7 @@ export default function Categories() {
 
                     <div
                         key={isVisible ? "start" : "stop"}
-                        style={{ "margin-top": "50px" }}
+                        style={{ marginTop: "50px" }}
                         className={`flex gap-6 w-max ${isVisible ? "animate-marquee" : ""
                             }`}
                     >

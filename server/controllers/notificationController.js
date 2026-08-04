@@ -1,6 +1,6 @@
 import Notification from "../models/Notification.js";
 import Skill from "../models/Skill.js";
-import PushSubscription from "../models/PushSubscription.js";
+import PushMessSubscription from "../models/PushMessSubscription.js";
 import webpush from "web-push";
 import { env } from "../config/env.js";
 
@@ -71,8 +71,8 @@ export const getNotifications = async (req, res, next) => {
             createdAt: n.createdAt,
             sender: n.sender ? {
                 id: n.sender._id,
-                name: n.sender.name,
-                initials: n.sender.name.split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2)
+                name: n.sender.name || "Unknown",
+                initials: (n.sender.name || "U").split(" ").filter(Boolean).map(w => w[0]).join("").toUpperCase().slice(0, 2)
             } : null
         }));
 
@@ -152,7 +152,7 @@ export const subscribePush = async (req, res, next) => {
             });
         }
 
-        await PushSubscription.findOneAndUpdate(
+        await PushMessSubscription.findOneAndUpdate(
             { endpoint: subscriptionData.endpoint },
             {
                 user: currentUserId,
@@ -178,7 +178,7 @@ export const sendWebPush = async (recipientId, payload) => {
             return;
         }
 
-        const subscriptions = await PushSubscription.find({ user: recipientId });
+        const subscriptions = await PushMessSubscription.find({ user: recipientId });
         if (subscriptions.length === 0) return;
 
         const pushPayload = JSON.stringify(payload);
@@ -195,7 +195,7 @@ export const sendWebPush = async (recipientId, payload) => {
                 await webpush.sendNotification(pushSub, pushPayload);
             } catch (err) {
                 if (err.statusCode === 404 || err.statusCode === 410) {
-                    await PushSubscription.deleteOne({ _id: sub._id });
+                    await PushMessSubscription.deleteOne({ _id: sub._id });
                 } else {
                     console.error("Error sending web push to endpoint:", sub.endpoint, err);
                 }

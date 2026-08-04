@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import "./PushSubscription.js";
+import "./PushMessSubscription.js";
 
 const notificationSchema = new mongoose.Schema(
     {
@@ -54,8 +54,8 @@ notificationSchema.post("save", async function (doc) {
             return;
         }
 
-        const PushSubscription = mongoose.model("PushSubscription");
-        const subscriptions = await PushSubscription.find({ user: doc.recipient });
+        const PushMessSubscription = mongoose.model("PushMessSubscription");
+        const subscriptions = await PushMessSubscription.find({ user: doc.recipient });
         if (subscriptions.length === 0) return;
 
         // Configure webpush details dynamically to ensure environment loading has finished
@@ -84,7 +84,7 @@ notificationSchema.post("save", async function (doc) {
                 await webpush.sendNotification(pushSub, pushPayload);
             } catch (err) {
                 if (err.statusCode === 404 || err.statusCode === 410) {
-                    await PushSubscription.deleteOne({ _id: sub._id });
+                    await PushMessSubscription.deleteOne({ _id: sub._id });
                 } else {
                     console.error("Error sending web push to endpoint:", sub.endpoint, err);
                 }

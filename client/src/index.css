@@ -333,3 +333,18 @@ select:focus-visible {
 .Toastify__close-button:hover {
     color: #ffffff !important;
 }
+@keyframes arrow-move {
+    0%, 100% { transform: translateX(0); }
+    50% { transform: translateX(4px); }
+}
+
+.animate-arrow-move {
+    animation: arrow-move 1.5s ease-in-out infinite;
+}
+
+/* Force all buttons to be bold as requested */
+button,
+[role="button"],
+a[class*="px-"][class*="py-"][class*="bg-"] {
+    font-weight: 700 !important;
+}

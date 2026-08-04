@@ -115,15 +115,15 @@ export default function Hero() {
               border border-white/15
               bg-[#111218]
               px-7 py-4
-              font-semibold text-white
+               text-white
               transition-all duration-300
               hover:border-orange-400/50
               hover:bg-[#171820]
-            "
+             font-bold"
                     >
                         Explore Skills
 
-                        <FaArrowRight className="transition-transform duration-300 group-hover:translate-x-1" />
+                        <FaArrowRight className="animate-arrow-move" />
                     </Link>
 
                     <Link
@@ -134,15 +134,15 @@ export default function Hero() {
               rounded-full
               bg-orange-500
               px-7 py-4
-              font-semibold text-white
+               text-white
               transition-all duration-300
               hover:-translate-y-1
               hover:bg-orange-400
-            "
+             font-bold"
                     >
                         Get Started
 
-                        <FaArrowRight className="transition-transform duration-300 group-hover:translate-x-1" />
+                        <FaArrowRight className="animate-arrow-move" />
                     </Link>
                 </div>
             </motion.div>

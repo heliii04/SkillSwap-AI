@@ -192,7 +192,7 @@ export default function AIRecommendation() {
                         ))}
                     </div>
 
-                    <button
+                    <button className="font-bold"
                         type="button"
                         onClick={() =>
                             navigate(
@@ -214,10 +214,7 @@ export default function AIRecommendation() {
                         Try AI Matching
 
                         <FaArrowRight
-                            className="
-                transition-transform duration-300
-                group-hover:translate-x-1
-              "
+                            className="animate-arrow-move"
                         />
                     </button>
                 </div>
@@ -292,7 +289,7 @@ export default function AIRecommendation() {
                             const isSelected = activeSkillId === skill.id;
 
                             return (
-                                <button
+                                <button className="font-bold"
                                     key={skill.id}
                                     type="button"
                                     onClick={() => setSelectedSkill(skill.id)}
@@ -404,7 +401,7 @@ export default function AIRecommendation() {
                                             Recommended learning path
                                         </span>
                                         <FaArrowRight
-                                            className={`text-sm transition-all duration-300${isSelected ? "translate-x-1 text-white" : "text-white/30 group-hover:translate-x-1 group-hover:text-white"} `} />
+                                            className={`animate-arrow-move text-sm ${isSelected ? "text-white" : "text-white/30 group-hover:text-white"} `} />
                                     </div>
                                 </button>
                             );

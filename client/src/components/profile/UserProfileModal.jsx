@@ -32,6 +32,66 @@ export default function UserProfileModal({ userId, matchScore, onClose }) {
     const [isConnected, setIsConnected] = useState(false);
     const [chatId, setChatId] = useState(null);
 
+    // Swap request states
+    const [isRequestingSwap, setIsRequestingSwap] = useState(false);
+    const [myTeachSkills, setMyTeachSkills] = useState([]);
+    const [swapFormData, setSwapFormData] = useState({
+        senderSkillId: "",
+        receiverSkillId: "",
+        message: ""
+    });
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    const handleOpenSwapForm = async () => {
+        try {
+            setLoading(true);
+            const res = await axiosClient.get("/skills/teach");
+            const mySkills = res.data?.data?.skills || [];
+            
+            if (mySkills.length === 0) {
+                toast.warning("You must add at least one 'Teach Skill' in your profile before sending a match request.", { toastId: "no-skills" });
+                onClose();
+                navigate("/my-profile");
+                return;
+            }
+            
+            setMyTeachSkills(mySkills);
+            setSwapFormData({
+                senderSkillId: mySkills[0]?._id || mySkills[0]?.id || "",
+                receiverSkillId: teachSkills.length > 0 ? (teachSkills[0]._id || teachSkills[0].id) : "",
+                message: ""
+            });
+            setIsRequestingSwap(true);
+        } catch (error) {
+            toast.error("Failed to fetch your skills.");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleSendSwapRequest = async () => {
+        if (!swapFormData.senderSkillId || !swapFormData.receiverSkillId) {
+            toast.error("Please select skills to swap.");
+            return;
+        }
+        
+        try {
+            setIsSubmitting(true);
+            await axiosClient.post("/swap-requests", {
+                receiverId: userId,
+                senderSkillId: swapFormData.senderSkillId,
+                receiverSkillId: swapFormData.receiverSkillId,
+                message: swapFormData.message
+            });
+            toast.success("Match request sent successfully!");
+            onClose();
+        } catch (error) {
+            toast.error(error?.response?.data?.message || "Failed to send match request.");
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
     useEffect(() => {
         if (!userId) return;
 
@@ -75,7 +135,7 @@ export default function UserProfileModal({ userId, matchScore, onClose }) {
                 type="button"
                 aria-label="Close profile details"
                 onClick={onClose}
-                className="absolute inset-0 h-full w-full cursor-default"
+                className="absolute inset-0 h-full w-full cursor-default font-bold"
             />
 
             <div className="relative z-10 max-h-[92vh] w-full max-w-2xl overflow-hidden rounded-[24px] border border-white/10 bg-[#121319] shadow-2xl flex flex-col">
@@ -93,7 +153,7 @@ export default function UserProfileModal({ userId, matchScore, onClose }) {
                     <button
                         type="button"
                         onClick={onClose}
-                        className="rounded-xl border border-white/10 p-2 text-white/50 transition hover:bg-white/5 hover:text-white"
+                        className="rounded-xl border border-white/10 p-2 text-white/50 transition hover:bg-white/5 hover:text-white font-bold"
                     >
                         <HiOutlineXMark className="text-xl" />
                     </button>
@@ -104,6 +164,52 @@ export default function UserProfileModal({ userId, matchScore, onClose }) {
                     {loading ? (
                         <div className="flex h-48 items-center justify-center">
                             <div className="h-8 w-8 animate-spin rounded-full border-4 border-[#ff5a00] border-t-transparent" />
+                        </div>
+                    ) : isRequestingSwap ? (
+                        <div className="space-y-5">
+                            <h3 className="text-lg font-semibold text-white">Request a Skill Swap</h3>
+                            <p className="text-sm text-white/60">Choose the skill you want to offer and the skill you want to learn from {user?.name}.</p>
+                            
+                            <div>
+                                <label className="mb-2 block text-sm font-medium text-white/80">I will teach:</label>
+                                <select 
+                                    value={swapFormData.senderSkillId}
+                                    onChange={(e) => setSwapFormData({...swapFormData, senderSkillId: e.target.value})}
+                                    className="w-full rounded-xl border border-white/10 bg-[#090a0f] px-4 py-3 text-sm text-white outline-none focus:border-orange-500/60"
+                                >
+                                    {myTeachSkills.map(skill => (
+                                        <option key={skill._id || skill.id} value={skill._id || skill.id}>{skill.title}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            
+                            <div>
+                                <label className="mb-2 block text-sm font-medium text-white/80">I want to learn:</label>
+                                <select 
+                                    value={swapFormData.receiverSkillId}
+                                    onChange={(e) => setSwapFormData({...swapFormData, receiverSkillId: e.target.value})}
+                                    className="w-full rounded-xl border border-white/10 bg-[#090a0f] px-4 py-3 text-sm text-white outline-none focus:border-orange-500/60"
+                                >
+                                    {teachSkills.length > 0 ? (
+                                        teachSkills.map(skill => (
+                                            <option key={skill._id || skill.id} value={skill._id || skill.id}>{skill.title}</option>
+                                        ))
+                                    ) : (
+                                        <option value="">No skills available</option>
+                                    )}
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className="mb-2 block text-sm font-medium text-white/80">Message (Optional):</label>
+                                <textarea 
+                                    rows="3"
+                                    value={swapFormData.message}
+                                    onChange={(e) => setSwapFormData({...swapFormData, message: e.target.value})}
+                                    placeholder="Say hi and explain why you're a good match..."
+                                    className="w-full rounded-xl border border-white/10 bg-[#090a0f] px-4 py-3 text-sm text-white outline-none focus:border-orange-500/60 resize-none"
+                                />
+                            </div>
                         </div>
                     ) : !user ? (
                         <div className="flex h-48 items-center justify-center">
@@ -250,34 +356,43 @@ export default function UserProfileModal({ userId, matchScore, onClose }) {
                 <div className="border-t border-white/5 bg-[#121319]/95 px-5 py-5 sm:px-7 flex justify-end gap-3">
                     <button
                         type="button"
-                        onClick={onClose}
-                        className="rounded-xl border border-white/5 bg-[#171821] px-6 py-3 text-[14px] font-medium text-white/60 hover:bg-white/5 hover:text-white transition"
+                        onClick={() => {
+                            if (isRequestingSwap) setIsRequestingSwap(false);
+                            else onClose();
+                        }}
+                        className="rounded-xl border border-white/5 bg-[#171821] px-6 py-3 text-[14px] text-white/60 hover:bg-white/5 hover:text-white transition font-bold"
                     >
-                        Close
+                        {isRequestingSwap ? "Back" : "Close"}
                     </button>
-                    {user && isConnected ? (
+                    {isRequestingSwap ? (
+                        <button
+                            type="button"
+                            onClick={handleSendSwapRequest}
+                            disabled={isSubmitting}
+                            className="inline-flex items-center gap-2 rounded-xl bg-[#ff5a00] px-6 py-3 text-[14px] font-bold text-black hover:bg-[#ff5a00]/90 transition disabled:opacity-50"
+                        >
+                            {isSubmitting ? "Sending..." : "Send Request"}
+                        </button>
+                    ) : user && isConnected ? (
                         <button
                             type="button"
                             onClick={() => {
                                 onClose();
                                 navigate(`/messages?chatId=${chatId}`);
                             }}
-                            className="inline-flex items-center gap-2 rounded-xl bg-[#ff5a00] px-6 py-3 text-[14px] font-medium text-black hover:bg-[#ff5a00]/90 transition"
+                            className="font-bold inline-flex items-center gap-2 rounded-xl bg-[#ff5a00] px-6 py-3 text-[14px] text-black hover:bg-[#ff5a00]/90 transition"
                         >
                             Open Chat
-                            <HiOutlineArrowRight className="text-[16px]" />
+                            <HiOutlineArrowRight className="text-[16px] animate-arrow-move" />
                         </button>
                     ) : user && (
                         <button
                             type="button"
-                            onClick={() => {
-                                onClose();
-                                navigate("/search");
-                            }}
-                            className="inline-flex items-center gap-2 rounded-xl bg-[#ff5a00] px-6 py-3 text-[14px] font-medium text-black hover:bg-[#ff5a00]/90 transition"
+                            onClick={handleOpenSwapForm}
+                            className="font-bold inline-flex items-center gap-2 rounded-xl bg-[#ff5a00] px-6 py-3 text-[14px] text-black hover:bg-[#ff5a00]/90 transition"
                         >
                             Send match request
-                            <HiOutlineArrowRight className="text-[16px]" />
+                            <HiOutlineArrowRight className="text-[16px] animate-arrow-move" />
                         </button>
                     )}
                 </div>

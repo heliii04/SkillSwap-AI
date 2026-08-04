@@ -3,6 +3,33 @@ import { ApiError } from "../utils/ApiError.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { verifyAccessToken } from "../utils/token.utils.js";
 
+export const optionalAuth = asyncHandler(async (req, _res, next) => {
+    const authorization = req.headers.authorization;
+    if (!authorization || !authorization.startsWith("Bearer ")) {
+        return next();
+    }
+    const accessToken = authorization.slice(7).trim();
+    if (!accessToken) {
+        return next();
+    }
+    try {
+        const payload = verifyAccessToken(accessToken);
+        if (payload.type === "access") {
+            if (payload.sub === "static_admin_id") {
+                req.user = { _id: "static_admin_id", role: "admin" };
+            } else {
+                const user = await User.findById(payload.sub);
+                if (user && user.accountStatus !== "suspended") {
+                    req.user = user;
+                }
+            }
+        }
+    } catch (err) {
+        // Token invalid, ignore
+    }
+    next();
+});
+
 export const requireAuth = asyncHandler(
     async (req, _res, next) => {
         const authorization =

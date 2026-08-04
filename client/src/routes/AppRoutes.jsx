@@ -9,32 +9,41 @@ import DashboardLayout from "../layouts/DashboardLayout";
 
 import ProtectedRoute from "../components/ProtectedRoute";
 
-import Home from "../pages/Home";
-import Login from "../pages/Login";
-import Register from "../pages/Register";
-import Dashboard from "../pages/Dashboard";
-import MyProfile from "../pages/MyProfile";
-import SkillsTeach from "../pages/SkillsTeach";
-import SkillsWant from "../pages/SkillsWant";
-import Search from "../pages/Search";
-import Recommendations from "../pages/Recommendations";
-import Requests from "../pages/Requests";
-import Messages from "../pages/Messages";
-import Notifications from "../pages/Notifications";
-import AIAssistant from "../pages/AIAssistant";
+import Home from "../pages/common/Home";
+import Login from "../pages/common/Login";
+import Register from "../pages/common/Register";
+import Dashboard from "../pages/user/Dashboard";
+import MyProfile from "../pages/user/MyProfile";
+import SkillsTeach from "../pages/user/SkillsTeach";
+import SkillsWant from "../pages/user/SkillsWant";
+import Search from "../pages/user/Search";
+import Recommendations from "../pages/user/Recommendations";
+import Requests from "../pages/user/Requests";
+import Messages from "../pages/user/Messages";
+import Notifications from "../pages/user/Notifications";
+import AIAssistant from "../pages/user/AIAssistant";
 
-import BrowseSkills from "../pages/BrowseSkills";
-import HowItWorks from "../pages/HowItWorks";
-import About from "../pages/About";
-import Contact from "../pages/Contact";
-import NotFound from "../pages/NotFound";
-import VerifyOtp from "../pages/VerifyOtp";
-import PrivacyPolicy from "../pages/PrivacyPolicy";
-import Terms from "../pages/Terms";
-import Faq from "../pages/Faq";
-import HelpCenter from "../pages/HelpCenter";
+import BrowseSkills from "../pages/common/BrowseSkills";
+import HowItWorks from "../pages/common/HowItWorks";
+import About from "../pages/common/About";
+import Contact from "../pages/common/Contact";
+import NotFound from "../pages/common/NotFound";
+import VerifyOtp from "../pages/common/VerifyOtp";
+import PrivacyPolicy from "../pages/common/PrivacyPolicy";
+import Terms from "../pages/common/Terms";
+import Faq from "../pages/common/Faq";
+import HelpCenter from "../pages/common/HelpCenter";
 import AdminRoute from "../components/AdminRoute";
-import AdminDashboard from "../pages/AdminDashboard";
+import AdminDashboard from "../pages/admin/AdminDashboard";
+import AdminOverview from "../pages/admin/AdminOverview";
+import AdminUsers from "../pages/admin/AdminUsers";
+import AdminSkills from "../pages/admin/AdminSkills";
+import AdminSwaps from "../pages/admin/AdminSwaps";
+import AdminSupport from "../pages/admin/AdminSupport";
+import AdminReports from "../pages/admin/AdminReports";
+import AdminReportedMessages from "../pages/admin/AdminReportedMessages";
+import AdminAnalytics from "../pages/admin/AdminAnalytics";
+import AdminAuditLogs from "../pages/admin/AdminAuditLogs";
 
 
 export default function AppRoutes() {
@@ -129,10 +138,16 @@ export default function AppRoutes() {
             {/* Admin dashboard pages */}
             <Route element={<AdminRoute />}>
                 <Route element={<DashboardLayout />}>
-                    <Route
-                        path="/admin"
-                        element={<AdminDashboard />}
-                    />
+                    <Route path="/admin" element={<AdminDashboard />} />
+                    <Route path="/admin/overview" element={<AdminOverview />} />
+                    <Route path="/admin/users" element={<AdminUsers />} />
+                    <Route path="/admin/skills" element={<AdminSkills />} />
+                    <Route path="/admin/swaps" element={<AdminSwaps />} />
+                    <Route path="/admin/support" element={<AdminSupport />} />
+                    <Route path="/admin/reports" element={<AdminReports />} />
+                    <Route path="/admin/reported-messages" element={<AdminReportedMessages />} />
+                    <Route path="/admin/analytics" element={<AdminAnalytics />} />
+                    <Route path="/admin/audit-logs" element={<AdminAuditLogs />} />
                 </Route>
             </Route>
 
