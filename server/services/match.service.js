@@ -7,14 +7,16 @@ import {
     textSimilarity,
 } from "../utils/textSimilarity.js";
 
+import { expandLearnSkillsIntent } from "./skillAi.service.js";
+
 /*
 |--------------------------------------------------------------------------
 | Match engine
 |--------------------------------------------------------------------------
 |
 | Scores how well another member fits the current user, and explains why.
-| Deterministic and dependency-free: it is the fallback that keeps
-| recommendations working even when the AI provider is unavailable.
+| Uses AI expansion for "Skills I Want" to recommend direct skill matches
+| as well as related skills the user could learn.
 |
 */
 
@@ -37,15 +39,19 @@ const LEVEL_RANK = {
 
 const CANDIDATE_LIMIT = 600;
 
+const escapeRegex = (value) =>
+    value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
 const toRank = (level) =>
     LEVEL_RANK[level] === undefined ? null : LEVEL_RANK[level];
 
-const skillScore = (teachSkill, learnSkill) => {
+const skillScore = (teachSkill, learnSkill, aiExpanded = null) => {
     const titleScore = textSimilarity(teachSkill.title, learnSkill.title);
 
+    // Only compare actual tags, DO NOT include broad category strings
     const tagScore = arraySimilarity(
-        [...(teachSkill.tags || []), teachSkill.category],
-        [...(learnSkill.tags || []), learnSkill.category]
+        teachSkill.tags || [],
+        learnSkill.tags || []
     );
 
     const goalScore = textSimilarity(
@@ -53,10 +59,46 @@ const skillScore = (teachSkill, learnSkill) => {
         learnSkill.learningGoal
     );
 
-    return Math.min(
-        1,
-        Math.max(titleScore, 0.75 * tagScore, 0.5 * goalScore)
-    );
+    let directMatchScore = Math.max(titleScore, 0.8 * tagScore, 0.6 * goalScore);
+
+    // Small bonus if categories match AND there is already a non-zero title/tag/goal match
+    if (
+        directMatchScore > 0 &&
+        teachSkill.category &&
+        learnSkill.category &&
+        teachSkill.category === learnSkill.category
+    ) {
+        directMatchScore = Math.min(1, directMatchScore + 0.1);
+    }
+
+    if (directMatchScore >= 0.35) {
+        return {
+            score: directMatchScore,
+            isRelatedMatch: false,
+            relatedSkillTitle: null,
+        };
+    }
+
+    // Check AI expanded related skills for what user wants to learn
+    if (aiExpanded && Array.isArray(aiExpanded.relatedSkills)) {
+        for (const relatedSkill of aiExpanded.relatedSkills) {
+            const relScore = textSimilarity(teachSkill.title, relatedSkill);
+
+            if (relScore >= 0.5) {
+                return {
+                    score: Math.min(0.85, 0.6 + relScore * 0.25),
+                    isRelatedMatch: true,
+                    relatedSkillTitle: relatedSkill,
+                };
+            }
+        }
+    }
+
+    return {
+        score: 0,
+        isRelatedMatch: false,
+        relatedSkillTitle: null,
+    };
 };
 
 const levelScore = (teachSkill, learnSkill) => {
@@ -68,10 +110,7 @@ const levelScore = (teachSkill, learnSkill) => {
     }
 
     if (teacherRank >= targetRank) {
-        // Slight penalty for a huge gap: an expert teaching an absolute
-        // beginner is a worse fit than someone one step ahead.
         const gap = teacherRank - targetRank;
-
         return gap <= 2 ? 1 : 0.8;
     }
 
@@ -97,8 +136,8 @@ const availabilityScore = (teachSkill, learnSkill) => {
 
     const slotScore =
         teachSlot === learnSlot ||
-            teachSlot === "flexible" ||
-            learnSlot === "flexible"
+        teachSlot === "flexible" ||
+        learnSlot === "flexible"
             ? 1
             : 0;
 
@@ -124,13 +163,13 @@ const locationScore = (viewer, candidate, needsOffline) => {
         viewerLocation.city &&
         candidateLocation.city &&
         viewerLocation.city.toLowerCase() ===
-        candidateLocation.city.toLowerCase();
+            candidateLocation.city.toLowerCase();
 
     const sameState =
         viewerLocation.state &&
         candidateLocation.state &&
         viewerLocation.state.toLowerCase() ===
-        candidateLocation.state.toLowerCase();
+            candidateLocation.state.toLowerCase();
 
     if (sameCity) {
         return 1;
@@ -140,7 +179,6 @@ const locationScore = (viewer, candidate, needsOffline) => {
         return 0.7;
     }
 
-    // Online-only pairs barely care about distance.
     return needsOffline ? 0.2 : 0.6;
 };
 
@@ -152,13 +190,19 @@ const trustScore = (candidate) => {
     return 0.6 * completion + 0.3 * verified + 0.1 * hasAvatar;
 };
 
-const scorePair = (teachSkill, learnSkill, teacher, learner) => {
+const scorePair = (teachSkill, learnSkill, teacher, learner, aiExpanded = null) => {
     const needsOffline =
         teachSkill.teachingMode === "offline" ||
         learnSkill.preferredLearningMode === "offline";
 
+    const { score: sScore, isRelatedMatch, relatedSkillTitle } = skillScore(
+        teachSkill,
+        learnSkill,
+        aiExpanded
+    );
+
     const parts = {
-        skill: skillScore(teachSkill, learnSkill),
+        skill: sScore,
         level: levelScore(teachSkill, learnSkill),
         availability: availabilityScore(teachSkill, learnSkill),
         mode: modeScore(teachSkill, learnSkill),
@@ -174,6 +218,8 @@ const scorePair = (teachSkill, learnSkill, teacher, learner) => {
     return {
         parts,
         score,
+        isRelatedMatch,
+        relatedSkillTitle,
     };
 };
 
@@ -182,22 +228,26 @@ const humanDays = (days = []) =>
         .map((day) => day.charAt(0).toUpperCase() + day.slice(1, 3))
         .join(", ");
 
-const buildReasons = ({ parts, teachSkill, learnSkill, teacher }) => {
+const buildReasons = ({ parts, teachSkill, learnSkill, teacher, isRelatedMatch, relatedSkillTitle }) => {
     const reasons = [];
 
-    if (parts.skill >= 0.85) {
+    if (isRelatedMatch) {
         reasons.push(
-            `Exact skill match: "${teachSkill.title}" ↔ "${learnSkill.title}"`
+            `AI Suggested Related Skill: "${teachSkill.title}" complements your goal to learn "${learnSkill.title}"`
+        );
+    } else if (parts.skill >= 0.85) {
+        reasons.push(
+            `Exact skill match: "${teachSkill.title}" matches your goal to learn "${learnSkill.title}"`
         );
     } else if (parts.skill > 0) {
         reasons.push(
-            `Related skills: "${teachSkill.title}" covers what you need for "${learnSkill.title}"`
+            `Related skill fit: "${teachSkill.title}" covers what you need for "${learnSkill.title}"`
         );
     }
 
     if (parts.level >= 1 && teachSkill.level) {
         reasons.push(
-            `${teachSkill.level} teacher for your ${learnSkill.targetLevel} goal`
+            `${teachSkill.level} teacher for your ${learnSkill.targetLevel || "learning"} goal`
         );
     }
 
@@ -257,14 +307,11 @@ const formatUserRef = (user) => ({
 
 /**
  * Ranked list of members the given user should swap skills with.
- *
- * A "swap" is scored in both directions: what they can teach you, and
- * what you can teach them. Pairs where both directions work are marked
- * `mutual` and boosted, because those are the swaps that actually happen.
+ * Priority signal is "Skills I Want" (`myLearnSkills`).
  */
 export const findMatchesForUser = async (
     userId,
-    { limit = 10, minScore = 0.25 } = {}
+    { limit = 10, minScore = 0.2 } = {}
 ) => {
     const viewer = await User.findById(userId).lean();
 
@@ -284,9 +331,31 @@ export const findMatchesForUser = async (
         return [];
     }
 
-    const interestingCategories = [
-        ...new Set(mySkills.map((skill) => skill.category)),
+    // AI Expansion for "Skills I Want"
+    const aiExpanded = await expandLearnSkillsIntent(myLearnSkills);
+
+    const searchCategories = [
+        ...new Set([
+            ...mySkills.map((skill) => skill.category),
+            ...(aiExpanded.categories || []),
+        ]),
     ];
+
+    const searchTagsAndKeywords = [
+        ...new Set([
+            ...mySkills.flatMap((skill) => skill.tags || []),
+            ...(aiExpanded.directKeywords || []),
+        ]),
+    ];
+
+    const regexTerms = [
+        ...(aiExpanded.relatedSkills || []),
+        ...(aiExpanded.directKeywords || []),
+    ].filter(Boolean);
+
+    const regexPatterns = regexTerms.map(
+        (term) => new RegExp(escapeRegex(term), "i")
+    );
 
     const candidateSkills = await Skill.find({
         owner: {
@@ -294,20 +363,14 @@ export const findMatchesForUser = async (
         },
         isActive: true,
         $or: [
-            {
-                category: {
-                    $in: interestingCategories,
-                },
-            },
-            {
-                tags: {
-                    $in: [
-                        ...new Set(
-                            mySkills.flatMap((skill) => skill.tags || [])
-                        ),
-                    ],
-                },
-            },
+            { category: { $in: searchCategories } },
+            { tags: { $in: searchTagsAndKeywords } },
+            ...(regexPatterns.length > 0
+                ? [
+                      { title: { $in: regexPatterns } },
+                      { description: { $in: regexPatterns } },
+                  ]
+                : []),
         ],
     })
         .limit(CANDIDATE_LIMIT)
@@ -358,7 +421,6 @@ export const findMatchesForUser = async (
         }
 
         const bucket = map.get(ownerId) || [];
-
         bucket.push(skill);
         map.set(ownerId, bucket);
 
@@ -383,11 +445,12 @@ export const findMatchesForUser = async (
 
         for (const teachSkill of theyTeach) {
             for (const learnSkill of myLearnSkills) {
-                const { score, parts } = scorePair(
+                const { score, parts, isRelatedMatch, relatedSkillTitle } = scorePair(
                     teachSkill,
                     learnSkill,
                     candidate,
-                    viewer
+                    viewer,
+                    aiExpanded
                 );
 
                 if (parts.skill === 0) {
@@ -400,6 +463,8 @@ export const findMatchesForUser = async (
                         parts,
                         teachSkill,
                         learnSkill,
+                        isRelatedMatch,
+                        relatedSkillTitle,
                     };
                 }
             }
@@ -407,11 +472,20 @@ export const findMatchesForUser = async (
 
         for (const teachSkill of myTeachSkills) {
             for (const learnSkill of theyLearn) {
+                // Skip if viewer and candidate are teaching the exact same skill title (avoid "they teach React, you teach React")
+                if (
+                    bestIncoming &&
+                    textSimilarity(teachSkill.title, bestIncoming.teachSkill.title) >= 0.8
+                ) {
+                    continue;
+                }
+
                 const { score, parts } = scorePair(
                     teachSkill,
                     learnSkill,
                     viewer,
-                    candidate
+                    candidate,
+                    null
                 );
 
                 if (parts.skill === 0) {
@@ -429,8 +503,7 @@ export const findMatchesForUser = async (
             }
         }
 
-        // User strictly wants candidates who teach what they want to learn
-        // (Includes related skills)
+        // Recommend candidates who teach what the user wants to learn (or AI related skills)
         if (!bestIncoming) {
             continue;
         }
@@ -439,9 +512,8 @@ export const findMatchesForUser = async (
 
         const baseScore = isMutual
             ? 0.6 * bestIncoming.score + 0.4 * bestOutgoing.score
-            : (bestIncoming || bestOutgoing).score;
+            : bestIncoming.score;
 
-        // A two-way swap needs no favours from either side, so it ranks first.
         const finalScore = Math.min(1, isMutual ? baseScore * 1.15 : baseScore);
 
         if (finalScore < minScore) {
@@ -456,30 +528,22 @@ export const findMatchesForUser = async (
             );
         }
 
-        if (bestIncoming) {
-            reasons.push(
-                ...buildReasons({
-                    parts: bestIncoming.parts,
-                    teachSkill: bestIncoming.teachSkill,
-                    learnSkill: bestIncoming.learnSkill,
-                    teacher: candidate,
-                })
-            );
-        } else {
-            reasons.push(
-                ...buildReasons({
-                    parts: bestOutgoing.parts,
-                    teachSkill: bestOutgoing.teachSkill,
-                    learnSkill: bestOutgoing.learnSkill,
-                    teacher: viewer,
-                })
-            );
-        }
+        reasons.push(
+            ...buildReasons({
+                parts: bestIncoming.parts,
+                teachSkill: bestIncoming.teachSkill,
+                learnSkill: bestIncoming.learnSkill,
+                teacher: candidate,
+                isRelatedMatch: bestIncoming.isRelatedMatch,
+                relatedSkillTitle: bestIncoming.relatedSkillTitle,
+            })
+        );
 
         matches.push({
             user: formatUserRef(candidate),
             score: Math.round(finalScore * 100),
             mutual: isMutual,
+            isRelatedMatch: Boolean(bestIncoming.isRelatedMatch),
             isConnected: connectedUserIds.has(ownerId),
 
             theyTeach: bestIncoming
@@ -502,7 +566,7 @@ export const findMatchesForUser = async (
 
             breakdown: Object.fromEntries(
                 Object.entries(
-                    (bestIncoming || bestOutgoing).parts
+                    bestIncoming.parts
                 ).map(([key, value]) => [key, Math.round(value * 100)])
             ),
         });

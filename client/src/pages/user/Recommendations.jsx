@@ -209,12 +209,20 @@ export default function Recommendations() {
                                     <div className="text-right flex items-center justify-end"><MatchBadge value={match.score} /></div>
                                 </header>
 
-                                {match.mutual && (
-                                    <span className="mt-4 inline-flex items-center gap-2 rounded-full bg-emerald-500/15 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-emerald-300">
-                                        <HiOutlineBolt />
-                                        Two-way swap
-                                    </span>
-                                )}
+                                <div className="mt-4 flex flex-wrap gap-2">
+                                    {match.mutual && (
+                                        <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-emerald-300">
+                                            <HiOutlineBolt />
+                                            Two-way swap
+                                        </span>
+                                    )}
+                                    {match.isRelatedMatch && (
+                                        <span className="inline-flex items-center gap-1.5 rounded-full bg-purple-500/15 border border-purple-500/30 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-purple-300">
+                                            <HiOutlineSparkles />
+                                            AI Suggested Skill
+                                        </span>
+                                    )}
+                                </div>
 
                                 <div className="mt-4 grid gap-3 sm:grid-cols-2">
                                     <div className="rounded-2xl border border-white/5 bg-[#0F1016] p-4">

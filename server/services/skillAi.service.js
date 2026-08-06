@@ -359,3 +359,101 @@ Return JSON: { "message": "max 60 words, friendly, ends with a clear next step" 
         source: message ? "ai" : "template",
     };
 };
+
+/*
+|--------------------------------------------------------------------------
+| Learn skills AI expansion for recommendations
+|--------------------------------------------------------------------------
+*/
+
+const fallbackLearnSkillsExpansion = (learnSkills = []) => {
+    const directKeywords = new Set();
+    const categories = new Set();
+
+    for (const skill of learnSkills) {
+        if (skill.title) {
+            tokenize(skill.title).forEach((token) => directKeywords.add(token.toLowerCase()));
+        }
+        if (skill.category) {
+            categories.add(skill.category);
+        }
+        if (Array.isArray(skill.tags)) {
+            skill.tags.forEach((tag) => directKeywords.add(tag.toLowerCase()));
+        }
+    }
+
+    return {
+        directKeywords: Array.from(directKeywords).slice(0, 15),
+        relatedSkills: [],
+        categories: Array.from(categories),
+        source: "keyword",
+    };
+};
+
+/**
+ * Takes user's learn skills and uses AI to generate direct keywords,
+ * related/complementary skills they can learn, and relevant categories.
+ */
+export const expandLearnSkillsIntent = async (learnSkills = []) => {
+    if (!Array.isArray(learnSkills) || learnSkills.length === 0) {
+        return fallbackLearnSkillsExpansion([]);
+    }
+
+    const simpleList = learnSkills.map((s) => ({
+        title: s.title,
+        category: s.category,
+        tags: s.tags || [],
+        learningGoal: s.learningGoal || "",
+    }));
+
+    const parsed = await askJson({
+        system:
+            "You are an AI recommendation engine for a skill-swap platform. " +
+            "Analyze skills the user wants to learn and suggest direct keywords plus related complementary skills they could learn.",
+
+        prompt: `Skills user wants to learn:
+${JSON.stringify(simpleList, null, 2)}
+
+Return JSON:
+{
+  "directKeywords": ["lowercase skill names, tech, synonyms for exact match"],
+  "relatedSkills": ["4-8 concrete related skills or tools that complement what they want to learn"],
+  "categories": ["relevant categories from ${JSON.stringify(SKILL_CATEGORIES)}"]
+}`,
+
+        maxTokens: 500,
+        temperature: 0.3,
+    });
+
+    if (!parsed || (!asArray(parsed.directKeywords).length && !asArray(parsed.relatedSkills).length)) {
+        return fallbackLearnSkillsExpansion(learnSkills);
+    }
+
+    return {
+        directKeywords: [
+            ...new Set(
+                asArray(parsed.directKeywords)
+                    .map((kw) => clampString(kw, 50).toLowerCase())
+                    .filter(Boolean)
+            ),
+        ].slice(0, 20),
+
+        relatedSkills: [
+            ...new Set(
+                asArray(parsed.relatedSkills)
+                    .map((rs) => clampString(rs, 50))
+                    .filter(Boolean)
+            ),
+        ].slice(0, 10),
+
+        categories: [
+            ...new Set(
+                asArray(parsed.categories)
+                    .filter((cat) => SKILL_CATEGORIES.includes(cat))
+            ),
+        ],
+
+        source: "ai",
+    };
+};
+
