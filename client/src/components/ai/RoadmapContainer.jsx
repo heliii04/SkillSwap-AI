@@ -1,35 +1,61 @@
 import { useState, useEffect } from "react";
 import RoadmapForm from "./RoadmapForm";
 import RoadmapViewer from "./RoadmapViewer";
+import { useAuth } from "../../context/AuthContext";
 import { FiMap, FiClock , FiTrash2 } from "react-icons/fi";
 
 export default function RoadmapContainer() {
-    const [sessions, setSessions] = useState(() => {
-        const saved = localStorage.getItem("ai_roadmap_sessions");
-        return saved ? JSON.parse(saved) : [];
-    });
-    
+    const { user } = useAuth();
+    const userId = user?._id || user?.id || "guest";
+
+    const storageKey = `ai_roadmap_sessions_${userId}`;
+    const currentKey = `ai_current_roadmap_id_${userId}`;
+
+    const [sessions, setSessions] = useState([]);
     const [currentSessionId, setCurrentSessionId] = useState(null);
     const [activeRoadmap, setActiveRoadmap] = useState(null);
     const [showHistory, setShowHistory] = useState(false);
+
+    useEffect(() => {
+        const saved = localStorage.getItem(storageKey);
+        const parsed = saved ? JSON.parse(saved) : [];
+        setSessions(parsed);
+
+        const activeId = localStorage.getItem(currentKey);
+        if (activeId) {
+            const found = parsed.find((s) => s.id === activeId);
+            if (found) {
+                setCurrentSessionId(activeId);
+                setActiveRoadmap(found.roadmap);
+                return;
+            }
+        }
+        setCurrentSessionId(null);
+        setActiveRoadmap(null);
+    }, [userId, storageKey, currentKey]);
 
     const handleRoadmapGenerated = (roadmap) => {
         const newId = Date.now().toString();
         setCurrentSessionId(newId);
         setActiveRoadmap(roadmap);
+        localStorage.setItem(currentKey, newId);
         
-        setSessions(prev => {
+        setSessions((prev) => {
             const updated = [{ id: newId, roadmap, updatedAt: Date.now() }, ...prev];
-            localStorage.setItem("ai_roadmap_sessions", JSON.stringify(updated));
+            localStorage.setItem(storageKey, JSON.stringify(updated));
             return updated;
         });
     };
 
     const handleRoadmapUpdate = (updatedRoadmap) => {
         setActiveRoadmap(updatedRoadmap);
-        setSessions(prev => {
-            const updated = prev.map(s => s.id === currentSessionId ? { ...s, roadmap: updatedRoadmap, updatedAt: Date.now() } : s);
-            localStorage.setItem("ai_roadmap_sessions", JSON.stringify(updated));
+        setSessions((prev) => {
+            const updated = prev.map((s) =>
+                s.id === currentSessionId
+                    ? { ...s, roadmap: updatedRoadmap, updatedAt: Date.now() }
+                    : s
+            );
+            localStorage.setItem(storageKey, JSON.stringify(updated));
             return updated;
         });
     };
@@ -37,45 +63,31 @@ export default function RoadmapContainer() {
     const startNewRoadmap = () => {
         setCurrentSessionId(null);
         setActiveRoadmap(null);
+        localStorage.removeItem(currentKey);
         setShowHistory(false);
     };
 
     const loadSession = (id) => {
-        const session = sessions.find(s => s.id === id);
+        const session = sessions.find((s) => s.id === id);
         if (session) {
             setCurrentSessionId(id);
             setActiveRoadmap(session.roadmap);
+            localStorage.setItem(currentKey, id);
         }
         setShowHistory(false);
     };
 
-        const deleteSession = (id) => {
-        const newSessions = sessions.filter(s => s.id !== id);
+    const deleteSession = (id) => {
+        const newSessions = sessions.filter((s) => s.id !== id);
         setSessions(newSessions);
-        
-        // We need to determine the storage key dynamically based on the file since each file uses a different key
-        const isChat = "client/src/components/ai/RoadmapContainer.jsx".includes("AIChatbox");
-        const isRoadmap = "client/src/components/ai/RoadmapContainer.jsx".includes("Roadmap");
-        const isQuiz = "client/src/components/ai/RoadmapContainer.jsx".includes("Quiz");
-        
-        let storageKey = "";
-        let currentKey = "";
-        if (isChat) { storageKey = "ai_chat_sessions"; currentKey = "ai_current_session_id"; }
-        else if (isRoadmap) { storageKey = "ai_roadmap_sessions"; currentKey = "ai_current_roadmap_id"; }
-        else if (isQuiz) { storageKey = "ai_quiz_sessions"; currentKey = "ai_current_quiz_id"; }
-        
         localStorage.setItem(storageKey, JSON.stringify(newSessions));
         
         if (currentSessionId === id) {
             if (newSessions.length > 0) {
                 const nextId = newSessions[0].id;
                 setCurrentSessionId(nextId);
+                setActiveRoadmap(newSessions[0].roadmap);
                 localStorage.setItem(currentKey, nextId);
-                // Also load the next session data if necessary
-                if (typeof loadSession === 'function') {
-                   loadSession(nextId);
-                   setShowHistory(true); // Keep it open
-                }
             } else {
                 clearAllHistory();
             }
@@ -84,7 +96,8 @@ export default function RoadmapContainer() {
 
     const clearAllHistory = () => {
         setSessions([]);
-        localStorage.removeItem("ai_roadmap_sessions");
+        localStorage.removeItem(storageKey);
+        localStorage.removeItem(currentKey);
         startNewRoadmap();
     };
 
@@ -102,9 +115,13 @@ export default function RoadmapContainer() {
                     >
                         + New Roadmap
                     </button>
-                    <button className="font-bold" 
-                        onClick={() => setShowHistory(true)}
-                        className="flex items-center gap-2 text-sm text-gray-400 hover:text-orange-500 transition-colors border border-white/10 hover:border-orange-500 px-3 py-1.5 rounded-md"
+                    <button 
+                        onClick={() => {
+                            const saved = localStorage.getItem(storageKey);
+                            if (saved) setSessions(JSON.parse(saved));
+                            setShowHistory(true);
+                        }}
+                        className="flex items-center gap-2 text-sm font-bold text-gray-400 hover:text-orange-500 transition-colors border border-white/10 hover:border-orange-500 px-3 py-1.5 rounded-md"
                     >
                         <FiClock /> History
                     </button>
@@ -112,11 +129,11 @@ export default function RoadmapContainer() {
             </div>
 
             {showHistory && (
-                <div className="absolute inset-0 bg-black/80 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-                    <div className="bg-[#1a1a1a] w-full max-w-2xl rounded-lg border border-white/10 flex flex-col max-h-[80%]">
+                <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm">
+                    <div className="bg-[#1a1a1a] w-full max-w-2xl rounded-2xl border border-white/10 flex flex-col max-h-[85vh] shadow-2xl">
                         <div className="p-4 border-b border-white/10 flex justify-between items-center">
                             <h3 className="text-white font-semibold flex items-center gap-2"><FiClock /> Saved Roadmaps</h3>
-                            <button className="font-bold" onClick={() => setShowHistory(false)} className="text-gray-400 hover:text-white text-xl leading-none">&times;</button>
+                            <button onClick={() => setShowHistory(false)} className="text-gray-400 hover:text-white text-xl leading-none font-bold">&times;</button>
                         </div>
                         <div className="p-4 overflow-y-auto flex-1 space-y-2">
                             {sessions.length === 0 ? (
@@ -133,25 +150,25 @@ export default function RoadmapContainer() {
                                             className={`p-3 rounded-md cursor-pointer border transition-colors ${currentSessionId === session.id ? 'bg-orange-600/10 border-orange-500' : 'bg-[#111111] border-white/10 hover:border-gray-500 hover:bg-[#1a1a1a]'}`}
                                         >
                                             <div className="flex justify-between items-start">
-    <div className="flex-1 min-w-0 pr-2">
-        <p className="text-sm text-gray-200 font-medium truncate">{title}</p>
-        <p className="text-xs text-gray-500 mt-1">{date}</p>
-    </div>
-    <button className="font-bold" 
-        onClick={(e) => { e.stopPropagation(); deleteSession(session.id); }}
-        className="p-1.5 text-gray-500 hover:text-red-500 hover:bg-red-500/10 rounded-md transition-colors"
-        title="Delete this history"
-    >
-        <FiTrash2 />
-    </button>
-</div>
+                                                <div className="flex-1 min-w-0 pr-2">
+                                                    <p className="text-sm text-gray-200 font-medium truncate">{title}</p>
+                                                    <p className="text-xs text-gray-500 mt-1">{date}</p>
+                                                </div>
+                                                <button 
+                                                    onClick={(e) => { e.stopPropagation(); deleteSession(session.id); }}
+                                                    className="p-1.5 text-gray-500 hover:text-red-500 hover:bg-red-500/10 rounded-md transition-colors font-bold"
+                                                    title="Delete this history"
+                                                >
+                                                    <FiTrash2 />
+                                                </button>
+                                            </div>
                                         </div>
                                     );
                                 })
                             )}
                         </div>
                         <div className="p-4 border-t border-white/10 flex justify-end gap-3">
-                            <button className="font-bold" onClick={() => setShowHistory(false)} className="px-4 py-2 text-gray-300 hover:text-white transition">Close</button>
+                            <button onClick={() => setShowHistory(false)} className="px-4 py-2 text-gray-300 hover:text-white transition font-bold">Close</button>
                             <button onClick={clearAllHistory} className="bg-red-600/20 text-red-500 px-4 py-2 rounded-md hover:bg-red-600/30 transition font-bold">
                                 Clear All History
                             </button>

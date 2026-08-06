@@ -119,8 +119,6 @@ export default function Messages() {
                             if (queryChatId) {
                                 setSelectedConversationId(queryChatId);
                                 setMobileChatOpen(true);
-                            } else if (chats.length > 0 && !selectedConversationId) {
-                                setSelectedConversationId(chats[0].id);
                             }
                         }
                     }
@@ -252,11 +250,13 @@ export default function Messages() {
         });
 
         socket.on("chat_deleted", ({ chatId, deleteType, userId }) => {
-            if (isMounted && chatId === selectedConversationId) {
+            if (isMounted) {
                 const currentUserId = user?.id || user?._id;
-                if (deleteType === "everyone" || userId?.toString() !== currentUserId?.toString()) {
+                if (deleteType === "everyone" || (deleteType === "me" && userId?.toString() === currentUserId?.toString())) {
                     setConversations(prev => prev.filter(c => c.id !== chatId));
-                    setSelectedConversationId(null);
+                    if (selectedConversationId === chatId) {
+                        setSelectedConversationId(null);
+                    }
                 }
             }
         });
@@ -1025,11 +1025,11 @@ function ChatHeader({
 
             <div className="flex items-center gap-2">
                 <div className="relative" ref={dropdownRef}>
-                    <button className="font-bold"
+                    <button
                         type="button"
                         onClick={() => setDropdownOpen(!dropdownOpen)}
                         aria-label="More options"
-                        className="rounded-xl border border-white/10 p-2.5 text-white/40 transition hover:border-orange-500/30 hover:bg-orange-500/5 hover:text-orange-400"
+                        className="rounded-xl border border-white/10 p-2.5 text-white/40 transition hover:border-orange-500/30 hover:bg-orange-500/5 hover:text-orange-400 font-bold"
                     >
                         <HiOutlineEllipsisVertical className="text-xl" />
                     </button>
@@ -1043,7 +1043,7 @@ function ChatHeader({
                                 <button onClick={handleClear} className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-xs text-white/70 transition hover:bg-white/5 hover:text-white font-bold">
                                     <HiOutlineTrash className="text-base text-red-500/80" /> Clear chat
                                 </button>
-                                <button className="font-bold" onClick={() => { setDropdownOpen(false); setDeleteModalOpen(true); }} className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-xs text-white/70 transition hover:bg-white/5 hover:text-white">
+                                <button onClick={() => { setDropdownOpen(false); setDeleteModalOpen(true); }} className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-xs text-white/70 transition hover:bg-white/5 hover:text-white font-bold">
                                     <HiOutlineTrash className="text-base text-red-500/80" /> Delete chat
                                 </button>
                             </div>
@@ -1060,21 +1060,21 @@ function ChatHeader({
                             Do you want to delete this chat only for yourself, or delete it for everyone?
                         </p>
                         <div className="mt-6 flex flex-col gap-2">
-                            <button className="font-bold"
+                            <button
                                 onClick={() => handleDelete("me")}
-                                className="w-full rounded-xl bg-white/5 py-3 text-sm font-semibold text-white transition hover:bg-white/10"
+                                className="w-full rounded-xl bg-white/5 py-3 text-sm font-semibold text-white transition hover:bg-white/10 font-bold"
                             >
                                 Delete for me
                             </button>
-                            <button className="font-bold"
+                            <button
                                 onClick={() => handleDelete("everyone")}
-                                className="w-full rounded-xl bg-red-500/10 border border-red-500/20 py-3 text-sm font-semibold text-red-400 transition hover:bg-red-500/20"
+                                className="w-full rounded-xl bg-red-500/10 border border-red-500/20 py-3 text-sm font-semibold text-red-400 transition hover:bg-red-500/20 font-bold"
                             >
                                 Delete for everyone
                             </button>
-                            <button className="font-bold"
+                            <button
                                 onClick={() => setDeleteModalOpen(false)}
-                                className="mt-2 w-full rounded-xl py-3 text-sm font-semibold text-white/30 transition hover:text-white/50"
+                                className="mt-2 w-full rounded-xl py-3 text-sm font-semibold text-white/30 transition hover:text-white/50 font-bold"
                             >
                                 Cancel
                             </button>
@@ -1493,23 +1493,28 @@ function NoConversations() {
 
 function NoConversationSelected() {
     return (
-        <div className="flex h-full flex-col items-center justify-center bg-[#0c0d12] px-6 text-center">
-            <span className="flex h-20 w-20 items-center justify-center rounded-[24px] border border-orange-500/20 bg-orange-500/10 text-orange-400">
-                <HiOutlineChatBubbleLeftRight className="text-4xl" />
-            </span>
+        <div className="relative flex flex-1 flex-col items-center justify-center p-8 text-center bg-[#0a0a0a] select-none">
+            <div className="relative z-10 flex flex-col items-center max-w-lg">
+                <div className="mb-6 flex h-24 w-24 items-center justify-center rounded-3xl border border-white/10 bg-[#111111] text-gray-300 shadow-xl">
+                    <HiOutlineChatBubbleLeftRight className="text-5xl text-orange-500" />
+                </div>
 
-            <h2 className="mt-6 text-2xl font-semibold">
-                Select a conversation
-            </h2>
+                <h2 className="text-2xl sm:text-3xl font-extrabold text-white tracking-wider uppercase">
+                    Where Should We Begin ?
+                </h2>
 
-            <p className="mt-3 max-w-md text-sm leading-7 text-white/35">
-                Choose one of your accepted
-                skill partners to view messages
-                and continue your conversation.
-            </p>
+                <p className="mt-4 text-sm sm:text-base leading-relaxed text-gray-400 max-w-md font-medium">
+                    Select a conversation from the left to start chatting, exchanging skills, and collaborating in real-time.
+                </p>
+
+                <div className="mt-8 flex items-center gap-2 px-4 py-2 rounded-full border border-white/10 bg-white/5 text-xs text-gray-400">
+                    <span className="h-2.5 w-2.5 rounded-full bg-orange-500" />
+                    <span className="font-semibold text-gray-300">Ready for Skill Exchange</span>
+                </div>
+            </div>
         </div>
     );
-}
+};
 
 /*
 |--------------------------------------------------------------------------

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
     FaRobot,
     FaUserFriends,
@@ -46,6 +47,7 @@ const easeOutCubic = (value) => {
 };
 
 function MobileFeatureCard({ feature, index }) {
+    const navigate = useNavigate();
     const cardRef = useRef(null);
     const [isVisible, setIsVisible] = useState(false);
 
@@ -75,6 +77,7 @@ function MobileFeatureCard({ feature, index }) {
     return (
         <article
             ref={cardRef}
+            onClick={() => navigate("/how-it-works")}
             className={`
         relative min-h-[320px] w-full
         overflow-hidden rounded-[28px]
@@ -83,6 +86,7 @@ function MobileFeatureCard({ feature, index }) {
         p-6 text-white
         shadow-[0_18px_50px_rgba(0,0,0,0.35)]
         transition-all duration-700 ease-out
+        cursor-pointer
 
         ${isVisible
                     ? "translate-y-0 scale-100 opacity-100"
@@ -124,12 +128,16 @@ function MobileFeatureCard({ feature, index }) {
 
                     <button
                         type="button"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            navigate("/how-it-works");
+                        }}
                         className="
               mt-5 flex items-center gap-2
-              text-sm  text-orange-400
+              text-sm text-orange-400
               transition-all duration-300
               hover:gap-4
-             font-bold"
+              font-bold"
                     >
                         Explore feature
                         <span aria-hidden="true">→</span>
@@ -141,6 +149,7 @@ function MobileFeatureCard({ feature, index }) {
 }
 
 export default function WhyChooseUs() {
+    const navigate = useNavigate();
     const sectionRef = useRef(null);
     const animationFrameRef = useRef(null);
 
@@ -264,6 +273,7 @@ export default function WhyChooseUs() {
                             return (
                                 <article
                                     key={feature.id}
+                                    onClick={() => navigate("/how-it-works")}
                                     className="
                                     group absolute
                                     h-[345px] w-[285px]
@@ -275,6 +285,7 @@ export default function WhyChooseUs() {
                         transition-all
                         duration-500
                         will-change-transform
+                        cursor-pointer
 
                         hover:border-orange-500/60
                         hover:-translate-y-3
@@ -325,12 +336,16 @@ export default function WhyChooseUs() {
 
                                             <button
                                                 type="button"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    navigate("/how-it-works");
+                                                }}
                                                 className="
                           mt-5 flex items-center gap-2
-                          text-sm  text-orange-400
+                          text-sm text-orange-400
                           transition-all duration-300
                           group-hover:gap-4
-                         font-bold"
+                          font-bold"
                                             >
                                                 Explore feature
                                                 <span aria-hidden="true">→</span>

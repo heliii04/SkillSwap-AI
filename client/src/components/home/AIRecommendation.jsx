@@ -192,20 +192,16 @@ export default function AIRecommendation() {
                         ))}
                     </div>
 
-                    <button className="font-bold"
+                    <button
                         type="button"
-                        onClick={() =>
-                            navigate(
-                                user ? "/recommendations" : "/register"
-                            )
-                        }
+                        onClick={() => navigate("/how-it-works")}
                         className="
               group mt-10
               inline-flex items-center gap-3
               rounded-full
               bg-orange-500
               px-8 py-4
-              font-semibold text-white
+              font-bold text-white
               transition-all duration-300
               hover:-translate-y-1
               hover:bg-orange-400
@@ -289,10 +285,10 @@ export default function AIRecommendation() {
                             const isSelected = activeSkillId === skill.id;
 
                             return (
-                                <button className="font-bold"
+                                <button
                                     key={skill.id}
                                     type="button"
-                                    onClick={() => setSelectedSkill(skill.id)}
+                                    onClick={() => navigate("/how-it-works")}
                                     className={`
                     group relative w-full overflow-hidden
                     rounded-[24px]

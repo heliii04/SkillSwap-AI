@@ -1,3 +1,4 @@
+import { useNavigate } from "react-router-dom";
 import { FaArrowRight } from "react-icons/fa";
 
 export default function CategoryCard({
@@ -5,8 +6,11 @@ export default function CategoryCard({
     title,
     skills,
 }) {
+    const navigate = useNavigate();
+
     return (
         <article
+            onClick={() => navigate("/browse-skills")}
             className="
         group
         min-w-[270px]
@@ -21,6 +25,7 @@ export default function CategoryCard({
         hover:-translate-y-2
         hover:border-orange-400/30
         hover:shadow-[0_24px_70px_rgba(0,0,0,0.35)]
+        cursor-pointer
       "
         >
             {/* Icon */}
@@ -53,6 +58,10 @@ export default function CategoryCard({
             {/* Explore Button */}
             <button
                 type="button"
+                onClick={(e) => {
+                    e.stopPropagation();
+                    navigate("/browse-skills");
+                }}
                 className="
           mt-6
           flex

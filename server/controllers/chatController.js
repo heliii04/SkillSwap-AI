@@ -415,9 +415,18 @@ export const getMessages =
                     });
             }
 
+            const userCleared = chat.clearedFor?.find(
+                (c) => c.user?.toString() === currentUserId?.toString()
+            );
+
+            const messageQuery = { chat: chatId };
+            if (userCleared && userCleared.clearedAt) {
+                messageQuery.createdAt = { $gt: userCleared.clearedAt };
+            }
+
             await Message.updateMany(
                 {
-                    chat: chatId,
+                    ...messageQuery,
 
                     sender: {
                         $ne: currentUserId,
@@ -445,11 +454,7 @@ export const getMessages =
             ] =
                 await Promise.all(
                     [
-                        Message.find(
-                            {
-                                chat: chatId,
-                            }
-                        )
+                        Message.find(messageQuery)
                             .sort({
                                 createdAt:
                                     -1,
@@ -459,11 +464,7 @@ export const getMessages =
                                 limit
                             ),
 
-                        Message.countDocuments(
-                            {
-                                chat: chatId,
-                            }
-                        ),
+                        Message.countDocuments(messageQuery),
                     ]
                 );
 
@@ -907,15 +908,22 @@ export const clearChatMessages = async (req, res, next) => {
             });
         }
 
-        await Message.deleteMany({ chat: chatId });
+        if (!chat.clearedFor) chat.clearedFor = [];
+        const existingIndex = chat.clearedFor.findIndex(
+            (c) => c.user?.toString() === currentUserId?.toString()
+        );
 
-        chat.lastMessage = null;
-        chat.lastMessageAt = null;
+        if (existingIndex > -1) {
+            chat.clearedFor[existingIndex].clearedAt = new Date();
+        } else {
+            chat.clearedFor.push({ user: currentUserId, clearedAt: new Date() });
+        }
+
         await chat.save();
 
         const io = req.app.get("io");
         if (io) {
-            io.to(chatId.toString()).emit("chat_cleared", { chatId });
+            io.to(chatId.toString()).emit("chat_cleared", { chatId, userId: currentUserId });
         }
 
         return res.status(200).json({
@@ -960,9 +968,19 @@ export const deleteChatRoom = async (req, res, next) => {
             });
         } else {
             if (!chat.deletedBy) chat.deletedBy = [];
-
-            if (!chat.deletedBy.includes(currentUserId)) {
+            if (!chat.deletedBy.some(id => id.toString() === currentUserId.toString())) {
                 chat.deletedBy.push(currentUserId);
+            }
+
+            if (!chat.clearedFor) chat.clearedFor = [];
+            const existingIndex = chat.clearedFor.findIndex(
+                (c) => c.user?.toString() === currentUserId?.toString()
+            );
+
+            if (existingIndex > -1) {
+                chat.clearedFor[existingIndex].clearedAt = new Date();
+            } else {
+                chat.clearedFor.push({ user: currentUserId, clearedAt: new Date() });
             }
 
             if (chat.deletedBy.length === 2) {
@@ -972,7 +990,7 @@ export const deleteChatRoom = async (req, res, next) => {
                 await chat.save();
             }
 
-            // Notify over sockets to clear sidebar
+            // Notify over sockets to clear sidebar for deleting user only
             const io = req.app.get("io");
             if (io) {
                 io.to(chatId.toString()).emit("chat_deleted", { chatId, deleteType: "me", userId: currentUserId });

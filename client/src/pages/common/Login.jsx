@@ -42,16 +42,9 @@ export default function Login() {
                 password: formData.password,
             });
 
-            const loggedInUser = result?.data?.user;
-            if (loggedInUser?.role === "admin") {
-                navigate("/admin", {
-                    replace: true,
-                });
-            } else {
-                navigate("/", {
-                    replace: true,
-                });
-            }
+            navigate("/", {
+                replace: true,
+            });
         } catch (error) {
             setError(error.message);
         } finally {
@@ -161,12 +154,12 @@ export default function Login() {
                                             className="w-full rounded-xl border border-white/10 bg-[#15161C] px-4 py-3.5 pr-20 text-white outline-none transition placeholder:text-white/30 focus:border-orange-500"
                                         />
 
-                                        <button className="font-bold"
+                                        <button
                                             type="button"
                                             onClick={() =>
                                                 setShowPassword((previous) => !previous)
                                             }
-                                            className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-white/50 hover:text-orange-400"
+                                            className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-bold text-white/50 hover:text-orange-400"
                                         >
                                             {showPassword ? "Hide" : "Show"}
                                         </button>
