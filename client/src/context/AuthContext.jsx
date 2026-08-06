@@ -29,6 +29,9 @@ import {
 export const AuthContext = createContext(null);
 
 function getErrorMessage(error) {
+    if (error.code === "ECONNABORTED" || error.message?.includes("timeout")) {
+        return "Server is starting up (Render cold start). Please wait a moment and click Sign In again.";
+    }
     if (
         error.response?.data?.errors &&
         Array.isArray(error.response.data.errors) &&
@@ -201,12 +204,7 @@ export function AuthProvider({ children }) {
 
                 return result;
             } catch (error) {
-                const message =
-                    error.response?.data?.message ||
-                    error.message ||
-                    "Login failed.";
-
-                throw new Error(message);
+                throw new Error(getErrorMessage(error));
             }
         },
         []

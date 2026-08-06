@@ -14,6 +14,7 @@ router.use(requireAuth);
 router.get("/", getNotifications);
 router.patch("/mark-read", markAsRead);
 router.post("/subscribe", subscribePush);
+router.post("/subscribe-push", subscribePush);
 router.delete("/:id", deleteNotification);
 
 export default router;

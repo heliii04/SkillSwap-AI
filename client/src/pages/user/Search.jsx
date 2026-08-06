@@ -32,6 +32,7 @@ import {
 
 
 import useLockBodyScroll from "../../hooks/useLockBodyScroll";
+import useDebounce from "../../hooks/useDebounce";
 import axiosClient from "../../api/axiosClient";
 
 const categoryOptions = [
@@ -223,9 +224,11 @@ export default function Search() {
         setSelectedMentor,
     ] = useState(null);
 
+    const debouncedSearchTerm = useDebounce(filters.search, 300);
+
     const filteredMentors = useMemo(() => {
         const searchValue =
-            filters.search
+            debouncedSearchTerm
                 .trim()
                 .toLowerCase();
 
@@ -309,7 +312,7 @@ export default function Search() {
                 }
             }
         );
-    }, [mentors, filters]);
+    }, [mentors, debouncedSearchTerm, filters.category, filters.mode, filters.level, filters.sortBy]);
 
     const activeFilterCount =
         useMemo(() => {

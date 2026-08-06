@@ -183,6 +183,8 @@ export default function Recommendations() {
                                             <img
                                                 src={match.user.avatar}
                                                 alt={match.user.name}
+                                                loading="lazy"
+                                                decoding="async"
                                                 className="h-12 w-12 rounded-2xl object-cover"
                                             />
                                         ) : (

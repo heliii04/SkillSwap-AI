@@ -225,6 +225,8 @@ export default function UserProfileModal({ userId, matchScore, onClose }) {
                                             <img
                                                 src={user.avatar}
                                                 alt={user.name}
+                                                loading="lazy"
+                                                decoding="async"
                                                 className="h-20 w-20 rounded-[20px] object-cover sm:h-[84px] sm:w-[84px]"
                                                 onError={() => setImageError(true)}
                                             />

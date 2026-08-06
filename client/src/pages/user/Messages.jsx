@@ -93,8 +93,9 @@ export default function Messages() {
         let isMounted = true;
 
         const API_URL =
+            import.meta.env.VITE_API_BASE_URL ||
             import.meta.env.VITE_API_URL ||
-            "http://localhost:5000/api";
+            "http://localhost:5000/api/v1";
 
         const fetchConversations = async (showLoading = false) => {
             if (showLoading) {
@@ -134,7 +135,7 @@ export default function Messages() {
 
         fetchConversations(true);
 
-        const socketHost = API_URL.replace("/api", "");
+        const socketHost = API_URL.replace(/\/api\/v1\/?$/, "").replace(/\/api\/?$/, "");
         const socket = io(socketHost, {
             withCredentials: true,
         });
@@ -161,6 +162,7 @@ export default function Messages() {
 
         return () => {
             isMounted = false;
+            socket.off("chat_list_update");
             socket.disconnect();
         };
     }, [queryChatId, user]);
@@ -174,8 +176,9 @@ export default function Messages() {
         let isMounted = true;
 
         const API_URL =
+            import.meta.env.VITE_API_BASE_URL ||
             import.meta.env.VITE_API_URL ||
-            "http://localhost:5000/api";
+            "http://localhost:5000/api/v1";
 
         const fetchMessages = async (showLoading = false) => {
             if (showLoading) {
@@ -207,7 +210,7 @@ export default function Messages() {
 
         fetchMessages(true);
 
-        const socketHost = API_URL.replace("/api", "");
+        const socketHost = API_URL.replace(/\/api\/v1\/?$/, "").replace(/\/api\/?$/, "");
         const socket = io(socketHost, {
             withCredentials: true,
         });
@@ -263,6 +266,10 @@ export default function Messages() {
 
         return () => {
             isMounted = false;
+            socket.off("new_message");
+            socket.off("chat_block_update");
+            socket.off("chat_cleared");
+            socket.off("chat_deleted");
             socket.disconnect();
         };
     }, [selectedConversationId]);

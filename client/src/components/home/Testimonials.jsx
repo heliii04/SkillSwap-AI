@@ -264,6 +264,8 @@ export default function Testimonials() {
                                         <img
                                             src={testimonial.image}
                                             alt={testimonial.name}
+                                            loading="lazy"
+                                            decoding="async"
                                             className="
                         h-14 w-14
                         rounded-full
@@ -304,7 +306,7 @@ export default function Testimonials() {
                         {Array.from(
                             { length: maximumIndex + 1 },
                             (_, index) => (
-                                <button className="font-bold"
+                                <button
                                     key={index}
                                     type="button"
                                     onClick={() => setCurrentIndex(index)}

@@ -17,6 +17,9 @@ async function startServer() {
     server = http.createServer(app);
 
     const io = new Server(server, {
+        pingInterval: 10000,
+        pingTimeout: 5000,
+        maxHttpBufferSize: 1e6,
         cors: {
             origin: (origin, callback) => {
                 if (!origin) return callback(null, true);
@@ -31,6 +34,7 @@ async function startServer() {
     });
 
     app.set("io", io);
+    global.io = io;
 
     io.on("connection", (socket) => {
         socket.on("register_user", (userId) => {

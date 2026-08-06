@@ -45,6 +45,23 @@ const notificationSchema = new mongoose.Schema(
 // Register Web Push notification post-save hook
 notificationSchema.post("save", async function (doc) {
     try {
+        const recipientId = doc.recipient?._id ? doc.recipient._id.toString() : doc.recipient?.toString();
+        if (global.io && recipientId) {
+            global.io.to(recipientId).emit("new_notification", {
+                id: doc._id,
+                type: doc.type,
+                title: doc.title,
+                message: doc.message,
+                link: doc.link,
+                isRead: doc.isRead,
+                createdAt: doc.createdAt
+            });
+        }
+    } catch (err) {
+        console.error("Error emitting real-time socket notification:", err);
+    }
+
+    try {
         const env = doc.constructor.db.base.env || process.env;
         const vapidPublicKey = env.VAPID_PUBLIC_KEY;
         const vapidPrivateKey = env.VAPID_PRIVATE_KEY;
@@ -55,7 +72,8 @@ notificationSchema.post("save", async function (doc) {
         }
 
         const PushMessSubscription = mongoose.model("PushMessSubscription");
-        const subscriptions = await PushMessSubscription.find({ user: doc.recipient });
+        const recipientId = doc.recipient?._id ? doc.recipient._id : doc.recipient;
+        const subscriptions = await PushMessSubscription.find({ user: recipientId });
         if (subscriptions.length === 0) return;
 
         // Configure webpush details dynamically to ensure environment loading has finished
@@ -95,6 +113,12 @@ notificationSchema.post("save", async function (doc) {
     } catch (err) {
         console.error("Error in Notification Schema post-save hook:", err);
     }
+});
+
+notificationSchema.index({
+    recipient: 1,
+    isRead: 1,
+    createdAt: -1,
 });
 
 const Notification = mongoose.models.Notification || mongoose.model("Notification", notificationSchema);

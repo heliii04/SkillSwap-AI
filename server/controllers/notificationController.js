@@ -13,25 +13,33 @@ if (env.vapidPublicKey && env.vapidPrivateKey) {
     );
 }
 
+const escapeRegex = (string = "") =>
+    string.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
 const generateAiSuggestions = async (userId) => {
     try {
         if (!mongoose.Types.ObjectId.isValid(userId)) return;
-        const userLearnSkills = await Skill.find({ owner: userId, type: "learn" });
+        const userLearnSkills = await Skill.find({ owner: userId, type: "learn" }).lean();
         if (userLearnSkills.length === 0) return;
 
         for (const learnSkill of userLearnSkills) {
             const matchingTeachSkill = await Skill.findOne({
                 type: "teach",
-                title: { $regex: new RegExp(`^${learnSkill.title}$`, "i") },
+                title: { $regex: new RegExp(`^${escapeRegex(learnSkill.title)}$`, "i") },
                 owner: { $ne: userId }
-            }).populate("owner");
+            }).populate("owner").lean();
 
             if (matchingTeachSkill && matchingTeachSkill.owner) {
                 const partnerName = matchingTeachSkill.owner.name;
+                const linkUrl = `/search?query=${encodeURIComponent(matchingTeachSkill.title)}`;
+
                 const existingNotification = await Notification.findOne({
                     recipient: userId,
                     type: "ai_suggestion",
-                    message: new RegExp(partnerName, "i")
+                    $or: [
+                        { link: linkUrl },
+                        { message: new RegExp(escapeRegex(partnerName), "i") }
+                    ]
                 });
 
                 if (!existingNotification) {
@@ -40,7 +48,7 @@ const generateAiSuggestions = async (userId) => {
                         type: "ai_suggestion",
                         title: "AI Match Suggestion",
                         message: `We found a match! ${partnerName} offers to teach "${matchingTeachSkill.title}" which is on your wishlist.`,
-                        link: `/search?query=${encodeURIComponent(matchingTeachSkill.title)}`
+                        link: linkUrl
                     });
                 }
             }
@@ -66,14 +74,30 @@ export const getNotifications = async (req, res, next) => {
 
         await generateAiSuggestions(currentUserId);
 
-        const notifications = await Notification.find({ recipient: currentUserId })
+        const rawNotifications = await Notification.find({ recipient: currentUserId })
+            .select("type title message link isRead createdAt sender")
             .populate({
                 path: "sender",
                 select: "name avatar"
             })
-            .sort({ createdAt: -1 });
+            .sort({ createdAt: -1 })
+            .lean();
 
-        const formatted = notifications.map(n => ({
+        // Deduplicate notifications by type and message to prevent duplicate cards
+        const seenKeys = new Set();
+        const uniqueNotifications = [];
+        for (const n of rawNotifications) {
+            const key = `${n.type}:${n.message}`;
+            if (!seenKeys.has(key)) {
+                seenKeys.add(key);
+                uniqueNotifications.push(n);
+            } else {
+                // Asynchronously cleanup duplicate entries from DB
+                Notification.deleteOne({ _id: n._id }).catch(err => console.error("Error cleaning duplicate notification:", err));
+            }
+        }
+
+        const formatted = uniqueNotifications.map(n => ({
             id: n._id,
             type: n.type,
             title: n.title,

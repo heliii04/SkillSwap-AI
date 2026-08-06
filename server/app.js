@@ -5,6 +5,8 @@ import morgan from "morgan";
 import cookieParser from "cookie-parser";
 import rateLimit from "express-rate-limit";
 
+import compression from "compression";
+
 import { env } from "./config/env.js";
 import authRoutes from "./routes/authRoutes.js";
 import profileRoutes from "./routes/profileRoutes.js";
@@ -25,6 +27,19 @@ import {
 const app = express();
 
 app.set("trust proxy", 1);
+
+app.use(
+    compression({
+        level: 6,
+        threshold: 1024,
+        filter: (req, res) => {
+            if (req.headers["x-no-compression"]) {
+                return false;
+            }
+            return compression.filter(req, res);
+        },
+    })
+);
 
 app.use(helmet());
 

@@ -35,6 +35,7 @@ import { FiLogOut } from "react-icons/fi";
 import { useAuth } from "../context/AuthContext";
 import { getAccessToken } from "../api/tokenStore";
 import { io } from "socket.io-client";
+import { registerWebPushSubscription } from "../utils/webPush";
 
 const navigationItems = [
   {
@@ -226,6 +227,7 @@ export default function DashboardLayout() {
     useState(false);
 
   const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(0);
+  const [popupNotifications, setPopupNotifications] = useState([]);
 
   useEffect(() => {
     const handleServiceWorkerMessage = (event) => {
@@ -256,19 +258,18 @@ export default function DashboardLayout() {
     }
   }, [user]);
 
-  // Request browser notification permission
+  // Request browser notification permission and register Web Push subscription
   useEffect(() => {
-    if (typeof window !== "undefined" && "Notification" in window) {
-      if (Notification.permission === "default") {
-        Notification.requestPermission();
-      }
+    if (user && user.role !== "admin") {
+      registerWebPushSubscription();
     }
-  }, []);
+  }, [user]);
 
   // Initial load of unread notifications count
   useEffect(() => {
     let isMounted = true;
-    const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+    if (user?.role === "admin") return;
+    const API_URL = import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || "http://localhost:5000/api/v1";
 
     const fetchUnreadCount = async () => {
       try {
@@ -302,10 +303,10 @@ export default function DashboardLayout() {
   // Real-time notifications via Socket.io
   useEffect(() => {
     const token = getAccessToken();
-    if (!token || !user) return;
+    if (!token || !user || user.role === "admin") return;
 
-    const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
-    const socketHost = API_URL.replace("/api", "");
+    const API_URL = import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || "http://localhost:5000/api/v1";
+    const socketHost = API_URL.replace(/\/api\/v1\/?$/, "").replace(/\/api\/?$/, "");
 
     const socket = io(socketHost, {
       withCredentials: true,
@@ -315,15 +316,36 @@ export default function DashboardLayout() {
     socket.emit("register_user", currentUserId);
 
     socket.on("new_notification", (notification) => {
-      // 1. Increment count
+      // 1. Increment unread count badge
       setUnreadNotificationsCount(prev => prev + 1);
 
-      // 2. Skip showing toast alerts for new messages if the user is currently on the Messages page
+      // 2. Skip showing popup alerts for new messages if user is currently on /messages page
       if (notification.type === "message" && window.location.pathname === "/messages") {
         return;
       }
 
-      // 3. Trigger toast popup in-app
+      // 3. Trigger bottom-right in-app floating card popup
+      const newPopup = {
+        id: notification.id || Date.now() + Math.random(),
+        title: notification.title || "New Notification",
+        message: notification.message || "",
+        link: notification.link,
+        type: notification.type,
+      };
+
+      setPopupNotifications((prev) => [
+        newPopup,
+        ...prev.filter((p) => p.id !== newPopup.id),
+      ].slice(0, 3));
+
+      // Auto-dismiss popup after 6 seconds
+      setTimeout(() => {
+        setPopupNotifications((prev) =>
+          prev.filter((p) => p.id !== newPopup.id)
+        );
+      }, 6000);
+
+      // 4. Trigger react-toastify toast alert in bottom-right
       toast(
         <div className="flex flex-col gap-1 cursor-pointer" onClick={() => {
           if (notification.link) {
@@ -334,7 +356,7 @@ export default function DashboardLayout() {
           <span className="text-xs text-white/70 line-clamp-2">{notification.message}</span>
         </div>,
         {
-          position: "top-right",
+          position: "bottom-right",
           autoClose: 5000,
           hideProgressBar: false,
           closeOnClick: true,
@@ -344,7 +366,7 @@ export default function DashboardLayout() {
         }
       );
 
-      // 4. Trigger system/browser notification if not active/focused
+      // 5. Trigger OS/system level notification if tab is backgrounded
       if (!document.hasFocus() && "Notification" in window && Notification.permission === "granted") {
         try {
           const sysNotif = new Notification(notification.title, {
@@ -619,23 +641,25 @@ export default function DashboardLayout() {
                 <HiOutlineHome className="text-xl" />
               </button>
 
-              <button
-                type="button"
-                onClick={() =>
-                  navigate(
-                    "/notifications"
-                  )
-                }
-                className="relative rounded-xl border border-white/10 p-3 text-white/55 transition hover:bg-white/5 hover:text-white"
-              >
-                <HiOutlineBell className="text-xl" />
+              {user?.role !== "admin" && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    navigate(
+                      "/notifications"
+                    )
+                  }
+                  className="relative rounded-xl border border-white/10 p-3 text-white/55 transition hover:bg-white/5 hover:text-white"
+                >
+                  <HiOutlineBell className="text-xl" />
 
-                {unreadNotificationsCount > 0 && (
-                  <span className="absolute right-2 top-2 flex h-4 w-4 -translate-y-1 translate-x-1 items-center justify-center rounded-full bg-orange-500 text-[9px] font-bold text-black ring-2 ring-[#07080d]">
-                    {unreadNotificationsCount}
-                  </span>
-                )}
-              </button>
+                  {unreadNotificationsCount > 0 && (
+                    <span className="absolute right-2 top-2 flex h-4 w-4 -translate-y-1 translate-x-1 items-center justify-center rounded-full bg-orange-500 text-[9px] font-bold text-black ring-2 ring-[#07080d]">
+                      {unreadNotificationsCount}
+                    </span>
+                  )}
+                </button>
+              )}
 
               <button
                 type="button"
@@ -664,6 +688,56 @@ export default function DashboardLayout() {
         </header>
 
         <Outlet />
+      </div>
+
+      {/* Bottom-Right Floating Notification Popups */}
+      <div className="fixed bottom-6 right-6 z-[9999] flex flex-col gap-3 max-w-sm w-full pointer-events-none px-4 sm:px-0">
+        {popupNotifications.map((popup) => (
+          <div
+            key={popup.id}
+            className="pointer-events-auto group relative flex items-start gap-3.5 rounded-2xl border border-orange-500/40 bg-[#12131A]/95 p-4 shadow-[0_10px_30px_rgba(0,0,0,0.8)] backdrop-blur-xl transition-all duration-300 animate-in fade-in slide-in-from-bottom-5 hover:border-orange-500"
+          >
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-orange-500/20 text-orange-400">
+              <HiOutlineBell className="text-xl animate-bounce" />
+            </div>
+
+            <div
+              className="flex-1 cursor-pointer pr-4"
+              onClick={() => {
+                setPopupNotifications((prev) =>
+                  prev.filter((p) => p.id !== popup.id)
+                );
+                if (popup.link) {
+                  navigate(popup.link);
+                }
+              }}
+            >
+              <h4 className="text-sm font-semibold text-white group-hover:text-orange-400 transition-colors">
+                {popup.title}
+              </h4>
+              <p className="mt-1 text-xs text-white/70 line-clamp-2 leading-relaxed">
+                {popup.message}
+              </p>
+              <span className="mt-2 block text-[10px] font-semibold text-orange-400">
+                Click to view details →
+              </span>
+            </div>
+
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setPopupNotifications((prev) =>
+                  prev.filter((p) => p.id !== popup.id)
+                );
+              }}
+              className="absolute top-3 right-3 text-white/40 hover:text-white transition-colors p-1"
+              aria-label="Close notification"
+            >
+              <HiOutlineXMark className="text-base" />
+            </button>
+          </div>
+        ))}
       </div>
     </div>
   );

@@ -489,6 +489,12 @@ skillSchema.index(
 );
 
 skillSchema.index({
+    type: 1,
+    category: 1,
+    isActive: 1,
+});
+
+skillSchema.index({
     title: "text",
     description: "text",
     learningGoal: "text",

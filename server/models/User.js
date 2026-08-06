@@ -202,6 +202,9 @@ const userSchema = new mongoose.Schema(
     }
 );
 
+userSchema.index({ role: 1, accountStatus: 1 });
+userSchema.index({ rating: -1, reviews: -1 });
+
 export const User = mongoose.model(
     "User",
     userSchema

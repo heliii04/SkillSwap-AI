@@ -85,7 +85,7 @@ export const getMyTeachSkills = async (
             type: "teach",
         }).sort({
             createdAt: -1,
-        });
+        }).lean();
 
         return res.status(200).json({
             success: true,
@@ -333,7 +333,7 @@ export const getMyLearnSkills = async (
         }).sort({
             priority: -1,
             createdAt: -1,
-        });
+        }).lean();
 
         return res.status(200).json({
             success: true,
