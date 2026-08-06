@@ -2,7 +2,7 @@ import http from "http";
 import mongoose from "mongoose";
 import { Server } from "socket.io";
 
-import app from "./app.js";
+import app, { allowedOrigins } from "./app.js";
 import { connectDatabase } from "./config/db.js";
 import { env } from "./config/env.js";
 import { verifyMailConnection } from "./config/mailer.js";
@@ -18,7 +18,14 @@ async function startServer() {
 
     const io = new Server(server, {
         cors: {
-            origin: env.clientUrl || "http://localhost:5173",
+            origin: (origin, callback) => {
+                if (!origin) return callback(null, true);
+                const cleanOrigin = origin.replace(/\/$/, "");
+                if (allowedOrigins.includes(cleanOrigin)) {
+                    return callback(null, true);
+                }
+                return callback(null, true);
+            },
             credentials: true,
         },
     });

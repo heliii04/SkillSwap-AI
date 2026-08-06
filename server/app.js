@@ -28,9 +28,31 @@ app.set("trust proxy", 1);
 
 app.use(helmet());
 
+const defaultOrigins = [
+    "https://skillswap-ai-community.netlify.app",
+    "http://localhost:5173",
+    "http://localhost:5000",
+    "http://localhost:3000",
+];
+
+const envOrigins = env.clientUrl
+    ? env.clientUrl.split(",").map((url) => url.trim().replace(/\/$/, ""))
+    : [];
+
+export const allowedOrigins = Array.from(
+    new Set([...defaultOrigins, ...envOrigins].filter(Boolean))
+);
+
 app.use(
     cors({
-        origin: env.clientUrl,
+        origin: (origin, callback) => {
+            if (!origin) return callback(null, true);
+            const cleanOrigin = origin.replace(/\/$/, "");
+            if (allowedOrigins.includes(cleanOrigin)) {
+                return callback(null, true);
+            }
+            return callback(null, true);
+        },
         credentials: true,
         methods: [
             "GET",

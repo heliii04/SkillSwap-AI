@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import Notification from "../models/Notification.js";
 import Skill from "../models/Skill.js";
 import PushMessSubscription from "../models/PushMessSubscription.js";
@@ -14,6 +15,7 @@ if (env.vapidPublicKey && env.vapidPrivateKey) {
 
 const generateAiSuggestions = async (userId) => {
     try {
+        if (!mongoose.Types.ObjectId.isValid(userId)) return;
         const userLearnSkills = await Skill.find({ owner: userId, type: "learn" });
         if (userLearnSkills.length === 0) return;
 
@@ -51,6 +53,16 @@ const generateAiSuggestions = async (userId) => {
 export const getNotifications = async (req, res, next) => {
     try {
         const currentUserId = req.user._id;
+
+        if (!mongoose.Types.ObjectId.isValid(currentUserId)) {
+            return res.status(200).json({
+                success: true,
+                message: "Notifications retrieved successfully",
+                data: {
+                    notifications: []
+                }
+            });
+        }
 
         await generateAiSuggestions(currentUserId);
 
