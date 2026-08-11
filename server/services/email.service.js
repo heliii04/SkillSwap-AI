@@ -88,8 +88,11 @@ SkillSwap AI
         </div>
     `;
 
+    const fromName = env.smtp?.fromName || env.MAIL_FROM_NAME || "SkillSwap AI";
+    const fromAddress = env.smtp?.fromEmail || env.MAIL_FROM_ADDRESS || env.smtp?.user || process.env.SMTP_USER || "gohilraviiiii012@gmail.com";
+
     await mailTransporter.sendMail({
-        from: `"${env.smtp.fromName}" <${env.smtp.fromEmail}>`,
+        from: `"${fromName}" <${fromAddress}>`,
         to: email,
         subject,
         text,
