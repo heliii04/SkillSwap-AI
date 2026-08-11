@@ -42,42 +42,30 @@ export default function AIChatbox() {
         endRef.current?.scrollIntoView({ behavior: "smooth" });
     };
 
-    // Load AI chat sessions from MongoDB on mount/user change
+    // Always start with a brand new empty chat session on page mount/navigation/refresh.
+    // Fetch previous sessions in background for History drawer only.
     useEffect(() => {
         let isMounted = true;
+
+        const newId = Date.now().toString();
+        setCurrentSessionId(newId);
+        setMessages([]);
+
         const loadSessions = async () => {
             try {
                 const res = await fetchAiChatSessions();
                 if (res?.data?.sessions && isMounted) {
-                    const dbSessions = res.data.sessions;
-                    setSessions(dbSessions);
-
-                    if (dbSessions.length > 0) {
-                        const latest = dbSessions[0];
-                        setCurrentSessionId(latest.id);
-                        setMessages(
-                            (latest.messages || []).map((m) => ({
-                                role: m.sender === "ai" ? "ai" : "user",
-                                content: m.text,
-                            }))
-                        );
-                    } else {
-                        const newId = Date.now().toString();
-                        setCurrentSessionId(newId);
-                        setMessages([]);
-                    }
+                    setSessions(res.data.sessions);
                 }
             } catch (err) {
                 console.error("Error loading AI chat sessions from DB:", err);
-                const newId = Date.now().toString();
-                setCurrentSessionId(newId);
-                setMessages([]);
             }
         };
 
         if (userId && userId !== "guest") {
             loadSessions();
         }
+
         return () => {
             isMounted = false;
         };
@@ -173,7 +161,7 @@ export default function AIChatbox() {
                 if (res?.data?.sessions) {
                     setSessions(res.data.sessions);
                 }
-            }).catch(() => {});
+            }).catch(() => { });
         } catch (error) {
             toast.error(error.response?.data?.message || "Failed to communicate with AI");
             setMessages([
@@ -193,13 +181,13 @@ export default function AIChatbox() {
                     <p className="text-xs text-gray-400">Ask about programming, mentors, or concepts!</p>
                 </div>
                 <div className="flex items-center gap-2">
-                    <button 
+                    <button
                         onClick={startNewChat}
                         className="flex items-center gap-2 text-sm text-gray-400 hover:text-white transition-colors border border-white/10 hover:border-gray-500 px-3 py-1.5 rounded-md font-bold"
                     >
                         + New Chat
                     </button>
-                    <button 
+                    <button
                         onClick={openHistory}
                         className="flex items-center gap-2 text-sm font-bold text-gray-400 hover:text-orange-500 transition-colors border border-white/10 hover:border-orange-500 px-3 py-1.5 rounded-md"
                     >
@@ -207,7 +195,7 @@ export default function AIChatbox() {
                     </button>
                 </div>
             </div>
-            
+
             {showHistory && (
                 <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm">
                     <div className="bg-[#1a1a1a] w-full max-w-2xl rounded-2xl border border-white/10 flex flex-col max-h-[85vh] shadow-2xl">
@@ -231,10 +219,10 @@ export default function AIChatbox() {
                                     const firstUserMsg = session.messages.find(m => m.role === 'user' || m.sender === 'user')?.content || session.messages.find(m => m.role === 'user' || m.sender === 'user')?.text || session.title || "New Chat";
                                     const title = firstUserMsg.length > 50 ? firstUserMsg.substring(0, 50) + "..." : firstUserMsg;
                                     const date = new Date(session.updatedAt).toLocaleString();
-                                    
+
                                     return (
-                                        <div 
-                                            key={session.id} 
+                                        <div
+                                            key={session.id}
                                             onClick={() => loadSession(session.id)}
                                             className={`p-3 rounded-md cursor-pointer border transition-colors ${currentSessionId === session.id ? 'bg-orange-600/10 border-orange-500' : 'bg-[#111111] border-white/10 hover:border-gray-500 hover:bg-[#1a1a1a]'}`}
                                         >
@@ -243,7 +231,7 @@ export default function AIChatbox() {
                                                     <p className="text-sm text-gray-200 font-medium truncate">{title}</p>
                                                     <p className="text-xs text-gray-500 mt-1">{date}</p>
                                                 </div>
-                                                <button 
+                                                <button
                                                     onClick={(e) => { e.stopPropagation(); deleteSession(session.id); }}
                                                     className="p-1.5 text-gray-500 hover:text-red-500 hover:bg-red-500/10 rounded-md transition-colors font-bold"
                                                     title="Delete this history"

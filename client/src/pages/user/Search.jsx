@@ -190,7 +190,7 @@ export default function Search() {
                         name: user.name,
                         initials: user.name ? user.name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2) : "U",
                         avatar: user.avatar,
-                        role: user.headline || "SkillSwap member",
+                        role: user.headline || "",
                         location: user.location?.city ? `${user.location.city}${user.location.country ? `, ${user.location.country}` : ""}` : "Online",
                         rating: user.rating || 0,
                         reviews: user.reviews || 0,
@@ -414,10 +414,23 @@ export default function Search() {
                                 Search mentors and learners by skill, category, level and teaching mode.
                             </p>
                         </div>
+                        {/* Search Bar Input */}
+                        <div className="relative mt-2 w-full max-w-md lg:mt-0">
+                            <HiOutlineMagnifyingGlass className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-xl text-white/35" />
+                            <input
+                                type="search"
+                                name="search"
+                                value={filters.search}
+                                onChange={handleFilterChange}
+                                placeholder="Search by name, skill, location..."
+                                className="w-full rounded-2xl border border-white/10 bg-[#101117] py-3 pl-12 pr-4 text-sm text-white outline-none placeholder:text-white/25 focus:border-orange-500/60"
+                            />
+                        </div>
                     </div>
 
                     {/* Horizontal Filters Bar */}
                     <div className="mt-6 rounded-[24px] border border-white/10 bg-[#101117] p-5">
+                    
                         <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
                             <div className="grid flex-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 max-w-5xl">
                                 <SelectFilter
@@ -549,21 +562,6 @@ function SearchHero({
                     based on your interests and
                     goals.
                 </p>
-
-                <div className="relative mt-7 max-w-3xl">
-                    <HiOutlineMagnifyingGlass className="pointer-events-none absolute left-5 top-1/2 -translate-y-1/2 text-xl text-white/30" />
-
-                    <input
-                        type="search"
-                        name="search"
-                        value={searchValue}
-                        onChange={
-                            onSearchChange
-                        }
-                        placeholder="Search React, UI Design, English, Python..."
-                        className="w-full rounded-2xl border border-white/10 bg-[#090a0f]/90 py-4 pl-14 pr-5 text-sm text-white outline-none placeholder:text-white/20 focus:border-orange-500/60 sm:text-base"
-                    />
-                </div>
             </div>
         </section>
     );
@@ -592,9 +590,11 @@ function MentorCard({
                         )}
                     </div>
 
-                    <p className="mt-1 text-sm text-white/45">
-                        {mentor.role}
-                    </p>
+                    {mentor.role && mentor.role !== "SkillSwap member" && (
+                        <p className="mt-1 text-sm text-white/45">
+                            {mentor.role}
+                        </p>
+                    )}
 
                     <div className="mt-2 flex items-center gap-1.5 text-xs text-white/30">
                         <HiOutlineMapPin />

@@ -245,9 +245,11 @@ export default function UserProfileModal({ userId, matchScore, onClose }) {
                                             )}
                                         </h3>
                                         
-                                        <p className="text-[15px] text-white/60 font-light mt-0.5">
-                                            {user.headline || "SkillSwap member"}
-                                        </p>
+                                        {user.headline && user.headline !== "SkillSwap member" && (
+                                            <p className="text-[15px] text-white/60 font-light mt-0.5">
+                                                {user.headline}
+                                            </p>
+                                        )}
 
                                         <div className="mt-3 flex items-center gap-4 text-xs text-white/40">
                                             {user.location?.city && (

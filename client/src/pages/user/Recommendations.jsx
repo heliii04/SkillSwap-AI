@@ -151,7 +151,7 @@ export default function Recommendations() {
                         </p>
 
                         <div className="mt-6 flex flex-wrap justify-center gap-3">
-                            <button className="font-bold"
+                            <button 
                                 type="button"
                                 onClick={() => navigate("/skills/teach")}
                                 className="rounded-full bg-orange-500 px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-orange-400"
@@ -159,7 +159,7 @@ export default function Recommendations() {
                                 Add a skill I teach
                             </button>
 
-                            <button className="font-bold"
+                            <button 
                                 type="button"
                                 onClick={() => navigate("/skills/learn")}
                                 className="rounded-full border border-white/15 px-6 py-2.5 text-sm font-semibold text-white transition hover:border-white/35"
@@ -200,11 +200,11 @@ export default function Recommendations() {
                                                 {match.user.name}
                                             </h2>
 
-                                            <p className="text-xs text-white/40">
-                                                {match.user.headline ||
-                                                    match.user.location ||
-                                                    "SkillSwap member"}
-                                            </p>
+                                            {(match.user.headline || match.user.location) && (
+                                                <p className="text-xs text-white/40">
+                                                    {match.user.headline || match.user.location}
+                                                </p>
+                                            )}
                                         </div>
                                     </div>
 
@@ -263,7 +263,7 @@ export default function Recommendations() {
                                 <footer className="mt-5 flex flex-wrap gap-3 border-t border-white/10 pt-4">
                                     {match.isConnected ? (
                                         <>
-                                            <button className="font-bold"
+                                            <button 
                                                 type="button"
                                                 onClick={() => navigate("/messages")}
                                                 className="inline-flex items-center gap-2 rounded-full bg-orange-500 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-orange-400"
@@ -272,7 +272,7 @@ export default function Recommendations() {
                                                 <HiOutlineChatBubbleLeftRight />
                                             </button>
 
-                                            <button className="font-bold"
+                                            <button 
                                                 type="button"
                                                 onClick={() => {
                                                     setSelectedUserId(match.user.id);
@@ -286,7 +286,7 @@ export default function Recommendations() {
                                         </>
                                     ) : (
                                         <>
-                                            <button className="font-bold"
+                                            <button 
                                                 type="button"
                                                 onClick={() => navigate("/search")}
                                                 className="inline-flex items-center gap-2 rounded-full bg-orange-500 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-orange-400"
@@ -295,7 +295,7 @@ export default function Recommendations() {
                                                 <HiOutlineArrowRight className="animate-arrow-move"  />
                                             </button>
 
-                                            <button className="font-bold"
+                                            <button 
                                                 type="button"
                                                 onClick={() => {
                                                     setSelectedUserId(match.user.id);

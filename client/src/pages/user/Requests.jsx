@@ -138,7 +138,7 @@ export default function Requests() {
                             initials: req.sender?.name 
                                 ? req.sender.name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)
                                 : "U",
-                            role: req.sender?.headline || "SkillSwap member",
+                            role: req.sender?.headline || "",
                             location: req.sender?.location 
                                 ? [req.sender.location.city, req.sender.location.country].filter(Boolean).join(", ")
                                 : "Unknown Location",
@@ -158,7 +158,7 @@ export default function Requests() {
                             initials: req.receiver?.name 
                                 ? req.receiver.name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)
                                 : "U",
-                            role: req.receiver?.headline || "SkillSwap member",
+                            role: req.receiver?.headline || "",
                             location: req.receiver?.location 
                                 ? [req.receiver.location.city, req.receiver.location.country].filter(Boolean).join(", ")
                                 : "Unknown Location",
@@ -674,12 +674,11 @@ function RequestCard({
                             />
                         </div>
 
-                        <p className="mt-1 text-sm text-white/45">
-                            {
-                                request.user
-                                    .role
-                            }
-                        </p>
+                        {request.user.role && request.user.role !== "SkillSwap member" && (
+                            <p className="mt-1 text-sm text-white/45">
+                                {request.user.role}
+                            </p>
+                        )}
 
                         <div className="mt-2 flex flex-wrap gap-4 text-xs text-white/30">
                             <span className="inline-flex items-center gap-1.5">
