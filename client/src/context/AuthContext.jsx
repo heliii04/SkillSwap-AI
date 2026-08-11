@@ -30,7 +30,7 @@ export const AuthContext = createContext(null);
 
 function getErrorMessage(error) {
     if (error.code === "ECONNABORTED" || error.message?.includes("timeout")) {
-        return "Server is starting up (Render cold start). Please wait a moment and click Sign In again.";
+        return "Server is starting up (Render cold start). Please wait 10-15 seconds and try again.";
     }
     if (
         error.response?.data?.errors &&

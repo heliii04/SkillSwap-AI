@@ -222,7 +222,7 @@ export default function Register() {
                                             className="w-full rounded-xl border border-white/10 bg-[#15161C] px-4 py-3.5 pr-20 text-white outline-none transition placeholder:text-white/30 focus:border-orange-500"
                                         />
 
-                                        <button className="font-bold"
+                                        <button
                                             type="button"
                                             onClick={() =>
                                                 setShowPassword((previousValue) => !previousValue)

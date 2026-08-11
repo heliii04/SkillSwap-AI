@@ -152,25 +152,17 @@ export const register = asyncHandler(
             });
         }
 
-        try {
-            await sendVerificationOtpEmail({
-                name: user.name,
-                email: user.email,
-                otp,
-            });
-        } catch (error) {
+        // Send verification email asynchronously in background so registration response is immediate
+        sendVerificationOtpEmail({
+            name: user.name,
+            email: user.email,
+            otp,
+        }).catch((error) => {
             console.error(
-                "Verification email failed:",
+                "Background verification email delivery error:",
                 error.message
             );
-
-            throw new ApiError(
-                503,
-                "Unable to send verification email. Please try again.",
-                [],
-                "EMAIL_DELIVERY_FAILED"
-            );
-        }
+        });
 
         res.status(201).json({
             success: true,
@@ -359,10 +351,16 @@ export const resendOtp = asyncHandler(
 
         await user.save();
 
-        await sendVerificationOtpEmail({
+        // Send resend OTP email asynchronously in background
+        sendVerificationOtpEmail({
             name: user.name,
             email: user.email,
             otp,
+        }).catch((error) => {
+            console.error(
+                "Background resend OTP email delivery error:",
+                error.message
+            );
         });
 
         res.status(200).json({
