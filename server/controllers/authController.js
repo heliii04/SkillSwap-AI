@@ -154,14 +154,17 @@ export const register = asyncHandler(
 
         console.log(`[AUTH OTP GENERATED] Email: ${user.email} | OTP: ${otp}`);
 
-        // Send verification email asynchronously in background so registration response is immediate
+        // Send verification email
         sendVerificationOtpEmail({
             name: user.name,
             email: user.email,
             otp,
         }).catch((error) => {
             console.error(
-                `[AUTH OTP EMAIL FAILED] Email: ${user.email} | Error: ${error.message}`
+                `❌ [AUTH OTP EMAIL FAILED] Email: ${user.email} | Error: ${error.message}`
+            );
+            console.error(
+                `💡 TIP: Ensure SMTP_USER, SMTP_PASSWORD, SMTP_HOST, and SMTP_PORT are correctly configured on Render Dashboard Environment Variables.`
             );
         });
 
@@ -354,14 +357,17 @@ export const resendOtp = asyncHandler(
 
         console.log(`[AUTH RESEND OTP GENERATED] Email: ${user.email} | OTP: ${otp}`);
 
-        // Send resend OTP email asynchronously in background
+        // Send resend OTP email
         sendVerificationOtpEmail({
             name: user.name,
             email: user.email,
             otp,
         }).catch((error) => {
             console.error(
-                `[AUTH RESEND OTP EMAIL FAILED] Email: ${user.email} | Error: ${error.message}`
+                `❌ [AUTH RESEND OTP EMAIL FAILED] Email: ${user.email} | Error: ${error.message}`
+            );
+            console.error(
+                `💡 TIP: Ensure SMTP_USER, SMTP_PASSWORD, SMTP_HOST, and SMTP_PORT are correctly configured on Render Dashboard Environment Variables.`
             );
         });
 

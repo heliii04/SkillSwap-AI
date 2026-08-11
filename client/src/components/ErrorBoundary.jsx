@@ -12,7 +12,11 @@ class ErrorBoundary extends React.Component {
     }
 
     componentDidCatch(error, errorInfo) {
-        console.error("ErrorBoundary caught an error:", error, errorInfo);
+        try {
+            console.error("ErrorBoundary caught an error:", error?.message || error, errorInfo);
+        } catch {
+            console.error("ErrorBoundary caught an error (unprintable)");
+        }
     }
 
     handleReload = () => {
@@ -25,6 +29,10 @@ class ErrorBoundary extends React.Component {
 
     render() {
         if (this.state.hasError) {
+            const rawMessage = typeof this.state.error === "string" 
+                ? this.state.error 
+                : (this.state.error?.message || "");
+
             return (
                 <div className="flex min-h-[400px] w-full flex-col items-center justify-center p-6 text-center">
                     <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl border border-orange-500/30 bg-orange-500/10 text-orange-400">
@@ -36,9 +44,9 @@ class ErrorBoundary extends React.Component {
                     </h2>
                     
                     <p className="mt-2 max-w-md text-sm text-gray-400">
-                        {this.state.error?.message?.includes("Failed to fetch dynamically imported module")
+                        {rawMessage.includes("Failed to fetch dynamically imported module")
                             ? "A network or server update occurred while loading this page. Please refresh to load the latest version."
-                            : this.state.error?.message || "An unexpected error occurred while loading this view."}
+                            : rawMessage || "An unexpected error occurred while loading this view."}
                     </p>
 
                     <div className="mt-6 flex flex-wrap items-center justify-center gap-3">

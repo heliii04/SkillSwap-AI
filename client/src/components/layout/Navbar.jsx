@@ -188,9 +188,7 @@ export default function Navbar() {
           transition={{ duration: 0.5 }}
           className="hidden items-center gap-4 lg:flex"
         >
-          {authLoading ? (
-            <div className="h-11 w-36 animate-pulse rounded-full bg-white/10" />
-          ) : isAuthenticated ? (
+          {isAuthenticated ? (
             <>
               <Link
                 to={user?.role === "admin" ? "/admin" : "/dashboard"}
@@ -345,9 +343,7 @@ export default function Navbar() {
           </NavLink>
 
           <div className="mt-4">
-            {authLoading ? (
-              <div className="h-12 w-full animate-pulse rounded-xl bg-white/10" />
-            ) : isAuthenticated ? (
+            {isAuthenticated ? (
               <div className="grid grid-cols-2 gap-3">
                 <Link
                   to={user?.role === "admin" ? "/admin" : "/dashboard"}

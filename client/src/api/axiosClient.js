@@ -6,19 +6,18 @@ import {
     setAccessToken,
 } from "./tokenStore";
 
-const API_BASE_URL =
-    import.meta.env.VITE_API_BASE_URL;
+const envBaseUrl = import.meta.env.VITE_API_BASE_URL;
 
-if (!API_BASE_URL) {
-    throw new Error(
-        "VITE_API_BASE_URL is missing in frontend .env file."
-    );
-}
+const API_BASE_URL =
+    envBaseUrl ||
+    (typeof window !== "undefined" && window.location.hostname === "localhost"
+        ? "http://localhost:5000/api/v1"
+        : "https://skillswap-ai-8ill.onrender.com/api/v1");
 
 const axiosClient = axios.create({
     baseURL: API_BASE_URL,
     withCredentials: true,
-    timeout: 90000,
+    timeout: 15000,
     headers: {
         "Content-Type": "application/json",
     },
@@ -27,7 +26,7 @@ const axiosClient = axios.create({
 const refreshClient = axios.create({
     baseURL: API_BASE_URL,
     withCredentials: true,
-    timeout: 90000,
+    timeout: 10000,
     headers: {
         "Content-Type": "application/json",
     },

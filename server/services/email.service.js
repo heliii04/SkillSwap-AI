@@ -1,5 +1,5 @@
 import { env } from "../config/env.js";
-import { mailTransporter } from "../config/mailer.js";
+import { createMailTransporter, mailTransporter } from "../config/mailer.js";
 
 export async function sendVerificationOtpEmail({
     name,
@@ -91,13 +91,23 @@ SkillSwap AI
     const fromName = env.smtp?.fromName || env.MAIL_FROM_NAME || "SkillSwap AI";
     const fromAddress = env.smtp?.fromEmail || env.MAIL_FROM_ADDRESS || env.smtp?.user || process.env.SMTP_USER || "gohilraviiiii012@gmail.com";
 
-    await mailTransporter.sendMail({
+    const mailOptions = {
         from: `"${fromName}" <${fromAddress}>`,
         to: email,
         subject,
         text,
         html,
-    });
+    };
+
+    try {
+        await mailTransporter.sendMail(mailOptions);
+        console.log(`✅ [AUTH OTP EMAIL SENT] Successfully sent verification email to ${email}`);
+    } catch (primaryError) {
+        console.warn(`⚠️ [AUTH OTP EMAIL RETRYING] Primary transport failed (${primaryError.message}). Retrying with fresh transport connection...`);
+        const freshTransporter = createMailTransporter();
+        await freshTransporter.sendMail(mailOptions);
+        console.log(`✅ [AUTH OTP EMAIL SENT ON RETRY] Successfully sent verification email to ${email}`);
+    }
 }
 
 export async function sendOtpEmail({ email, name, otp }) {
