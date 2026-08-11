@@ -16,6 +16,15 @@ import {
 } from "react-icons/fi";
 import axiosClient from "../../api/axiosClient";
 
+const getInitials = (name) => {
+    if (!name || typeof name !== "string") return "U";
+    const parts = name.trim().split(/\s+/);
+    if (parts.length >= 2) {
+        return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+    }
+    return parts[0].slice(0, 2).toUpperCase();
+};
+
 export default function AdminOverview() {
     const navigate = useNavigate();
     const [statsData, setStatsData] = useState(null);
@@ -51,7 +60,7 @@ export default function AdminOverview() {
         return () => { isMounted = false; };
     }, []);
 
-    // Render Helpers for Custom SVG Charts
+    // Render Helpers for Custom SVG Charts with animated left-to-right path drawing
     const renderAreaChart = (data) => {
         if (!data || data.length === 0) return (
             <div className="flex h-full items-center justify-center text-white/20 text-xs">No data available</div>
@@ -78,21 +87,72 @@ export default function AdminOverview() {
                         <stop offset="100%" stopColor="#f97316" stopOpacity="0" />
                     </linearGradient>
                 </defs>
+                <style>{`
+                    @keyframes drawPathLineOverview {
+                        0% { stroke-dashoffset: 1200; }
+                        100% { stroke-dashoffset: 0; }
+                    }
+                    @keyframes fadeInOverviewArea {
+                        0% { opacity: 0; }
+                        100% { opacity: 1; }
+                    }
+                    @keyframes popInOverviewNode {
+                        0% { opacity: 0; transform: scale(0.5); }
+                        100% { opacity: 1; transform: scale(1); }
+                    }
+                    @keyframes growBarVertical {
+                        0% { transform: scaleY(0); }
+                        100% { transform: scaleY(1); }
+                    }
+                    .overview-draw-line {
+                        stroke-dasharray: 1200;
+                        stroke-dashoffset: 1200;
+                        animation: drawPathLineOverview 4.2s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+                    }
+                    .overview-area-fill {
+                        opacity: 0;
+                        animation: fadeInOverviewArea 1.2s ease-out 2.8s forwards;
+                    }
+                `}</style>
                 <line x1={padding} y1={height - padding} x2={width - padding} y2={height - padding} stroke="#ffffff" strokeOpacity="0.1" />
                 <line x1={padding} y1={padding} x2={width - padding} y2={padding} stroke="#ffffff" strokeOpacity="0.05" />
-                <path d={areaPath} fill="url(#areaGrad)" />
-                <path d={linePath} fill="none" stroke="#f97316" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-                {points.map((p, i) => (
-                    <g key={i}>
-                        <circle cx={p.x} cy={p.y} r="4" fill="#07080d" stroke="#f97316" strokeWidth="2" />
-                        <text x={p.x} y={height - 10} fill="#ffffff" fillOpacity="0.45" fontSize="10" textAnchor="middle">
-                            {data[i].label}
-                        </text>
-                        <text x={p.x} y={p.y - 10} fill="#f97316" fontSize="9" fontWeight="bold" textAnchor="middle">
-                            {data[i].count}
-                        </text>
-                    </g>
-                ))}
+                
+                {/* Animated Gradient Area */}
+                <path d={areaPath} fill="url(#areaGrad)" className="overview-area-fill" />
+
+                {/* Animated Line drawing left to right */}
+                <path
+                    d={linePath}
+                    fill="none"
+                    stroke="#f97316"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="overview-draw-line"
+                />
+
+                {/* Staggered Data Point Nodes & Value Labels */}
+                {points.map((p, i) => {
+                    const delaySeconds = (i / (points.length - 1)) * 3.4 + 0.3;
+                    return (
+                        <g
+                            key={i}
+                            style={{
+                                opacity: 0,
+                                animation: `popInOverviewNode 0.4s ease-out ${delaySeconds}s forwards`,
+                                transformOrigin: `${p.x}px ${p.y}px`,
+                            }}
+                        >
+                            <circle cx={p.x} cy={p.y} r="4" fill="#07080d" stroke="#f97316" strokeWidth="2" />
+                            <text x={p.x} y={height - 10} fill="#ffffff" fillOpacity="0.45" fontSize="10" textAnchor="middle">
+                                {data[i].label}
+                            </text>
+                            <text x={p.x} y={p.y - 10} fill="#f97316" fontSize="9" fontWeight="bold" textAnchor="middle">
+                                {data[i].count}
+                            </text>
+                        </g>
+                    );
+                })}
             </svg>
         );
     };
@@ -118,18 +178,40 @@ export default function AdminOverview() {
             <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full overflow-visible">
                 <line x1={padding} y1={height - padding} x2={width - padding} y2={height - padding} stroke="#ffffff" strokeOpacity="0.1" />
                 <line x1={padding} y1={padding} x2={width - padding} y2={padding} stroke="#ffffff" strokeOpacity="0.05" />
-                <path d={linePath} fill="none" stroke="#3b82f6" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-                {points.map((p, i) => (
-                    <g key={i}>
-                        <circle cx={p.x} cy={p.y} r="4" fill="#07080d" stroke="#3b82f6" strokeWidth="2" />
-                        <text x={p.x} y={height - 10} fill="#ffffff" fillOpacity="0.45" fontSize="10" textAnchor="middle">
-                            {data[i].label}
-                        </text>
-                        <text x={p.x} y={p.y - 10} fill="#3b82f6" fontSize="9" fontWeight="bold" textAnchor="middle">
-                            {data[i].count}
-                        </text>
-                    </g>
-                ))}
+
+                {/* Animated Line drawing left to right */}
+                <path
+                    d={linePath}
+                    fill="none"
+                    stroke="#3b82f6"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="overview-draw-line"
+                />
+
+                {/* Staggered Data Point Nodes & Value Labels */}
+                {points.map((p, i) => {
+                    const delaySeconds = (i / (points.length - 1)) * 3.4 + 0.3;
+                    return (
+                        <g
+                            key={i}
+                            style={{
+                                opacity: 0,
+                                animation: `popInOverviewNode 0.4s ease-out ${delaySeconds}s forwards`,
+                                transformOrigin: `${p.x}px ${p.y}px`,
+                            }}
+                        >
+                            <circle cx={p.x} cy={p.y} r="4" fill="#07080d" stroke="#3b82f6" strokeWidth="2" />
+                            <text x={p.x} y={height - 10} fill="#ffffff" fillOpacity="0.45" fontSize="10" textAnchor="middle">
+                                {data[i].label}
+                            </text>
+                            <text x={p.x} y={p.y - 10} fill="#3b82f6" fontSize="9" fontWeight="bold" textAnchor="middle">
+                                {data[i].count}
+                            </text>
+                        </g>
+                    );
+                })}
             </svg>
         );
     };
@@ -151,8 +233,11 @@ export default function AdminOverview() {
                     const x = padding + (index / (data.length - 1)) * (width - padding * 2 - barWidth) + barWidth / 2;
                     const barHeight = (d.count / maxVal) * (height - padding * 2);
                     const y = height - padding - barHeight;
+                    const delaySeconds = index * 0.35 + 0.3;
+
                     return (
                         <g key={index}>
+                            {/* Animated Vertical Bar Growing from Bottom to Top */}
                             <rect
                                 x={x - barWidth / 2}
                                 y={y}
@@ -161,12 +246,31 @@ export default function AdminOverview() {
                                 fill="#f97316"
                                 fillOpacity="0.85"
                                 rx="5"
+                                style={{
+                                    transformOrigin: `${x}px ${height - padding}px`,
+                                    animation: `growBarVertical 3.8s cubic-bezier(0.25, 1, 0.5, 1) ${delaySeconds}s forwards`,
+                                    transform: "scaleY(0)"
+                                }}
                                 className="transition-all hover:fill-opacity-100"
                             />
+                            {/* Category Label */}
                             <text x={x} y={height - 10} fill="#ffffff" fillOpacity="0.45" fontSize="9" textAnchor="middle">
                                 {d.category.length > 9 ? d.category.slice(0, 7) + ".." : d.category}
                             </text>
-                            <text x={x} y={y - 8} fill="#ffffff" fontSize="9" fontWeight="bold" textAnchor="middle">
+                            {/* Animated Count Label on top */}
+                            <text
+                                x={x}
+                                y={y - 8}
+                                fill="#ffffff"
+                                fontSize="9"
+                                fontWeight="bold"
+                                textAnchor="middle"
+                                style={{
+                                    opacity: 0,
+                                    animation: `popInOverviewNode 0.4s ease-out ${delaySeconds + 2.2}s forwards`,
+                                    transformOrigin: `${x}px ${y - 8}px`
+                                }}
+                            >
                                 {d.count}
                             </text>
                         </g>
@@ -338,23 +442,61 @@ export default function AdminOverview() {
                 <div className="rounded-3xl border border-white/10 bg-[#0d0e15] p-6">
                     <div className="flex items-center justify-between border-b border-white/10 pb-4">
                         <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                            <FiUsers className="text-orange-400" /> Recent User Registrations
+                            <FiUsers className="text-orange-400" /> Recent Registrations (This Week)
                         </h3>
+                        <span className="text-xs text-white/40">
+                            {(statsData?.recentActivity?.newestUsers || statsData?.recentActivity?.recentUsers || []).length} This Week
+                        </span>
                     </div>
                     <div className="mt-4 space-y-3">
-                        {statsData?.recentActivity?.recentUsers?.length > 0 ? statsData.recentActivity.recentUsers.map((u) => (
-                            <div key={u._id} className="flex items-center justify-between rounded-2xl border border-white/5 bg-white/[0.02] p-3 text-sm">
-                                <div>
-                                    <p className="font-semibold text-white">{u.name}</p>
-                                    <p className="text-xs text-white/40">{u.email}</p>
-                                </div>
-                                <span className="rounded-full bg-white/5 px-3 py-1 text-xs text-white/60 capitalize">
-                                    {u.role || "user"}
-                                </span>
-                            </div>
-                        )) : (
-                            <p className="text-sm text-white/30 text-center py-6">No recent registrations</p>
-                        )}
+                        {(() => {
+                            const userList = statsData?.recentActivity?.newestUsers || statsData?.recentActivity?.recentUsers || [];
+                            if (userList.length === 0) {
+                                return <p className="text-sm text-white/30 text-center py-8">No recent registrations this week</p>;
+                            }
+                            return userList.map((u) => {
+                                const dateFormatted = u.createdAt
+                                    ? new Date(u.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+                                    : "Recently";
+                                const avatarSrc = typeof u.avatar === "string" ? u.avatar : (u.avatar?.url || "");
+                                const hasValidAvatar = avatarSrc && typeof avatarSrc === "string" && avatarSrc.trim().length > 0 && !avatarSrc.includes("default");
+
+                                return (
+                                    <div key={u._id} className="flex items-center justify-between rounded-2xl border border-white/5 bg-white/[0.02] p-3 text-sm hover:border-orange-500/30 transition-all">
+                                        <div className="flex items-center gap-3">
+                                            <div className="h-9 w-9 rounded-full bg-[#f97316] flex items-center justify-center text-white font-bold text-xs shrink-0 overflow-hidden shadow-sm">
+                                                {hasValidAvatar ? (
+                                                    <img
+                                                        src={avatarSrc}
+                                                        alt={u.name}
+                                                        className="h-full w-full object-cover"
+                                                        onError={(e) => {
+                                                            e.currentTarget.style.display = "none";
+                                                        }}
+                                                    />
+                                                ) : (
+                                                    getInitials(u.name)
+                                                )}
+                                            </div>
+                                            <div>
+                                                <p className="font-semibold text-white leading-tight">{u.name}</p>
+                                                <p className="text-xs text-white/40">{u.email}</p>
+                                            </div>
+                                        </div>
+                                        <div className="text-right">
+                                            <span className={`inline-block rounded-full px-2.5 py-0.5 text-[11px] font-bold capitalize ${
+                                                u.role === "admin"
+                                                    ? "bg-purple-500/10 text-purple-400 border border-purple-500/20"
+                                                    : "bg-green-500/10 text-green-400 border border-green-500/20"
+                                            }`}>
+                                                {u.role || "User"}
+                                            </span>
+                                            <p className="text-[10px] text-white/35 mt-1">{dateFormatted}</p>
+                                        </div>
+                                    </div>
+                                );
+                            });
+                        })()}
                     </div>
                 </div>
 

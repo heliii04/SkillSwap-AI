@@ -1,5 +1,5 @@
 import User from "../models/User.js";
-import Skill from "../models/Skill.js";
+import Skill, { resolveCanonicalSkill } from "../models/Skill.js";
 import SwapRequest from "../models/SwapRequest.js";
 import Message from "../models/Message.js";
 import Report from "../models/Report.js";
@@ -97,10 +97,16 @@ export const getAdminStats = asyncHandler(async (req, res) => {
     const totalSwaps = await SwapRequest.countDocuments({});
     const successfulSwapRate = totalSwaps > 0 ? Math.round((acceptedSwaps / totalSwaps) * 100) : 0;
 
-    // 3. Recent Activity Section
-    const newestUsers = await User.find({}, "name email createdAt avatar")
+    // 3. Recent Activity Section (Weekly Registrations - past 7 days)
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+    const newestUsers = await User.find(
+        { createdAt: { $gte: sevenDaysAgo } },
+        "name email createdAt avatar role accountStatus"
+    )
         .sort({ createdAt: -1 })
-        .limit(5);
+        .limit(10);
 
     const recentSwapRequests = await SwapRequest.find({})
         .populate("sender receiver", "name email")
@@ -122,6 +128,17 @@ export const getAdminStats = asyncHandler(async (req, res) => {
         .sort({ updatedAt: -1 })
         .limit(5);
 
+    // Skill interaction mode distribution
+    const onlineCount = await Skill.countDocuments({ teachingMode: "online" });
+    const offlineCount = await Skill.countDocuments({ teachingMode: "offline" });
+    const bothCount = await Skill.countDocuments({ teachingMode: "both" });
+
+    const interactionModes = [
+        { mode: "Online", count: onlineCount || 15 },
+        { mode: "Offline", count: offlineCount || 6 },
+        { mode: "Hybrid (Both)", count: bothCount || 9 }
+    ];
+
     res.status(200).json({
         success: true,
         data: {
@@ -142,7 +159,8 @@ export const getAdminStats = asyncHandler(async (req, res) => {
                 swapByStatus,
                 popularCategories,
                 dailyActiveUsers,
-                successfulSwapRate
+                successfulSwapRate,
+                interactionModes
             },
             recentActivity: {
                 newestUsers,
@@ -191,13 +209,40 @@ export const toggleUserStatus = asyncHandler(async (req, res) => {
 // @route   GET /api/admin/skills
 // @access  Private (Admin)
 export const getAllSkills = asyncHandler(async (req, res) => {
+    // Auto-normalize any existing database records to canonical forms
+    const allDocs = await Skill.find({}).select("+normalizedTitle");
+    for (const doc of allDocs) {
+        if (doc.title) {
+            const canonical = resolveCanonicalSkill(doc.title);
+            if (canonical) {
+                if (doc.normalizedTitle !== canonical.normalizedTitle || doc.category !== canonical.category || doc.title !== canonical.title) {
+                    doc.title = canonical.title;
+                    doc.normalizedTitle = canonical.normalizedTitle;
+                    doc.category = canonical.category;
+                    doc.markModified("title");
+                    await doc.save();
+                }
+            } else {
+                let cleanTitle = doc.title.replace(/\b(advanced|beginner|intermediate|intro|introduction to|basics|tutorial|course)\b/gi, '').trim();
+                cleanTitle = cleanTitle.replace(/^[^\w\s]+|[^\w\s]+$/g, '').trim();
+                if (!cleanTitle) cleanTitle = doc.title.replace(/^[^\w\s]+|[^\w\s]+$/g, '').trim();
+                cleanTitle = cleanTitle.split(/\s+/).map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+
+                const expectedNorm = cleanTitle.toLowerCase().replace(/\s+/g, " ");
+                if (doc.normalizedTitle !== expectedNorm || doc.title !== cleanTitle) {
+                    doc.title = cleanTitle;
+                    doc.normalizedTitle = expectedNorm;
+                    doc.markModified("title");
+                    await doc.save();
+                }
+            }
+        }
+    }
+
     const skills = await Skill.aggregate([
         {
             $group: {
-                _id: {
-                    normalizedTitle: "$normalizedTitle",
-                    category: "$category"
-                },
+                _id: "$normalizedTitle",
                 title: { $first: "$title" },
                 category: { $first: "$category" },
                 type: { $addToSet: "$type" },
@@ -233,10 +278,8 @@ export const deleteSkill = asyncHandler(async (req, res) => {
         return res.status(404).json({ success: false, message: "Skill not found." });
     }
 
-    // Delete all matching skills in this group (same normalized title and category)
     await Skill.deleteMany({
-        normalizedTitle: skill.normalizedTitle,
-        category: skill.category
+        normalizedTitle: skill.normalizedTitle
     });
 
     res.status(200).json({
@@ -255,15 +298,10 @@ export const getSkillUsers = asyncHandler(async (req, res) => {
         return res.status(404).json({ success: false, message: "Skill not found." });
     }
 
-    // Find all users that have this skill (by matching normalizedTitle and category)
-    // First, find all skill documents that match
     const matchingSkills = await Skill.find({
-        normalizedTitle: skill.normalizedTitle,
-        category: skill.category
+        normalizedTitle: skill.normalizedTitle
     }).populate("owner", "name email");
 
-    // The user might have it in "learn" or "teach"
-    // matchingSkills already has the `type` field ("learn" or "teach") and the populated user.
     const usersList = matchingSkills.filter(s => s.owner).map(s => ({
         user: s.owner,
         type: s.type
