@@ -103,6 +103,7 @@ export function AuthProvider({ children }) {
     }, [clearSession, loadCurrentUser]);
 
     useEffect(() => {
+        axiosClient.get("/health").catch(() => {});
         restoreSession();
     }, [restoreSession]);
 

@@ -1,6 +1,8 @@
 import Skill from "../models/Skill.js";
 import SwapRequest from "../models/SwapRequest.js";
 import LearningRoadmap from "../models/LearningRoadmap.js";
+import AIChatHistory from "../models/AIChatHistory.js";
+import QuizResult from "../models/QuizResult.js";
 
 import { ApiError } from "../utils/ApiError.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
@@ -322,50 +324,151 @@ export const getIcebreaker = asyncHandler(async (req, res) => {
     });
 });
 
-export const chatDiscussion = asyncHandler(async (req, res) => {
-    const { message, history } = req.body;
-    
-    // 1. We match for SkillSwap context if user asks about learning a skill.
-    let systemContext = "You are a helpful AI assistant for SkillSwap, a platform for learning and teaching skills. Default to responding in English unless the user explicitly speaks or requests Hindi or Gujarati. STRICT LIMITATION: You MUST ONLY answer questions related to skills, learning, teaching, or the SkillSwap platform itself. If a user asks something unrelated, inappropriate, or uses bad language, give a VERY SHORT and polite apology (e.g., 'Sorry, I can only help with skill-related topics.'), DO NOT explain further, and DO NOT mention any users. NEVER use bad language. NEVER mention any users on the platform unless the user explicitly asks to learn a specific skill.";
-    
-    const lowerMsg = message.toLowerCase();
-    const words = lowerMsg.replace(/[^a-zA-Z0-9\s]/g, '').split(' ').filter(w => w.length > 2 && !['how', 'to', 'learn', 'teach', 'seekhna', 'want', 'can', 'you', 'help', 'me', 'with', 'what', 'is', 'the', 'for', 'and'].includes(w));
-    
-    if (words.length > 0) {
-        const regexes = words.map(w => new RegExp(w, 'i'));
-        const potentialSkills = await Skill.find({ 
-            type: "teach", 
-            isActive: true,
-            $or: [
-                { title: { $in: regexes } },
-                { tags: { $in: regexes } }
-            ]
-        })
-        .populate("owner", "name headline")
-        .limit(5)
+export const getAiChatSessions = asyncHandler(async (req, res) => {
+    const sessions = await AIChatHistory.find({
+        user: req.user._id,
+        "messages.0": { $exists: true },
+    })
+        .sort({ updatedAt: -1 })
         .lean();
-            
-        if (potentialSkills.length > 0) {
-            const skillContext = potentialSkills.map(s => `${s.owner?.name} teaches ${s.title}`).join(", ");
-            systemContext += ` Important context: Here are up to 5 users who teach skills related to the user's query: ${skillContext}. ONLY mention them IF the user explicitly wants to learn these exact skills.`;
-        }
-    }
-    
-    // Convert history to prompt string for simplicity, or just pass message if no history
-    let prompt = message;
-    if (history && history.length > 0) {
-        prompt = history.map(h => `${h.role}: ${h.content}`).join("\n") + `\nuser: ${message}`;
-    } else {
-        systemContext += " This is the very first message of the conversation. You MUST start your response by warmly welcoming the user to SkillSwap (e.g. 'Welcome to SkillSwap! I am your AI Assistant...'). After the welcome, proceed to answer their question or address their message.";
-    }
 
-    const aiResponse = await chatWithGemini(prompt, systemContext);
-    
+    const formatted = sessions.map((s) => ({
+        id: s.sessionId,
+        title: s.title || "Conversation",
+        updatedAt: s.updatedAt,
+        messages: (s.messages || []).map((m) => ({
+            sender: m.sender,
+            text: m.text,
+            timestamp: m.timestamp,
+        })),
+    }));
+
     return res.status(200).json({
         success: true,
         data: {
-            reply: aiResponse
+            sessions: formatted,
+        },
+    });
+});
+
+export const deleteAiChatSession = asyncHandler(async (req, res) => {
+    const { sessionId } = req.params;
+
+    await AIChatHistory.deleteOne({
+        user: req.user._id,
+        sessionId,
+    });
+
+    return res.status(200).json({
+        success: true,
+        message: "AI chat session deleted successfully",
+    });
+});
+
+export const clearAllAiChatHistory = asyncHandler(async (req, res) => {
+    await AIChatHistory.deleteMany({
+        user: req.user._id,
+    });
+
+    return res.status(200).json({
+        success: true,
+        message: "All AI chat history cleared successfully",
+    });
+});
+
+export const chatDiscussion = asyncHandler(async (req, res) => {
+    const { message, history, sessionId } = req.body;
+    const activeSessionId = sessionId || Date.now().toString();
+
+    // 1. We match for SkillSwap context if user asks about learning a skill.
+    let systemContext =
+        "You are a helpful AI assistant for SkillSwap, a platform for learning and teaching skills. Default to responding in English unless the user explicitly speaks or requests Hindi or Gujarati. STRICT LIMITATION: You MUST ONLY answer questions related to skills, learning, teaching, or the SkillSwap platform itself. If a user asks something unrelated, inappropriate, or uses bad language, give a VERY SHORT and polite apology (e.g., 'Sorry, I can only help with skill-related topics.'), DO NOT explain further, and DO NOT mention any users. NEVER use bad language. NEVER mention any users on the platform unless the user explicitly asks to learn a specific skill.";
+
+    const lowerMsg = message.toLowerCase();
+    const words = lowerMsg
+        .replace(/[^a-zA-Z0-9\s]/g, "")
+        .split(" ")
+        .filter(
+            (w) =>
+                w.length > 2 &&
+                ![
+                    "how",
+                    "to",
+                    "learn",
+                    "teach",
+                    "seekhna",
+                    "want",
+                    "can",
+                    "you",
+                    "help",
+                    "me",
+                    "with",
+                    "what",
+                    "is",
+                    "the",
+                    "for",
+                    "and",
+                ].includes(w)
+        );
+
+    if (words.length > 0) {
+        const regexes = words.map((w) => new RegExp(w, "i"));
+        const potentialSkills = await Skill.find({
+            type: "teach",
+            isActive: true,
+            $or: [
+                { title: { $in: regexes } },
+                { tags: { $in: regexes } },
+            ],
+        })
+            .populate("owner", "name headline")
+            .limit(5)
+            .lean();
+
+        if (potentialSkills.length > 0) {
+            const skillContext = potentialSkills
+                .map((s) => `${s.owner?.name} teaches ${s.title}`)
+                .join(", ");
+            systemContext += ` Important context: Here are up to 5 users who teach skills related to the user's query: ${skillContext}. ONLY mention them IF the user explicitly wants to learn these exact skills.`;
         }
+    }
+
+    // Convert history to prompt string for simplicity, or just pass message if no history
+    let prompt = message;
+    if (history && history.length > 0) {
+        prompt =
+            history
+                .map((h) => `${h.role || h.sender}: ${h.content || h.text}`)
+                .join("\n") + `\nuser: ${message}`;
+    } else {
+        systemContext +=
+            " This is the very first message of the conversation. You MUST start your response by warmly welcoming the user to SkillSwap (e.g. 'Welcome to SkillSwap! I am your AI Assistant...'). After the welcome, proceed to answer their question or address their message.";
+    }
+
+    const aiResponse = await chatWithGemini(prompt, systemContext);
+
+    // Save/update conversation session in MongoDB
+    if (req.user?._id) {
+        const titleSnippet = message.slice(0, 35) + (message.length > 35 ? "..." : "");
+        const userMsg = { sender: "user", text: message, timestamp: new Date() };
+        const aiMsg = { sender: "ai", text: aiResponse, timestamp: new Date() };
+
+        await AIChatHistory.findOneAndUpdate(
+            { user: req.user._id, sessionId: activeSessionId },
+            {
+                $setOnInsert: { title: titleSnippet },
+                $push: { messages: { $each: [userMsg, aiMsg] } },
+            },
+            { upsert: true, new: true }
+        );
+    }
+
+    return res.status(200).json({
+        success: true,
+        data: {
+            reply: aiResponse,
+            sessionId: activeSessionId,
+        },
     });
 });
 
@@ -482,5 +585,62 @@ export const generateQuiz = asyncHandler(async (req, res) => {
     return res.status(200).json({
         success: true,
         data: quizData
+    });
+});
+
+export const saveQuizResult = asyncHandler(async (req, res) => {
+    const { topic, score, totalQuestions, quizData, userAnswers } = req.body;
+
+    if (!topic || score === undefined || !totalQuestions) {
+        throw new ApiError(400, "Topic, score, and totalQuestions are required.");
+    }
+
+    const percentage = Math.round((score / totalQuestions) * 100);
+
+    const newResult = await QuizResult.create({
+        user: req.user._id,
+        topic,
+        score,
+        totalQuestions,
+        percentage,
+        quizData: quizData || [],
+        userAnswers: userAnswers || {}
+    });
+
+    return res.status(201).json({
+        success: true,
+        message: "Quiz result saved successfully",
+        data: { quizResult: newResult }
+    });
+});
+
+export const getUserQuizResults = asyncHandler(async (req, res) => {
+    const results = await QuizResult.find({ user: req.user._id })
+        .sort({ createdAt: -1 })
+        .lean();
+
+    return res.status(200).json({
+        success: true,
+        data: { quizResults: results }
+    });
+});
+
+export const deleteQuizResult = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+
+    await QuizResult.deleteOne({ _id: id, user: req.user._id });
+
+    return res.status(200).json({
+        success: true,
+        message: "Quiz result deleted successfully"
+    });
+});
+
+export const clearAllQuizResults = asyncHandler(async (req, res) => {
+    await QuizResult.deleteMany({ user: req.user._id });
+
+    return res.status(200).json({
+        success: true,
+        message: "All quiz history cleared successfully"
     });
 });

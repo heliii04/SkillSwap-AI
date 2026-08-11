@@ -2,6 +2,7 @@ import User from "../models/User.js";
 import Skill from "../models/Skill.js";
 import SwapRequest from "../models/SwapRequest.js";
 import Message from "../models/Message.js";
+import Report from "../models/Report.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 
 // @desc    Get dashboard statistics for admin overview
@@ -26,8 +27,8 @@ export const getAdminStats = asyncHandler(async (req, res) => {
     // Completed swaps estimate (mocked based on accepted swaps)
     const completedSwaps = Math.round(acceptedSwaps * 0.7);
 
-    // Open reports (placeholder since Report is not active)
-    const openReports = 0;
+    // Open reports
+    const openReports = await Report.countDocuments({ status: "pending" });
 
     // Messages Today
     const startOfToday = new Date();
@@ -107,7 +108,10 @@ export const getAdminStats = asyncHandler(async (req, res) => {
         .sort({ createdAt: -1 })
         .limit(5);
 
-    const recentReports = []; // Placeholder
+    const recentReports = await Report.find({})
+        .populate("reporter reportedUser", "name email")
+        .sort({ createdAt: -1 })
+        .limit(5);
 
     const recentlyAddedSkills = await Skill.find({})
         .populate("owner", "name email")

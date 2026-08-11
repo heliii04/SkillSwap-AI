@@ -1,74 +1,96 @@
 import { useState, useRef, useEffect } from "react";
-import { chatWithAi } from "../../api/aiApi";
+import {
+    chatWithAi,
+    fetchAiChatSessions,
+    deleteAiChatSessionApi,
+    clearAllAiChatSessionsApi,
+} from "../../api/aiApi";
 import { useAuth } from "../../context/AuthContext";
-import { FiSend, FiLoader, FiClock , FiTrash2 } from "react-icons/fi";
+import { FiSend, FiLoader, FiClock, FiTrash2 } from "react-icons/fi";
 import { toast } from "react-toastify";
 
 export default function AIChatbox() {
     const { user } = useAuth();
     const userId = user?._id || user?.id || "guest";
 
-    const storageKey = `ai_chat_sessions_${userId}`;
-    const currentKey = `ai_current_session_id_${userId}`;
-
-    const defaultMessages = [];
-
     const [sessions, setSessions] = useState([]);
     const [currentSessionId, setCurrentSessionId] = useState("");
-    const [messages, setMessages] = useState(defaultMessages);
+    const [messages, setMessages] = useState([]);
 
     const [input, setInput] = useState("");
     const [isLoading, setIsLoading] = useState(false);
     const [showHistory, setShowHistory] = useState(false);
+    const [isHistoryLoading, setIsHistoryLoading] = useState(false);
     const endRef = useRef(null);
+
+    const openHistory = async () => {
+        setShowHistory(true);
+        setIsHistoryLoading(true);
+        try {
+            const res = await fetchAiChatSessions();
+            if (res?.data?.sessions) {
+                setSessions(res.data.sessions);
+            }
+        } catch (err) {
+            console.error("Error loading AI chat history:", err);
+        } finally {
+            setIsHistoryLoading(false);
+        }
+    };
 
     const scrollToBottom = () => {
         endRef.current?.scrollIntoView({ behavior: "smooth" });
     };
 
-    // Load sessions & start a fresh new chat on refresh / mount
+    // Load AI chat sessions from MongoDB on mount/user change
     useEffect(() => {
-        const savedSessions = localStorage.getItem(storageKey);
-        const parsedSessions = savedSessions ? JSON.parse(savedSessions) : [];
-        setSessions(parsedSessions);
+        let isMounted = true;
+        const loadSessions = async () => {
+            try {
+                const res = await fetchAiChatSessions();
+                if (res?.data?.sessions && isMounted) {
+                    const dbSessions = res.data.sessions;
+                    setSessions(dbSessions);
 
-        const newId = Date.now().toString();
-        setCurrentSessionId(newId);
-        setMessages([]);
-        localStorage.setItem(currentKey, newId);
-    }, [userId, storageKey, currentKey]);
+                    if (dbSessions.length > 0) {
+                        const latest = dbSessions[0];
+                        setCurrentSessionId(latest.id);
+                        setMessages(
+                            (latest.messages || []).map((m) => ({
+                                role: m.sender === "ai" ? "ai" : "user",
+                                content: m.text,
+                            }))
+                        );
+                    } else {
+                        const newId = Date.now().toString();
+                        setCurrentSessionId(newId);
+                        setMessages([]);
+                    }
+                }
+            } catch (err) {
+                console.error("Error loading AI chat sessions from DB:", err);
+                const newId = Date.now().toString();
+                setCurrentSessionId(newId);
+                setMessages([]);
+            }
+        };
 
-    // Save active messages/session when messages update
+        if (userId && userId !== "guest") {
+            loadSessions();
+        }
+        return () => {
+            isMounted = false;
+        };
+    }, [userId]);
+
     useEffect(() => {
         scrollToBottom();
-
-        if (!currentSessionId || !messages || messages.length === 0) return;
-
-        setSessions((prev) => {
-            const existing = prev.find((s) => s.id === currentSessionId);
-            let updated;
-            if (existing) {
-                updated = prev.map((s) =>
-                    s.id === currentSessionId
-                        ? { ...s, messages, updatedAt: Date.now() }
-                        : s
-                );
-            } else {
-                updated = [
-                    { id: currentSessionId, messages, updatedAt: Date.now() },
-                    ...prev,
-                ];
-            }
-            localStorage.setItem(storageKey, JSON.stringify(updated));
-            return updated;
-        });
-    }, [messages, currentSessionId, storageKey]);
+    }, [messages]);
 
     const startNewChat = () => {
         const newId = Date.now().toString();
         setCurrentSessionId(newId);
         setMessages([]);
-        localStorage.setItem(currentKey, newId);
         setShowHistory(false);
     };
 
@@ -76,33 +98,49 @@ export default function AIChatbox() {
         const session = sessions.find((s) => s.id === id);
         if (session) {
             setCurrentSessionId(id);
-            setMessages(session.messages || []);
-            localStorage.setItem(currentKey, id);
+            setMessages(
+                (session.messages || []).map((m) => ({
+                    role: m.role || (m.sender === "ai" ? "ai" : "user"),
+                    content: m.content || m.text,
+                }))
+            );
         }
         setShowHistory(false);
     };
 
-    const deleteSession = (id) => {
+    const deleteSession = async (id) => {
+        try {
+            await deleteAiChatSessionApi(id);
+        } catch (err) {
+            console.error("Error deleting session from DB:", err);
+        }
+
         const newSessions = sessions.filter((s) => s.id !== id);
         setSessions(newSessions);
-        localStorage.setItem(storageKey, JSON.stringify(newSessions));
 
         if (currentSessionId === id) {
             if (newSessions.length > 0) {
-                const nextId = newSessions[0].id;
-                setCurrentSessionId(nextId);
-                localStorage.setItem(currentKey, nextId);
-                setMessages(newSessions[0].messages || []);
+                const next = newSessions[0];
+                setCurrentSessionId(next.id);
+                setMessages(
+                    (next.messages || []).map((m) => ({
+                        role: m.role || (m.sender === "ai" ? "ai" : "user"),
+                        content: m.content || m.text,
+                    }))
+                );
             } else {
-                clearAllHistory();
+                startNewChat();
             }
         }
     };
 
-    const clearAllHistory = () => {
+    const clearAllHistory = async () => {
+        try {
+            await clearAllAiChatSessionsApi();
+        } catch (err) {
+            console.error("Error clearing sessions from DB:", err);
+        }
         setSessions([]);
-        localStorage.removeItem(storageKey);
-        localStorage.removeItem(currentKey);
         startNewChat();
     };
 
@@ -117,16 +155,31 @@ export default function AIChatbox() {
         setIsLoading(true);
 
         try {
-            const history = newMessages.slice(0, -1).map(m => ({
+            const history = newMessages.slice(0, -1).map((m) => ({
                 role: m.role === "ai" ? "model" : "user",
-                content: m.content
+                content: m.content,
             }));
-            
-            const response = await chatWithAi(userMsg, history);
-            setMessages([...newMessages, { role: "ai", content: response?.data?.reply || "Error getting response." }]);
+
+            const response = await chatWithAi(userMsg, history, currentSessionId);
+            const reply = response?.data?.reply || "Error getting response.";
+            const activeId = response?.data?.sessionId || currentSessionId;
+            setCurrentSessionId(activeId);
+
+            const finalMessages = [...newMessages, { role: "ai", content: reply }];
+            setMessages(finalMessages);
+
+            // Refetch sessions to keep history drawer synced with DB
+            fetchAiChatSessions().then((res) => {
+                if (res?.data?.sessions) {
+                    setSessions(res.data.sessions);
+                }
+            }).catch(() => {});
         } catch (error) {
             toast.error(error.response?.data?.message || "Failed to communicate with AI");
-            setMessages([...newMessages, { role: "ai", content: "Sorry, I encountered an error." }]);
+            setMessages([
+                ...newMessages,
+                { role: "ai", content: "Sorry, I encountered an error." },
+            ]);
         } finally {
             setIsLoading(false);
         }
@@ -147,11 +200,7 @@ export default function AIChatbox() {
                         + New Chat
                     </button>
                     <button 
-                        onClick={() => {
-                            const saved = localStorage.getItem("ai_chat_sessions");
-                            if (saved) setSessions(JSON.parse(saved));
-                            setShowHistory(true);
-                        }}
+                        onClick={openHistory}
                         className="flex items-center gap-2 text-sm font-bold text-gray-400 hover:text-orange-500 transition-colors border border-white/10 hover:border-orange-500 px-3 py-1.5 rounded-md"
                     >
                         <FiClock /> History
@@ -167,11 +216,19 @@ export default function AIChatbox() {
                             <button onClick={() => setShowHistory(false)} className="text-gray-400 hover:text-white text-xl leading-none font-bold">&times;</button>
                         </div>
                         <div className="p-4 overflow-y-auto flex-1 space-y-2">
-                            {sessions.length === 0 ? (
-                                <p className="text-gray-400 text-center py-8">No previous chats found.</p>
+                            {isHistoryLoading ? (
+                                <div className="flex items-center justify-center py-12 text-gray-400 gap-2">
+                                    <FiLoader className="animate-spin text-orange-500 text-xl" />
+                                    <span>Loading previous chats...</span>
+                                </div>
+                            ) : sessions.length === 0 ? (
+                                <div className="text-center py-10 space-y-2">
+                                    <p className="text-gray-300 font-medium">No previous chats found.</p>
+                                    <p className="text-xs text-gray-500">Your AI chat sessions will be automatically saved and displayed here when you ask questions to AI.</p>
+                                </div>
                             ) : (
-                                sessions.map(session => {
-                                    const firstUserMsg = session.messages.find(m => m.role === 'user')?.content || "Empty Chat";
+                                sessions.filter(s => s.messages && s.messages.length > 0).map(session => {
+                                    const firstUserMsg = session.messages.find(m => m.role === 'user' || m.sender === 'user')?.content || session.messages.find(m => m.role === 'user' || m.sender === 'user')?.text || session.title || "New Chat";
                                     const title = firstUserMsg.length > 50 ? firstUserMsg.substring(0, 50) + "..." : firstUserMsg;
                                     const date = new Date(session.updatedAt).toLocaleString();
                                     

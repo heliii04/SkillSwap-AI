@@ -8,10 +8,17 @@ import {
     semanticSearch,
     suggestSkillsFromBio,
     chatDiscussion,
+    getAiChatSessions,
+    deleteAiChatSession,
+    clearAllAiChatHistory,
     generatePersonalizedRoadmap,
     updateRoadmapProgress,
     getDailyPlan,
-    generateQuiz
+    generateQuiz,
+    saveQuizResult,
+    getUserQuizResults,
+    deleteQuizResult,
+    clearAllQuizResults
 } from "../controllers/aiController.js";
 
 import { requireAuth } from "../middleware/authMiddleware.js";
@@ -35,10 +42,19 @@ router.post("/roadmap/:requestId", aiLimiter, createSwapRoadmap);
 
 router.post("/icebreaker", aiLimiter, getIcebreaker);
 
-// Advanced AI Features
+// Advanced AI Features & History
+router.get("/chat/sessions", getAiChatSessions);
+router.delete("/chat/sessions/:sessionId", deleteAiChatSession);
+router.delete("/chat/sessions", clearAllAiChatHistory);
 router.post("/chat", aiLimiter, chatDiscussion);
 router.patch("/roadmap/:roadmapId/progress", aiLimiter, updateRoadmapProgress);
 router.post("/roadmap/:roadmapId/daily-plan", aiLimiter, getDailyPlan);
 router.post("/quiz", aiLimiter, generateQuiz);
+
+// Quiz Results & History
+router.post("/quiz/save", aiLimiter, saveQuizResult);
+router.get("/quiz/history", getUserQuizResults);
+router.delete("/quiz/history/:id", deleteQuizResult);
+router.delete("/quiz/history", clearAllQuizResults);
 
 export default router;

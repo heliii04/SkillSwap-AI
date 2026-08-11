@@ -8,7 +8,7 @@ import {
     HiOutlineCheck,
     HiOutlineTrash,
 } from "react-icons/hi2";
-import { getAccessToken } from "../../api/tokenStore";
+import axiosClient from "../../api/axiosClient";
 
 export default function Notifications() {
     const navigate = useNavigate();
@@ -16,25 +16,10 @@ export default function Notifications() {
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState("all");
 
-    const API_URL =
-        import.meta.env.VITE_API_URL ||
-        "http://localhost:5000/api";
-
     const fetchNotifications = async () => {
         try {
-            const token = getAccessToken();
-            if (!token) return;
-
-            const headers = {
-                Accept: "application/json",
-                Authorization: `Bearer ${token}`,
-            };
-
-            const response = await fetch(`${API_URL}/notifications`, { credentials: "include", headers });
-            if (response.ok) {
-                const resData = await response.json();
-                setNotifications(resData?.data?.notifications || []);
-            }
+            const response = await axiosClient.get("/notifications");
+            setNotifications(response.data?.data?.notifications || []);
         } catch (err) {
             console.error("Error loading notifications:", err);
         } finally {
@@ -48,23 +33,8 @@ export default function Notifications() {
 
     const markAllRead = async () => {
         try {
-            const token = getAccessToken();
-            if (!token) return;
-
-            const response = await fetch(`${API_URL}/notifications/mark-read`, {
-                method: "PATCH",
-                headers: {
-                    Accept: "application/json",
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`,
-                },
-                credentials: "include",
-                body: JSON.stringify({}),
-            });
-
-            if (response.ok) {
-                setNotifications([]);
-            }
+            await axiosClient.patch("/notifications/mark-read", {});
+            setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
         } catch (err) {
             console.error("Error marking all read:", err);
         }
@@ -72,25 +42,10 @@ export default function Notifications() {
 
     const markSingleRead = async (id) => {
         try {
-            const token = getAccessToken();
-            if (!token) return;
-
-            const response = await fetch(`${API_URL}/notifications/mark-read`, {
-                method: "PATCH",
-                headers: {
-                    Accept: "application/json",
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`,
-                },
-                credentials: "include",
-                body: JSON.stringify({ notificationId: id }),
-            });
-
-            if (response.ok) {
-                setNotifications(prev =>
-                    prev.map(n => (n.id === id ? { ...n, isRead: true } : n))
-                );
-            }
+            await axiosClient.patch("/notifications/mark-read", { notificationId: id });
+            setNotifications(prev =>
+                prev.map(n => (n.id === id ? { ...n, isRead: true } : n))
+            );
         } catch (err) {
             console.error("Error marking read:", err);
         }
@@ -99,21 +54,8 @@ export default function Notifications() {
     const deleteSingle = async (id, event) => {
         event.stopPropagation();
         try {
-            const token = getAccessToken();
-            if (!token) return;
-
-            const response = await fetch(`${API_URL}/notifications/${id}`, {
-                method: "DELETE",
-                headers: {
-                    Accept: "application/json",
-                    Authorization: `Bearer ${token}`,
-                },
-                credentials: "include",
-            });
-
-            if (response.ok) {
-                setNotifications(prev => prev.filter(n => n.id !== id));
-            }
+            await axiosClient.delete(`/notifications/${id}`);
+            setNotifications(prev => prev.filter(n => n.id !== id));
         } catch (err) {
             console.error("Error deleting notification:", err);
         }
@@ -214,24 +156,22 @@ export default function Notifications() {
                         const count = counts[tab.id];
                         const active = activeTab === tab.id;
                         return (
-                            <button className="font-bold"
+                            <button
                                 key={tab.id}
                                 type="button"
                                 onClick={() => setActiveTab(tab.id)}
-                                className={`flex shrink-0 items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium transition ${
-                                    active
+                                className={`flex shrink-0 items-center gap-2 rounded-xl px-4 py-2 text-sm font-bold transition ${active
                                         ? "bg-orange-500 text-black"
                                         : "text-white/50 hover:bg-white/5 hover:text-white"
-                                }`}
+                                    }`}
                             >
                                 {tab.label}
                                 {count > 0 && (
                                     <span
-                                        className={`rounded-full px-2 py-0.5 text-xs font-bold ${
-                                            active
+                                        className={`rounded-full px-2 py-0.5 text-xs font-bold ${active
                                                 ? "bg-black text-orange-500"
                                                 : "bg-orange-500 text-black"
-                                        }`}
+                                            }`}
                                     >
                                         {count}
                                     </span>
@@ -261,11 +201,10 @@ export default function Notifications() {
                             <article
                                 key={notification.id}
                                 onClick={() => handleNotificationClick(notification)}
-                                className={`group relative flex gap-4 rounded-2xl border p-4 transition duration-200 cursor-pointer ${
-                                    notification.isRead
+                                className={`group relative flex gap-4 rounded-2xl border p-4 transition duration-200 cursor-pointer ${notification.isRead
                                         ? "border-white/5 bg-[#101117]/40 hover:border-white/10 hover:bg-[#101117]/60"
                                         : "border-orange-500/20 bg-orange-500/[0.02] hover:border-orange-500/30 hover:bg-orange-500/[0.04]"
-                                }`}
+                                    }`}
                             >
                                 <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/[0.03] border border-white/10">
                                     {getIcon(notification.type)}
@@ -288,11 +227,11 @@ export default function Notifications() {
                                     </span>
                                 </div>
 
-                                <button className="font-bold"
+                                <button
                                     type="button"
                                     onClick={(e) => deleteSingle(notification.id, e)}
                                     aria-label="Dismiss notification"
-                                    className="opacity-0 group-hover:opacity-100 self-start rounded-lg p-1.5 text-white/20 transition hover:bg-white/5 hover:text-white"
+                                    className="font-bold opacity-0 group-hover:opacity-100 self-start rounded-lg p-1.5 text-white/20 transition hover:bg-white/5 hover:text-white"
                                 >
                                     <HiOutlineTrash className="text-lg text-red-500/80" />
                                 </button>

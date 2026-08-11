@@ -434,7 +434,7 @@ export default function MyProfile() {
                         </div>
 
                         {!editing && (
-                            <button className="font-bold"
+                            <button 
                                 type="button"
                                 onClick={() => {
                                     setError("");

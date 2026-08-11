@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { getAccessToken } from "../../api/tokenStore";
+import axiosClient from "../../api/axiosClient";
 
 import {
     HiOutlineAcademicCap,
@@ -18,13 +18,12 @@ import {
 
 import { useAuth } from "../../context/AuthContext";
 
-
-
 export default function Dashboard() {
     const navigate = useNavigate();
 
     const {
         user,
+        isAuthLoading,
     } = useAuth();
 
     const [stats, setStats] = useState({
@@ -38,6 +37,8 @@ export default function Dashboard() {
     });
 
     useEffect(() => {
+        if (isAuthLoading) return;
+
         if (user?.role === "admin") {
             navigate("/admin", { replace: true });
             return;
@@ -45,56 +46,44 @@ export default function Dashboard() {
 
         let isMounted = true;
 
-        const API_URL =
-            import.meta.env.VITE_API_URL ||
-            "http://localhost:5000/api";
-
         const fetchStats = async () => {
             try {
-                const token = getAccessToken();
-                const headers = {
-                    Accept: "application/json",
-                    Authorization: `Bearer ${token}`,
-                };
-
                 const [teachRes, learnRes, receivedRes, sentRes] = await Promise.all([
-                    fetch(`${API_URL}/skills/teach`, { credentials: "include", headers }),
-                    fetch(`${API_URL}/skills/learn`, { credentials: "include", headers }),
-                    fetch(`${API_URL}/swap-requests/received`, { credentials: "include", headers }),
-                    fetch(`${API_URL}/swap-requests/sent`, { credentials: "include", headers })
+                    axiosClient.get("/skills/teach"),
+                    axiosClient.get("/skills/learn"),
+                    axiosClient.get("/swap-requests/received"),
+                    axiosClient.get("/swap-requests/sent")
                 ]);
 
-                if (teachRes.ok && learnRes.ok && receivedRes.ok && sentRes.ok) {
-                    const teachData = await teachRes.json();
-                    const learnData = await learnRes.json();
-                    const receivedData = await receivedRes.json();
-                    const sentData = await sentRes.json();
+                const teachData = teachRes.data;
+                const learnData = learnRes.data;
+                const receivedData = receivedRes.data;
+                const sentData = sentRes.data;
 
-                    const receivedReqs = receivedData?.data?.requests || [];
-                    const sentReqs = sentData?.data?.requests || [];
+                const receivedReqs = receivedData?.data?.requests || [];
+                const sentReqs = sentData?.data?.requests || [];
 
-                    const incomingPending = receivedReqs.filter(r => r.status === "pending").length;
-                    const sentPending = sentReqs.filter(r => r.status === "pending").length;
-                    const acceptedConnections = receivedReqs.filter(r => r.status === "accepted").length +
-                                                sentReqs.filter(r => r.status === "accepted").length;
+                const incomingPending = receivedReqs.filter(r => r.status === "pending").length;
+                const sentPending = sentReqs.filter(r => r.status === "pending").length;
+                const acceptedConnections = receivedReqs.filter(r => r.status === "accepted").length +
+                                            sentReqs.filter(r => r.status === "accepted").length;
 
-                    const allReqs = [
-                        ...receivedReqs.map(r => ({ ...r, direction: "incoming" })),
-                        ...sentReqs.map(r => ({ ...r, direction: "sent" }))
-                    ];
-                    allReqs.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+                const allReqs = [
+                    ...receivedReqs.map(r => ({ ...r, direction: "incoming" })),
+                    ...sentReqs.map(r => ({ ...r, direction: "sent" }))
+                ];
+                allReqs.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
-                    if (isMounted) {
-                        setStats({
-                            teachCount: teachData?.data?.count ?? (teachData?.data?.skills?.length || 0),
-                            learnCount: learnData?.data?.count ?? (learnData?.data?.skills?.length || 0),
-                            activeRequestsCount: incomingPending + sentPending,
-                            connectionsCount: acceptedConnections,
-                            incomingPendingCount: incomingPending,
-                            recentActivities: allReqs.slice(0, 5),
-                            loading: false,
-                        });
-                    }
+                if (isMounted) {
+                    setStats({
+                        teachCount: teachData?.data?.count ?? (teachData?.data?.skills?.length || 0),
+                        learnCount: learnData?.data?.count ?? (learnData?.data?.skills?.length || 0),
+                        activeRequestsCount: incomingPending + sentPending,
+                        connectionsCount: acceptedConnections,
+                        incomingPendingCount: incomingPending,
+                        recentActivities: allReqs.slice(0, 5),
+                        loading: false,
+                    });
                 }
             } catch (err) {
                 console.error("Error fetching dashboard stats:", err);
@@ -108,7 +97,7 @@ export default function Dashboard() {
         return () => {
             isMounted = false;
         };
-    }, []);
+    }, [isAuthLoading, user, navigate]);
 
     const dynamicFeatures = useMemo(() => {
         return [

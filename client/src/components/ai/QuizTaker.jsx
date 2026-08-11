@@ -1,15 +1,18 @@
 import { useState, useEffect } from "react";
-import { generateQuiz } from "../../api/aiApi";
+import {
+    generateQuiz,
+    saveQuizResultApi,
+    fetchQuizResultsHistory,
+    deleteQuizResultApi,
+    clearAllQuizResultsApi,
+} from "../../api/aiApi";
 import { useAuth } from "../../context/AuthContext";
-import { FiCheck, FiX, FiAward, FiClock , FiTrash2 } from "react-icons/fi";
+import { FiCheck, FiX, FiAward, FiClock, FiTrash2 } from "react-icons/fi";
 import { toast } from "react-toastify";
 
 export default function QuizTaker() {
     const { user } = useAuth();
     const userId = user?._id || user?.id || "guest";
-
-    const storageKey = `ai_quiz_sessions_${userId}`;
-    const currentKey = `ai_current_quiz_id_${userId}`;
 
     const [topic, setTopic] = useState("");
     const [isLoading, setIsLoading] = useState(false);
@@ -23,48 +26,41 @@ export default function QuizTaker() {
     const [showHistory, setShowHistory] = useState(false);
 
     useEffect(() => {
-        const saved = localStorage.getItem(storageKey);
-        const parsed = saved ? JSON.parse(saved) : [];
-        setSessions(parsed);
-
-        const activeId = localStorage.getItem(currentKey);
-        if (activeId) {
-            const found = parsed.find((s) => s.id === activeId);
-            if (found) {
-                setCurrentSessionId(found.id);
-                setTopic(found.topic || "");
-                setQuizData(found.quizData || null);
-                setUserAnswers(found.userAnswers || {});
-                setShowResults(Boolean(found.showResults));
-                setScore(found.score || 0);
-                return;
+        let isMounted = true;
+        const loadHistory = async () => {
+            try {
+                const res = await fetchQuizResultsHistory();
+                if (res?.data?.quizResults && isMounted) {
+                    const historyList = res.data.quizResults;
+                    setSessions(historyList);
+                }
+            } catch (err) {
+                console.error("Error loading quiz history from DB:", err);
             }
+        };
+
+        if (userId && userId !== "guest") {
+            loadHistory();
         }
-        startNewQuiz();
-    }, [userId, storageKey, currentKey]);
+        return () => {
+            isMounted = false;
+        };
+    }, [userId]);
 
     const handleGenerate = async (e) => {
         e.preventDefault();
         if (!topic.trim()) return;
-        
+
         setIsLoading(true);
         setQuizData(null);
         setShowResults(false);
         setUserAnswers({});
-        
+
         try {
             const res = await generateQuiz(topic, 5);
             if (res.success && res.data?.questions) {
                 setQuizData(res.data.questions);
-                const newId = Date.now().toString();
-                setCurrentSessionId(newId);
-                localStorage.setItem(currentKey, newId);
-
-                setSessions((prev) => {
-                    const updated = [{ id: newId, topic, quizData: res.data.questions, userAnswers: {}, showResults: false, score: 0, updatedAt: Date.now() }, ...prev];
-                    localStorage.setItem(storageKey, JSON.stringify(updated));
-                    return updated;
-                });
+                setCurrentSessionId(Date.now().toString());
             }
         } catch (error) {
             toast.error("Failed to generate quiz");
@@ -78,7 +74,7 @@ export default function QuizTaker() {
         setUserAnswers({ ...userAnswers, [qIndex]: option });
     };
 
-    const handleSubmitQuiz = () => {
+    const handleSubmitQuiz = async () => {
         if (!quizData) return;
         let newScore = 0;
         quizData.forEach((q, idx) => {
@@ -89,12 +85,22 @@ export default function QuizTaker() {
         setScore(newScore);
         setShowResults(true);
 
-        if (currentSessionId) {
-            setSessions((prev) => {
-                const updated = prev.map((s) => s.id === currentSessionId ? { ...s, userAnswers, showResults: true, score: newScore, updatedAt: Date.now() } : s);
-                localStorage.setItem(storageKey, JSON.stringify(updated));
-                return updated;
+        try {
+            await saveQuizResultApi({
+                topic,
+                score: newScore,
+                totalQuestions: quizData.length,
+                quizData,
+                userAnswers,
             });
+            toast.success("Quiz completed! Score saved to database.");
+            fetchQuizResultsHistory().then((res) => {
+                if (res?.data?.quizResults) {
+                    setSessions(res.data.quizResults);
+                }
+            }).catch(() => {});
+        } catch (err) {
+            console.error("Error saving quiz result to DB:", err);
         }
     };
 
@@ -105,43 +111,43 @@ export default function QuizTaker() {
         setShowResults(false);
         setScore(0);
         setCurrentSessionId(null);
-        localStorage.removeItem(currentKey);
         setShowHistory(false);
     };
 
-    const loadSession = (id) => {
-        const session = sessions.find((s) => s.id === id);
-        if (session) {
-            setCurrentSessionId(session.id);
-            setTopic(session.topic || "");
-            setQuizData(session.quizData || null);
-            setUserAnswers(session.userAnswers || {});
-            setShowResults(Boolean(session.showResults));
-            setScore(session.score || 0);
-            localStorage.setItem(currentKey, id);
+    const loadSession = (session) => {
+        setTopic(session.topic || "");
+        setQuizData(session.quizData || []);
+        setUserAnswers(session.userAnswers || {});
+        setShowResults(true);
+        setScore(session.score || 0);
+        setCurrentSessionId(session._id || session.id);
+        setShowHistory(false);
+    };
+
+    const deleteSession = async (id) => {
+        try {
+            await deleteQuizResultApi(id);
+            toast.info("Quiz result removed.");
+        } catch (err) {
+            console.error("Error deleting quiz result:", err);
         }
-        setShowHistory(false);
-    };
 
-    const deleteSession = (id) => {
-        const newSessions = sessions.filter((s) => s.id !== id);
+        const newSessions = sessions.filter((s) => (s._id || s.id) !== id);
         setSessions(newSessions);
-        localStorage.setItem(storageKey, JSON.stringify(newSessions));
-        
-        if (currentSessionId === id) {
-            if (newSessions.length > 0) {
-                const nextId = newSessions[0].id;
-                loadSession(nextId);
-            } else {
-                clearAllHistory();
-            }
+
+        if ((currentSessionId?._id || currentSessionId) === id) {
+            startNewQuiz();
         }
     };
 
-    const clearAllHistory = () => {
+    const clearAllHistory = async () => {
+        try {
+            await clearAllQuizResultsApi();
+            toast.info("Quiz history cleared.");
+        } catch (err) {
+            console.error("Error clearing quiz history:", err);
+        }
         setSessions([]);
-        localStorage.removeItem(storageKey);
-        localStorage.removeItem(currentKey);
         startNewQuiz();
     };
 
@@ -161,8 +167,9 @@ export default function QuizTaker() {
                     </button>
                     <button 
                         onClick={() => {
-                            const saved = localStorage.getItem(storageKey);
-                            if (saved) setSessions(JSON.parse(saved));
+                            fetchQuizResultsHistory().then((res) => {
+                                if (res?.data?.quizResults) setSessions(res.data.quizResults);
+                            }).catch(() => {});
                             setShowHistory(true);
                         }}
                         className="flex items-center gap-2 text-sm font-bold text-gray-400 hover:text-orange-500 transition-colors border border-white/10 hover:border-orange-500 px-3 py-1.5 rounded-md"
@@ -184,22 +191,24 @@ export default function QuizTaker() {
                                 <p className="text-gray-400 text-center py-8">No saved quizzes found.</p>
                             ) : (
                                 sessions.map(session => {
+                                    const sId = session._id || session.id;
                                     const title = session.topic || "Untitled Quiz";
-                                    const date = new Date(session.updatedAt).toLocaleString();
+                                    const date = new Date(session.updatedAt || session.createdAt).toLocaleString();
+                                    const scoreText = `Score: ${session.score}/${session.totalQuestions || session.quizData?.length || 5} (${session.percentage ?? Math.round((session.score/(session.totalQuestions||5))*100)}%)`;
                                     
                                     return (
                                         <div 
-                                            key={session.id} 
-                                            onClick={() => loadSession(session.id)}
-                                            className={`p-3 rounded-md cursor-pointer border transition-colors ${currentSessionId === session.id ? 'bg-orange-600/10 border-orange-500' : 'bg-[#111111] border-white/10 hover:border-gray-500 hover:bg-[#1a1a1a]'}`}
+                                            key={sId} 
+                                            onClick={() => loadSession(session)}
+                                            className={`p-3 rounded-md cursor-pointer border transition-colors ${currentSessionId === sId ? 'bg-orange-600/10 border-orange-500' : 'bg-[#111111] border-white/10 hover:border-gray-500 hover:bg-[#1a1a1a]'}`}
                                         >
                                             <div className="flex justify-between items-start">
                                                 <div className="flex-1 min-w-0 pr-2">
                                                     <p className="text-sm text-gray-200 font-medium truncate">{title}</p>
-                                                    <p className="text-xs text-gray-500 mt-1">{date} - Score: {session.score}/{session.quizData?.length || 5}</p>
+                                                    <p className="text-xs text-gray-500 mt-1">{date} • <span className="text-orange-400 font-semibold">{scoreText}</span></p>
                                                 </div>
                                                 <button 
-                                                    onClick={(e) => { e.stopPropagation(); deleteSession(session.id); }}
+                                                    onClick={(e) => { e.stopPropagation(); deleteSession(sId); }}
                                                     className="p-1.5 text-gray-500 hover:text-red-500 hover:bg-red-500/10 rounded-md transition-colors font-bold"
                                                     title="Delete this history"
                                                 >

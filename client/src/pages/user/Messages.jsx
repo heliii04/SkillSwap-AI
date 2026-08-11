@@ -8,6 +8,7 @@ import { useSearchParams } from "react-router-dom";
 import { io } from "socket.io-client";
 
 import { getAccessToken } from "../../api/tokenStore";
+import axiosClient from "../../api/axiosClient";
 import { useAuth } from "../../context/AuthContext";
 
 import {
@@ -51,8 +52,13 @@ import {
 
 
 
+const API_URL =
+    import.meta.env.VITE_API_BASE_URL ||
+    import.meta.env.VITE_API_URL ||
+    "http://localhost:5000/api/v1";
+
 export default function Messages() {
-    const { user } = useAuth();
+    const { user, isAuthLoading } = useAuth();
     const [searchParams] = useSearchParams();
     const queryChatId = searchParams.get("chatId");
 
@@ -90,37 +96,24 @@ export default function Messages() {
         useRef(null);
 
     useEffect(() => {
+        if (isAuthLoading) return;
         let isMounted = true;
-
-        const API_URL =
-            import.meta.env.VITE_API_BASE_URL ||
-            import.meta.env.VITE_API_URL ||
-            "http://localhost:5000/api/v1";
 
         const fetchConversations = async (showLoading = false) => {
             if (showLoading) {
                 setLoading(true);
             }
             try {
-                const token = getAccessToken();
-                const headers = {
-                    Accept: "application/json",
-                    Authorization: `Bearer ${token}`,
-                };
+                const response = await axiosClient.get("/chats");
+                const chats = response.data?.data?.chats || [];
 
-                const response = await fetch(`${API_URL}/chats`, { credentials: "include", headers });
-                if (response.ok) {
-                    const resData = await response.json();
-                    const chats = resData?.data?.chats || [];
+                if (isMounted) {
+                    setConversations(chats);
 
-                    if (isMounted) {
-                        setConversations(chats);
-
-                        if (showLoading) {
-                            if (queryChatId) {
-                                setSelectedConversationId(queryChatId);
-                                setMobileChatOpen(true);
-                            }
+                    if (showLoading) {
+                        if (queryChatId) {
+                            setSelectedConversationId(queryChatId);
+                            setMobileChatOpen(true);
                         }
                     }
                 }
@@ -185,19 +178,10 @@ export default function Messages() {
                 setMessagesLoading(true);
             }
             try {
-                const token = getAccessToken();
-                const headers = {
-                    Accept: "application/json",
-                    Authorization: `Bearer ${token}`,
-                };
-
-                const response = await fetch(`${API_URL}/chats/${selectedConversationId}/messages`, { credentials: "include", headers });
-                if (response.ok) {
-                    const resData = await response.json();
-                    if (isMounted) {
-                        const fetchedMessages = resData?.data?.messages || [];
-                        setMessages(fetchedMessages);
-                    }
+                const response = await axiosClient.get(`/chats/${selectedConversationId}/messages`);
+                if (isMounted) {
+                    const fetchedMessages = response.data?.data?.messages || [];
+                    setMessages(fetchedMessages);
                 }
             } catch (err) {
                 console.error("Error fetching messages:", err);
@@ -393,31 +377,11 @@ export default function Messages() {
             try {
                 setSending(true);
 
-                const API_URL =
-                    import.meta.env.VITE_API_URL ||
-                    "http://localhost:5000/api";
-
-                const token = getAccessToken();
-                const headers = {
-                    Accept: "application/json",
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`,
-                };
-
-                const response = await fetch(`${API_URL}/chats/${selectedConversation.id}/messages`, {
-                    method: "POST",
-                    headers,
-                    credentials: "include",
-                    body: JSON.stringify({ text: trimmedMessage }),
+                const response = await axiosClient.post(`/chats/${selectedConversation.id}/messages`, {
+                    text: trimmedMessage,
                 });
 
-                if (!response.ok) {
-                    const errData = await response.json();
-                    throw new Error(errData.message || "Failed to send message");
-                }
-
-                const resData = await response.json();
-                const newMsg = resData?.data?.message;
+                const newMsg = response.data?.data?.message;
 
                 if (newMsg) {
                     setMessages((prev) => {
@@ -926,16 +890,9 @@ function ChatHeader({
     const handleBlock = async () => {
         setDropdownOpen(false);
         try {
-            const response = await fetch(`${API_URL}/chats/${conversation.id}/block`, {
-                method: "PATCH",
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                },
-                credentials: "include"
-            });
-            if (response.ok) {
-                const resData = await response.json();
-                onBlockToggle(resData.data.blockedBy);
+            const response = await axiosClient.patch(`/chats/${conversation.id}/block`);
+            if (response.data?.data?.blockedBy) {
+                onBlockToggle(response.data.data.blockedBy);
             }
         } catch (err) {
             console.error("Error blocking chat:", err);
@@ -946,16 +903,8 @@ function ChatHeader({
         setDropdownOpen(false);
         if (!window.confirm("Are you sure you want to clear all messages in this chat?")) return;
         try {
-            const response = await fetch(`${API_URL}/chats/${conversation.id}/clear`, {
-                method: "DELETE",
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                },
-                credentials: "include"
-            });
-            if (response.ok) {
-                onClear();
-            }
+            await axiosClient.delete(`/chats/${conversation.id}/clear`);
+            onClear();
         } catch (err) {
             console.error("Error clearing chat:", err);
         }
@@ -964,18 +913,10 @@ function ChatHeader({
     const handleDelete = async (deleteType) => {
         setDeleteModalOpen(false);
         try {
-            const response = await fetch(`${API_URL}/chats/${conversation.id}`, {
-                method: "DELETE",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`,
-                },
-                credentials: "include",
-                body: JSON.stringify({ deleteType })
+            await axiosClient.delete(`/chats/${conversation.id}`, {
+                data: { deleteType }
             });
-            if (response.ok) {
-                onDelete();
-            }
+            onDelete();
         } catch (err) {
             console.error("Error deleting chat:", err);
         }

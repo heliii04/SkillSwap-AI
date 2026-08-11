@@ -985,7 +985,7 @@ function SkillModal({
                                         );
 
                                     return (
-                                        <button className="font-bold"
+                                        <button
                                             key={
                                                 day
                                             }
@@ -995,7 +995,7 @@ function SkillModal({
                                                     day
                                                 )
                                             }
-                                            className={`rounded-xl border px-3 py-2 text-xs font-medium capitalize transition ${selected
+                                            className={`font-bold rounded-xl border px-3 py-2 text-xs font-medium capitalize transition ${selected
                                                 ? "border-orange-500 bg-orange-500 text-black"
                                                 : "border-white/10 text-white/40 hover:border-orange-500/30 hover:text-white"
                                                 }`}
@@ -1259,7 +1259,7 @@ function SelectField({
                 {label}
             </span>
 
-            <button className="font-bold"
+            <button 
                 type="button"
                 onClick={() => setIsOpen(!isOpen)}
                 className="flex w-full items-center justify-between rounded-xl border border-white/10 bg-[#090a0f] px-4 py-3.5 text-sm text-white outline-none transition duration-200 hover:border-orange-500/50 focus:border-orange-500/60"
@@ -1288,7 +1288,7 @@ function SelectField({
                         const isSelected = option.value === value;
                         return (
                             <li key={option.value}>
-                                <button className="font-bold"
+                                <button 
                                     type="button"
                                     onClick={() => handleSelect(option.value)}
                                     className={`flex w-full items-center px-4 py-3 text-left text-sm transition duration-150 hover:bg-orange-500/10 hover:text-orange-400 ${

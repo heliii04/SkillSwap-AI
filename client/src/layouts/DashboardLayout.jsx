@@ -34,6 +34,7 @@ import { FiLogOut } from "react-icons/fi";
 
 import { useAuth } from "../context/AuthContext";
 import { getAccessToken } from "../api/tokenStore";
+import axiosClient from "../api/axiosClient";
 import { io } from "socket.io-client";
 import { registerWebPushSubscription } from "../utils/webPush";
 
@@ -105,11 +106,6 @@ const adminNavigationItems = [
     label: "All Skills",
     path: "/admin?section=skills",
     icon: HiOutlineAcademicCap,
-  },
-  {
-    label: "Reported Skills",
-    path: "/admin?section=reported-skills",
-    icon: HiOutlineFlag,
   },
   {
     label: "Swap Requests",
@@ -268,23 +264,13 @@ export default function DashboardLayout() {
   // Initial load of unread notifications count
   useEffect(() => {
     let isMounted = true;
-    if (user?.role === "admin") return;
-    const API_URL = import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || "http://localhost:5000/api/v1";
+    if (!user || user?.role === "admin") return;
 
     const fetchUnreadCount = async () => {
       try {
-        const token = getAccessToken();
-        if (!token) return;
-
-        const headers = {
-          Accept: "application/json",
-          Authorization: `Bearer ${token}`,
-        };
-
-        const response = await fetch(`${API_URL}/notifications`, { credentials: "include", headers });
-        if (response.ok && isMounted) {
-          const resData = await response.json();
-          const list = resData?.data?.notifications || [];
+        const response = await axiosClient.get("/notifications");
+        if (isMounted) {
+          const list = response.data?.data?.notifications || [];
           const unreadCount = list.filter(n => !n.isRead).length;
           setUnreadNotificationsCount(unreadCount);
         }

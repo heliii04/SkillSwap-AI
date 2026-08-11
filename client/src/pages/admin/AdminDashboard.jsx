@@ -1,7 +1,6 @@
 import { useSearchParams } from "react-router-dom";
 import AdminOverview from "./AdminOverview";
 import AdminUsers from "./AdminUsers";
-import AdminSkills from "./AdminSkills";
 import AdminSwaps from "./AdminSwaps";
 import AdminSupport from "./AdminSupport";
 import AdminReports from "./AdminReports";
@@ -19,8 +18,6 @@ export default function AdminDashboard() {
             case "suspended-users":
                 return <AdminUsers />;
             case "skills":
-            case "reported-skills":
-                return <AdminSkills />;
             case "swaps":
                 return <AdminSwaps />;
             case "support":

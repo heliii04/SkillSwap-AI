@@ -24,7 +24,7 @@ export default function AIAssistant() {
                     <div className="flex flex-col h-[calc(100vh-260px)] min-h-[620px]">
                         <div className="flex space-x-2 p-4 sm:p-5 border-b border-white/10 shrink-0 overflow-x-auto custom-scrollbar">
                             {tabs.map(tab => (
-                                <button className="font-bold"
+                                <button
                                     key={tab.id}
                                     onClick={() => setActiveTab(tab.id)}
                                     className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-medium transition-all duration-200 border whitespace-nowrap ${

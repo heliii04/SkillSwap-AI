@@ -1,4 +1,5 @@
 import Contact from "../models/Contact.js";
+import Report from "../models/Report.js";
 import { sendEmail } from "../utils/sendEmail.js";
 import { ApiError } from "../utils/ApiError.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
@@ -20,6 +21,28 @@ export const submitContactInquiry = asyncHandler(async (req, res) => {
         category,
         message,
     });
+
+    if (category === "safety") {
+        try {
+            const lowerText = `${subject} ${message}`.toLowerCase();
+            let autoReason = "other";
+            if (lowerText.includes("spam")) autoReason = "spam";
+            else if (lowerText.includes("fake")) autoReason = "fake_profile";
+            else if (lowerText.includes("harass") || lowerText.includes("abuse") || lowerText.includes("inappropriate")) autoReason = "harassment";
+            else if (lowerText.includes("scam")) autoReason = "scam";
+
+            await Report.create({
+                reporter: req.user?._id || inquiry._id,
+                targetType: "user",
+                targetId: inquiry._id,
+                reason: autoReason,
+                description: `[Support Ticket] ${subject}: ${message}`,
+                status: "pending"
+            });
+        } catch (repError) {
+            console.warn("Could not auto-create report from safety contact form:", repError.message);
+        }
+    }
 
     // Attempt to send email notification to admin/support
     try {

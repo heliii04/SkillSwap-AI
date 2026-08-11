@@ -18,7 +18,7 @@ if (!API_BASE_URL) {
 const axiosClient = axios.create({
     baseURL: API_BASE_URL,
     withCredentials: true,
-    timeout: 15000,
+    timeout: 60000,
     headers: {
         "Content-Type": "application/json",
     },
@@ -27,7 +27,7 @@ const axiosClient = axios.create({
 const refreshClient = axios.create({
     baseURL: API_BASE_URL,
     withCredentials: true,
-    timeout: 15000,
+    timeout: 60000,
     headers: {
         "Content-Type": "application/json",
     },

@@ -7,6 +7,7 @@ import {
 import { useNavigate } from "react-router-dom";
 
 import { getAccessToken } from "../../api/tokenStore";
+import axiosClient from "../../api/axiosClient";
 
 import {
     HiOutlineAcademicCap,
@@ -96,31 +97,8 @@ export default function Requests() {
             setActionLoadingId(swapRequestId);
             setMessage("");
 
-            const API_URL =
-                import.meta.env.VITE_API_URL ||
-                "http://localhost:5000/api";
-
-            const token = getAccessToken();
-            const headers = {
-                Accept: "application/json",
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${token}`,
-            };
-
-            const response = await fetch(`${API_URL}/chats`, {
-                method: "POST",
-                headers,
-                credentials: "include",
-                body: JSON.stringify({ swapRequestId }),
-            });
-
-            if (!response.ok) {
-                const errData = await response.json();
-                throw new Error(errData.message || "Failed to start or locate chat");
-            }
-
-            const resData = await response.json();
-            const chatId = resData?.data?.chat?.id;
+            const response = await axiosClient.post("/chats", { swapRequestId });
+            const chatId = response.data?.data?.chat?.id;
 
             if (chatId) {
                 navigate(`/messages?chatId=${chatId}`);
@@ -129,7 +107,7 @@ export default function Requests() {
             }
         } catch (err) {
             console.error("Error opening chat:", err);
-            alert(err.message || "Failed to open chat");
+            alert(err.response?.data?.message || err.message || "Failed to open chat");
         } finally {
             setActionLoadingId(null);
         }
@@ -144,22 +122,15 @@ export default function Requests() {
 
         const fetchRequests = async () => {
             try {
-                const token = getAccessToken();
-                const headers = {
-                    Accept: "application/json",
-                    Authorization: `Bearer ${token}`,
-                };
-
                 const [receivedRes, sentRes] = await Promise.all([
-                    fetch(`${API_URL}/swap-requests/received?limit=50`, { credentials: "include", headers }),
-                    fetch(`${API_URL}/swap-requests/sent?limit=50`, { credentials: "include", headers })
+                    axiosClient.get("/swap-requests/received?limit=50"),
+                    axiosClient.get("/swap-requests/sent?limit=50")
                 ]);
 
-                if (receivedRes.ok && sentRes.ok) {
-                    const receivedData = await receivedRes.json();
-                    const sentData = await sentRes.json();
+                const receivedData = receivedRes.data;
+                const sentData = sentRes.data;
 
-                    const receivedReqs = (receivedData?.data?.requests || []).map(req => ({
+                const receivedReqs = (receivedData?.data?.requests || []).map(req => ({
                         ...req,
                         direction: "incoming",
                         user: {
@@ -205,7 +176,6 @@ export default function Requests() {
                         setRequests(merged);
                         setLoading(false);
                     }
-                }
             } catch (err) {
                 console.error("Error fetching requests:", err);
                 if (isMounted) {
@@ -311,39 +281,17 @@ export default function Requests() {
         status
     ) => {
         try {
-            setActionLoadingId(
-                requestId
-            );
+            setActionLoadingId(requestId);
             setMessage("");
 
-            const API_URL =
-                import.meta.env.VITE_API_URL ||
-                "http://localhost:5000/api";
-
-            const token = getAccessToken();
-            const headers = {
-                Accept: "application/json",
-                Authorization: `Bearer ${token}`,
-            };
-
             const action = status === "accepted" ? "accept" : status === "rejected" ? "reject" : status;
-            const response = await fetch(`${API_URL}/swap-requests/${requestId}/${action}`, {
-                method: "PATCH",
-                headers,
-                credentials: "include"
-            });
-
-            if (!response.ok) {
-                const errData = await response.json();
-                throw new Error(errData.message || `Failed to ${status} request`);
-            }
+            await axiosClient.patch(`/swap-requests/${requestId}/${action}`);
 
             setRequests(
                 (current) =>
                     current.map(
                         (request) =>
-                            request.id ===
-                                requestId
+                            request.id === requestId
                                 ? {
                                     ...request,
                                     status,
@@ -354,8 +302,7 @@ export default function Requests() {
 
             setSelectedRequest(
                 (current) =>
-                    current?.id ===
-                        requestId
+                    current?.id === requestId
                         ? {
                             ...current,
                             status,
@@ -363,93 +310,52 @@ export default function Requests() {
                         : current
             );
 
-            if (
-                status ===
-                "accepted"
-            ) {
-                setMessage(
-                    "Request accepted successfully."
-                );
+            if (status === "accepted") {
+                setMessage("Request accepted successfully.");
             }
 
-            if (
-                status ===
-                "rejected"
-            ) {
-                setMessage(
-                    "Request rejected successfully."
-                );
+            if (status === "rejected") {
+                setMessage("Request rejected successfully.");
             }
         } catch (err) {
             console.error(`Error updating request status to ${status}:`, err);
-            alert(err.message || `Failed to ${status} request`);
+            alert(err.response?.data?.message || err.message || `Failed to ${status} request`);
         } finally {
-            setActionLoadingId(
-                null
-            );
+            setActionLoadingId(null);
         }
     };
 
     const cancelRequest = async (
         requestId
     ) => {
-        const confirmed =
-            window.confirm(
-                "Are you sure you want to cancel this request?"
-            );
+        const confirmed = window.confirm("Are you sure you want to cancel this request?");
 
         if (!confirmed) {
             return;
         }
 
         try {
-            setActionLoadingId(
-                requestId
-            );
+            setActionLoadingId(requestId);
             setMessage("");
 
-            const API_URL =
-                import.meta.env.VITE_API_URL ||
-                "http://localhost:5000/api";
-
-            const token = getAccessToken();
-            const headers = {
-                Accept: "application/json",
-                Authorization: `Bearer ${token}`,
-            };
-
-            const response = await fetch(`${API_URL}/swap-requests/${requestId}/cancel`, {
-                method: "PATCH",
-                headers,
-                credentials: "include"
-            });
-
-            if (!response.ok) {
-                const errData = await response.json();
-                throw new Error(errData.message || "Failed to cancel request");
-            }
+            await axiosClient.patch(`/swap-requests/${requestId}/cancel`);
 
             setRequests(
                 (current) =>
                     current.filter(
                         (request) =>
-                            request.id !==
-                            requestId
+                            request.id !== requestId
                     )
             );
 
             setSelectedRequest(null);
 
-            setMessage(
-                "Request cancelled successfully."
-            );
+            setMessage("Request cancelled successfully.");
         } catch (err) {
             console.error("Error cancelling request:", err);
-            alert(err.message || "Failed to cancel request");
+            alert(err.response?.data?.message || err.message || "Failed to cancel request");
         } finally {
-            setActionLoadingId(
-                null
-            );
+            setActionLoadingId(null);
         }
     };
 
@@ -708,7 +614,7 @@ function RequestTabs({
                     tab.value;
 
                 return (
-                    <button className="font-bold"
+                    <button
                         key={tab.value}
                         type="button"
                         onClick={() =>
@@ -716,7 +622,7 @@ function RequestTabs({
                                 tab.value
                             )
                         }
-                        className={`shrink-0 rounded-xl px-4 py-2.5 text-sm font-semibold transition ${active
+                        className={`font-bold shrink-0 rounded-xl px-4 py-2.5 text-sm font-semibold transition ${active
                                 ? "bg-orange-500 text-black"
                                 : "border border-white/10 bg-[#090a0f] text-white/40 hover:border-orange-500/30 hover:text-white"
                             }`}

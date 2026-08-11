@@ -18,6 +18,7 @@ import aiRoutes from "./routes/ai.routes.js";
 import notificationRoutes from "./routes/notification.routes.js";
 import contactRoutes from "./routes/contact.routes.js";
 import adminRoutes from "./routes/adminRoutes.js";
+import reportRoutes from "./routes/report.routes.js";
 
 import {
     errorHandler,
@@ -112,7 +113,7 @@ if (!env.isProduction) {
     app.use(morgan("dev"));
 }
 
-app.get("/api/v1/health", (_req, res) => {
+app.get(["/health", "/api/health", "/api/v1/health"], (_req, res) => {
     res.status(200).json({
         success: true,
         message: "SkillSwap AI API is running.",
@@ -167,6 +168,9 @@ app.use("/api/contact", contactRoutes);
 
 app.use("/api/v1/admin", adminRoutes);
 app.use("/api/admin", adminRoutes);
+
+app.use("/api/v1/reports", reportRoutes);
+app.use("/api/reports", reportRoutes);
 
 app.use(notFoundHandler);
 app.use(errorHandler);
