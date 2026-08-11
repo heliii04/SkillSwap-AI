@@ -279,8 +279,14 @@ export const getChats =
                             -1,
                     });
 
+            const validChats = chats.filter(
+                (chat) =>
+                    chat.swapRequest &&
+                    chat.swapRequest.status === "accepted"
+            );
+
             const chatIds =
-                chats.map(
+                validChats.map(
                     (chat) =>
                         chat._id
                 );
@@ -334,7 +340,7 @@ export const getChats =
 
                     data: {
                         chats:
-                            chats.map(
+                            validChats.map(
                                 (
                                     chat
                                 ) =>

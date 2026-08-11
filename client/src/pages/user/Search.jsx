@@ -34,6 +34,7 @@ import {
 import useLockBodyScroll from "../../hooks/useLockBodyScroll";
 import useDebounce from "../../hooks/useDebounce";
 import axiosClient from "../../api/axiosClient";
+import UserProfileModal from "../../components/profile/UserProfileModal";
 
 const categoryOptions = [
     {
@@ -522,15 +523,10 @@ export default function Search() {
             </div>
 
             {selectedMentor && (
-                <MentorModal
-                    mentor={
-                        selectedMentor
-                    }
-                    onClose={() =>
-                        setSelectedMentor(
-                            null
-                        )
-                    }
+                <UserProfileModal
+                    userId={selectedMentor.id}
+                    matchScore={selectedMentor.matchPercentage}
+                    onClose={() => setSelectedMentor(null)}
                 />
             )}
         </main>
@@ -855,192 +851,7 @@ function EmptyResults({
     );
 }
 
-function MentorModal({
-    mentor,
-    onClose,
-}) {
-    useLockBodyScroll();
-    return (
-        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
-            <button
-                type="button"
-                aria-label="Close mentor profile"
-                onClick={onClose}
-                className="absolute inset-0 h-full w-full font-bold"
-            />
 
-            <div className="relative z-10 max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-[28px] border border-white/10 bg-[#101117]">
-                <div className="sticky top-0 z-10 flex items-center justify-between border-b border-white/10 bg-[#101117]/95 px-5 py-5 backdrop-blur-xl sm:px-7">
-                    <div>
-                        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-orange-500">
-                            Mentor profile
-                        </p>
-
-                        <h2 className="mt-2 text-xl font-semibold">
-                            Skill partner details
-                        </h2>
-                    </div>
-
-                    <button
-                        type="button"
-                        onClick={onClose}
-                        className="rounded-xl border border-white/10 p-2.5 text-white/50 transition hover:bg-white/5 hover:text-white font-bold"
-                    >
-                        <HiOutlineXMark className="text-xl" />
-                    </button>
-                </div>
-
-                <div className="p-5 sm:p-7">
-                    <div className="flex flex-col gap-5 sm:flex-row sm:items-start">
-                        <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-[24px] bg-orange-500 text-xl font-bold text-black">
-                            {mentor.initials}
-                        </div>
-
-                        <div className="min-w-0 flex-1">
-                            <div className="flex flex-wrap items-center gap-2">
-                                <h3 className="text-2xl font-semibold">
-                                    {
-                                        mentor.name
-                                    }
-                                </h3>
-
-                                {mentor.verified && (
-                                    <HiOutlineCheckBadge className="text-2xl text-orange-400" />
-                                )}
-                            </div>
-
-                            <p className="mt-1 text-white/45">
-                                {
-                                    mentor.role
-                                }
-                            </p>
-
-                            <div className="mt-3 flex flex-wrap gap-4 text-sm text-white/35">
-                                <span className="inline-flex items-center gap-2">
-                                    <HiOutlineMapPin className="text-orange-400" />
-
-                                    {
-                                        mentor.location
-                                    }
-                                </span>
-
-                                <span className="inline-flex items-center gap-2 capitalize">
-                                    <HiOutlineUserGroup className="text-orange-400" />
-
-                                    {
-                                        mentor.mode
-                                    }
-                                </span>
-                            </div>
-                        </div>
-
-                        <MatchBadge
-                            value={
-                                mentor.matchPercentage
-                            }
-                        />
-                    </div>
-
-                    <div className="mt-6 rounded-2xl border border-white/10 bg-[#090a0f] p-5">
-                        <p className="text-sm leading-7 text-white/45">
-                            {mentor.bio}
-                        </p>
-                    </div>
-
-                    <div className="mt-6 grid gap-4 sm:grid-cols-3">
-                        <ModalStat
-                            label="Rating"
-                            value={
-                                mentor.rating
-                            }
-                            icon={
-                                HiOutlineStar
-                            }
-                        />
-
-                        <ModalStat
-                            label="Reviews"
-                            value={
-                                mentor.reviews
-                            }
-                            icon={
-                                HiOutlineBookOpen
-                            }
-                        />
-
-                        <ModalStat
-                            label="Sessions"
-                            value={
-                                mentor.completedSessions
-                            }
-                            icon={
-                                HiOutlineAcademicCap
-                            }
-                        />
-                    </div>
-
-                    <div className="mt-7 grid gap-6 sm:grid-cols-2">
-                        <SkillList
-                            title="Skills they teach"
-                            skills={
-                                mentor.teaches
-                            }
-                            accent
-                        />
-
-                        <SkillList
-                            title="Skills they want"
-                            skills={
-                                mentor.wants
-                            }
-                        />
-                    </div>
-
-                    <div className="mt-7 rounded-2xl border border-orange-500/20 bg-orange-500/5 p-5">
-                        <div className="flex items-start gap-3">
-                            <HiOutlineSparkles className="mt-0.5 shrink-0 text-2xl text-orange-400" />
-
-                            <div>
-                                <p className="font-semibold">
-                                    Strong skill
-                                    match
-                                </p>
-
-                                <p className="mt-2 text-sm leading-7 text-white/40">
-                                    This user has
-                                    relevant teaching
-                                    skills and may be
-                                    suitable for a
-                                    mutual skill
-                                    exchange.
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="mt-7 flex flex-col-reverse gap-3 border-t border-white/10 pt-6 sm:flex-row sm:justify-end">
-                        <button
-                            type="button"
-                            onClick={onClose}
-                            className="rounded-xl border border-white/10 px-5 py-3 text-sm  text-white/55 transition hover:bg-white/5 hover:text-white font-bold"
-                        >
-                            Close
-                        </button>
-
-                        <button
-                            type="button"
-                            className="inline-flex items-center justify-center gap-2 rounded-xl bg-orange-500 px-6 py-3 text-sm  text-black transition hover:bg-orange-400 font-bold"
-                        >
-                            Send match request
-
-                            <HiOutlineArrowRight className="animate-arrow-move"  />
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    );
-}
 
 function ModalStat({
     label,

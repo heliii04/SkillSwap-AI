@@ -31,6 +31,7 @@ export default function UserProfileModal({ userId, matchScore, onClose }) {
     const [imageError, setImageError] = useState(false);
     const [isConnected, setIsConnected] = useState(false);
     const [chatId, setChatId] = useState(null);
+    const [hasPendingRequest, setHasPendingRequest] = useState(false);
 
     // Swap request states
     const [isRequestingSwap, setIsRequestingSwap] = useState(false);
@@ -107,6 +108,7 @@ export default function UserProfileModal({ userId, matchScore, onClose }) {
                     setLearnSkills(res.data?.data?.learnSkills || []);
                     setIsConnected(res.data?.data?.isConnected || false);
                     setChatId(res.data?.data?.chatId || null);
+                    setHasPendingRequest(res.data?.data?.hasPendingRequest || false);
                 }
             })
             .catch((err) => {
@@ -382,12 +384,20 @@ export default function UserProfileModal({ userId, matchScore, onClose }) {
                             type="button"
                             onClick={() => {
                                 onClose();
-                                navigate(`/messages?chatId=${chatId}`);
+                                navigate(chatId ? `/messages?chatId=${chatId}` : "/messages");
                             }}
                             className="font-bold inline-flex items-center gap-2 rounded-xl bg-[#ff5a00] px-6 py-3 text-[14px] text-black hover:bg-[#ff5a00]/90 transition"
                         >
                             Open Chat
                             <HiOutlineArrowRight className="text-[16px] animate-arrow-move" />
+                        </button>
+                    ) : user && hasPendingRequest ? (
+                        <button
+                            type="button"
+                            disabled
+                            className="font-bold inline-flex items-center gap-2 rounded-xl bg-white/10 px-6 py-3 text-[14px] text-white/50 cursor-not-allowed"
+                        >
+                            Request Pending
                         </button>
                     ) : user && (
                         <button

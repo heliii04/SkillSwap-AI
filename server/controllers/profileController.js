@@ -1,6 +1,7 @@
 import User from "../models/User.js";
 import Skill from "../models/Skill.js";
 import Chat from "../models/Chat.js";
+import SwapRequest from "../models/SwapRequest.js";
 
 import { ApiError } from "../utils/ApiError.js";
 
@@ -167,7 +168,7 @@ export const changeMyPassword = asyncHandler(
             currentPassword,
             user.passwordHash
         );
-
+        
         if (!isPasswordCorrect) {
             throw new ApiError(
                 400,
@@ -210,15 +211,51 @@ export const getUserProfileById = asyncHandler(
 
         let isConnected = false;
         let chatId = null;
+        let hasPendingRequest = false;
 
         if (req.user && req.user._id !== "static_admin_id") {
-            const existingChat = await Chat.findOne({
-                participants: { $all: [req.user._id, user._id] }
+            const acceptedSwap = await SwapRequest.findOne({
+                status: "accepted",
+                $or: [
+                    { sender: req.user._id, receiver: user._id },
+                    { sender: user._id, receiver: req.user._id }
+                ]
             }).lean();
 
-            if (existingChat) {
+            let existingChat = await Chat.findOne({
+                $or: [
+                    { participants: { $all: [req.user._id, user._id] } },
+                    ...(acceptedSwap ? [{ swapRequest: acceptedSwap._id }] : [])
+                ]
+            }).lean();
+
+            if (acceptedSwap && !existingChat) {
+                try {
+                    const newChat = await Chat.create({
+                        participants: [acceptedSwap.sender, acceptedSwap.receiver],
+                        swapRequest: acceptedSwap._id
+                    });
+                    existingChat = newChat;
+                } catch (e) {
+                    existingChat = await Chat.findOne({ swapRequest: acceptedSwap._id }).lean();
+                }
+            }
+
+            if (acceptedSwap || existingChat) {
                 isConnected = true;
-                chatId = existingChat._id;
+                chatId = existingChat?._id || null;
+            } else {
+                const pendingSwap = await SwapRequest.findOne({
+                    status: "pending",
+                    $or: [
+                        { sender: req.user._id, receiver: user._id },
+                        { sender: user._id, receiver: req.user._id }
+                    ]
+                }).lean();
+
+                if (pendingSwap) {
+                    hasPendingRequest = true;
+                }
             }
         }
 
@@ -231,6 +268,7 @@ export const getUserProfileById = asyncHandler(
                 learnSkills,
                 isConnected,
                 chatId,
+                hasPendingRequest,
             },
         });
     }
