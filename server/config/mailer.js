@@ -3,12 +3,20 @@ import { env } from "./env.js";
 
 const user = env.smtp?.user || env.SMTP_USER || process.env.SMTP_USER;
 const pass = env.smtp?.password || env.SMTP_PASS || process.env.SMTP_PASSWORD;
+const host = env.smtp?.host || env.SMTP_HOST || process.env.SMTP_HOST || "smtp.gmail.com";
+const port = Number(env.smtp?.port || env.SMTP_PORT || process.env.SMTP_PORT) || 587;
 
 export const mailTransporter = nodemailer.createTransport({
-    service: "gmail",
+    host,
+    port,
+    secure: port === 465,
+    requireTLS: port !== 465,
     auth: {
         user,
         pass,
+    },
+    tls: {
+        rejectUnauthorized: false,
     },
     pool: true,
     maxConnections: 5,
