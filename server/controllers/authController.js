@@ -152,6 +152,8 @@ export const register = asyncHandler(
             });
         }
 
+        console.log(`[AUTH OTP GENERATED] Email: ${user.email} | OTP: ${otp}`);
+
         // Send verification email asynchronously in background so registration response is immediate
         sendVerificationOtpEmail({
             name: user.name,
@@ -159,8 +161,7 @@ export const register = asyncHandler(
             otp,
         }).catch((error) => {
             console.error(
-                "Background verification email delivery error:",
-                error.message
+                `[AUTH OTP EMAIL FAILED] Email: ${user.email} | Error: ${error.message}`
             );
         });
 
@@ -351,6 +352,8 @@ export const resendOtp = asyncHandler(
 
         await user.save();
 
+        console.log(`[AUTH RESEND OTP GENERATED] Email: ${user.email} | OTP: ${otp}`);
+
         // Send resend OTP email asynchronously in background
         sendVerificationOtpEmail({
             name: user.name,
@@ -358,8 +361,7 @@ export const resendOtp = asyncHandler(
             otp,
         }).catch((error) => {
             console.error(
-                "Background resend OTP email delivery error:",
-                error.message
+                `[AUTH RESEND OTP EMAIL FAILED] Email: ${user.email} | Error: ${error.message}`
             );
         });
 

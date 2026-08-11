@@ -293,7 +293,7 @@ export default function VerifyOtp() {
                     Didn&apos;t receive the code?
                 </div>
 
-                <button className="font-bold"
+                <button
                     type="button"
                     onClick={handleResendOtp}
                     disabled={
