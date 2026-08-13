@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import Skill from "../models/Skill.js";
 import SwapRequest from "../models/SwapRequest.js";
 import LearningRoadmap from "../models/LearningRoadmap.js";
@@ -63,11 +64,13 @@ export const semanticSearch = asyncHandler(async (req, res) => {
     const filters = {
         type: "teach",
         isActive: true,
-
-        owner: {
-            $ne: req.user._id,
-        },
     };
+
+    if (req.user?._id && mongoose.Types.ObjectId.isValid(req.user._id)) {
+        filters.owner = {
+            $ne: req.user._id,
+        };
+    }
 
     if (intent.category) {
         filters.category = intent.category;

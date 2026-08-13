@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import Skill from "../models/Skill.js";
 import User from "../models/User.js";
 import SwapRequest from "../models/SwapRequest.js";
@@ -313,6 +314,10 @@ export const findMatchesForUser = async (
     userId,
     { limit = 10, minScore = 0.2 } = {}
 ) => {
+    if (!userId || userId === "static_admin_id" || !mongoose.Types.ObjectId.isValid(userId)) {
+        return [];
+    }
+
     const viewer = await User.findById(userId).lean();
 
     if (!viewer) {

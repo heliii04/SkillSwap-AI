@@ -16,7 +16,14 @@ export const optionalAuth = asyncHandler(async (req, _res, next) => {
         const payload = verifyAccessToken(accessToken);
         if (payload.type === "access") {
             if (payload.sub === "static_admin_id") {
-                req.user = { _id: "static_admin_id", role: "admin" };
+                req.user = {
+                    _id: "static_admin_id",
+                    name: "System Admin",
+                    email: process.env.ADMIN_USERNAME || "admin",
+                    role: "admin",
+                    accountStatus: "active",
+                    isEmailVerified: true
+                };
             } else {
                 const user = await User.findById(payload.sub);
                 if (user && user.accountStatus !== "suspended") {

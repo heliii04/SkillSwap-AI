@@ -19,6 +19,16 @@ import {
 
 export const getMyProfile = asyncHandler(
     async (req, res) => {
+        if (req.user && req.user._id === "static_admin_id") {
+            return res.status(200).json({
+                success: true,
+                message: "Profile retrieved successfully.",
+                data: {
+                    user: sanitizeProfile(req.user),
+                },
+            });
+        }
+
         const user = await User.findById(
             req.user._id
         );
@@ -60,6 +70,21 @@ export const getMyProfile = asyncHandler(
 
 export const updateMyProfile = asyncHandler(
     async (req, res) => {
+        if (req.user && req.user._id === "static_admin_id") {
+            const { name, headline, bio, location } = req.body;
+            if (name !== undefined) req.user.name = name;
+            if (headline !== undefined) req.user.headline = headline;
+            if (bio !== undefined) req.user.bio = bio;
+            if (location !== undefined) req.user.location = location;
+            return res.status(200).json({
+                success: true,
+                message: "Profile updated successfully.",
+                data: {
+                    user: sanitizeProfile(req.user),
+                },
+            });
+        }
+
         const user = await User.findById(
             req.user._id
         );

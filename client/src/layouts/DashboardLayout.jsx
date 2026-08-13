@@ -615,16 +615,16 @@ export default function DashboardLayout() {
               </div>
             </div>
 
-            <div className="ml-auto flex items-center gap-3">
+            <div className="ml-auto flex items-center gap-2 sm:gap-3">
               <button
                 type="button"
                 onClick={() =>
                   navigate("/")
                 }
                 title="Go to Home"
-                className="rounded-xl border border-white/10 p-3 text-white/55 transition hover:bg-white/5 hover:text-white"
+                className="rounded-xl border border-white/10 p-2.5 sm:p-3 text-white/55 transition hover:bg-white/5 hover:text-white"
               >
-                <HiOutlineHome className="text-xl" />
+                <HiOutlineHome className="text-lg sm:text-xl" />
               </button>
 
               {user?.role !== "admin" && (
@@ -635,9 +635,9 @@ export default function DashboardLayout() {
                       "/notifications"
                     )
                   }
-                  className="relative rounded-xl border border-white/10 p-3 text-white/55 transition hover:bg-white/5 hover:text-white"
+                  className="relative rounded-xl border border-white/10 p-2.5 sm:p-3 text-white/55 transition hover:bg-white/5 hover:text-white"
                 >
-                  <HiOutlineBell className="text-xl" />
+                  <HiOutlineBell className="text-lg sm:text-xl" />
 
                   {unreadNotificationsCount > 0 && (
                     <span className="absolute right-2 top-2 flex h-4 w-4 -translate-y-1 translate-x-1 items-center justify-center rounded-full bg-orange-500 text-[9px] font-bold text-black ring-2 ring-[#07080d]">
@@ -652,19 +652,19 @@ export default function DashboardLayout() {
                 onClick={() =>
                   navigate("/profile")
                 }
-                className="hidden items-center gap-3 border-l border-white/10 pl-3 sm:flex"
+                className="flex items-center gap-2 sm:gap-3 border-l border-white/10 pl-2 sm:pl-3"
               >
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-500 text-sm font-bold text-black">
+                <div className="flex h-9 w-9 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-xl bg-orange-500 text-xs sm:text-sm font-bold text-black">
                   {initials}
                 </div>
 
-                <div className="max-w-40 text-left">
-                  <p className="truncate text-sm font-semibold">
+                <div className="max-w-[90px] xs:max-w-[120px] sm:max-w-40 text-left">
+                  <p className="truncate text-xs sm:text-sm font-semibold">
                     {user?.name ||
                       "User"}
                   </p>
 
-                  <p className="truncate text-xs text-white/35">
+                  <p className="truncate text-[10px] sm:text-xs text-white/35">
                     Verified member
                   </p>
                 </div>

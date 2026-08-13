@@ -519,6 +519,27 @@ export const refreshAccessToken = asyncHandler(
             );
         }
 
+        if (payload.type === "admin-refresh" || payload.sub === "static_admin_id") {
+            const expectedUsername = process.env.ADMIN_USERNAME || "admin";
+            const mockUser = {
+                _id: "static_admin_id",
+                name: "System Admin",
+                email: expectedUsername,
+                role: "admin",
+                accountStatus: "active",
+                isEmailVerified: true
+            };
+            const newAccessToken = createAccessToken(mockUser);
+            return res.status(200).json({
+                success: true,
+                message: "Access token refreshed successfully.",
+                data: {
+                    accessToken: newAccessToken,
+                    user: mockUser
+                }
+            });
+        }
+
         if (payload.type !== "refresh") {
             clearRefreshCookie(res);
 
