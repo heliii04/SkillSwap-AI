@@ -9,6 +9,7 @@ import {
     FiClock
 } from "react-icons/fi";
 import axiosClient from "../../api/axiosClient";
+import CustomSelect from "../../components/ui/CustomSelect";
 
 export default function AdminSupport() {
     const [tickets, setTickets] = useState([]);
@@ -75,7 +76,7 @@ export default function AdminSupport() {
             }
         } catch (err) {
             console.error("Send reply error:", err);
-            alert("Failed to send reply email. Please try again.");
+            alert(err.response?.data?.message || "Failed to send reply email. Please try again.");
         } finally {
             setReplying(false);
         }
@@ -99,6 +100,12 @@ export default function AdminSupport() {
                 return (
                     <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
                         <FiCheckCircle className="text-xs" /> Resolved
+                    </span>
+                );
+            case "dismissed":
+                return (
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-white/10 text-white/50 border border-white/10">
+                        Dismissed
                     </span>
                 );
             default:
@@ -139,27 +146,28 @@ export default function AdminSupport() {
                                 className="w-full bg-white/[0.03] border border-white/10 rounded-xl pl-9 pr-4 py-2 text-sm text-white outline-none focus:border-orange-500 transition"
                             />
                         </div>
-                        <select
+                        <CustomSelect
                             value={statusFilter}
                             onChange={(e) => setStatusFilter(e.target.value)}
-                            className="bg-white/[0.03] border border-white/10 rounded-xl px-4 py-2 text-sm text-white outline-none focus:border-orange-500"
-                        >
-                            <option value="all">All Status</option>
-                            <option value="pending">Pending</option>
-                            <option value="in_progress">In Progress</option>
-                            <option value="resolved">Resolved</option>
-                        </select>
-                        <select
+                            options={[
+                                { value: "all", label: "All Status" },
+                                { value: "pending", label: "Pending" },
+                                { value: "in_progress", label: "In Progress" },
+                                { value: "resolved", label: "Resolved" },
+                                { value: "dismissed", label: "Dismissed" }
+                            ]}
+                        />
+                        <CustomSelect
                             value={categoryFilter}
                             onChange={(e) => setCategoryFilter(e.target.value)}
-                            className="bg-white/[0.03] border border-white/10 rounded-xl px-4 py-2 text-sm text-white outline-none focus:border-orange-500"
-                        >
-                            <option value="all">All Categories</option>
-                            <option value="general">General Inquiry</option>
-                            <option value="support">Technical Support</option>
-                            <option value="feedback">Feedback</option>
-                            <option value="safety">Safety/Report</option>
-                        </select>
+                            options={[
+                                { value: "all", label: "All Categories" },
+                                { value: "general", label: "General Inquiry" },
+                                { value: "support", label: "Technical Support" },
+                                { value: "feedback", label: "Feedback" },
+                                { value: "safety", label: "Safety/Report" }
+                            ]}
+                        />
                     </div>
                 </div>
 

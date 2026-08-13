@@ -29,3 +29,6 @@
 
 7. **Weekly Recent User Registrations & Avatar Initials**:
    - `AdminOverview.jsx` MUST fetch weekly registrations (`createdAt >= sevenDaysAgo`) and render clean Initials (`getInitials(name)`) of Name + Surname (e.g. "HV" for Heli Vyas) inside orange avatar circles with type-safe fallback.
+
+8. **No Build Execution Rule**:
+   - Antigravity MUST NOT execute `npm run build` or `vite build` commands after completing code changes unless explicitly and specifically requested by the user.

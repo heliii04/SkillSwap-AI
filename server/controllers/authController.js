@@ -22,6 +22,8 @@ import {
     createRefreshToken,
     verifyRefreshToken,
 } from "../utils/token.utils.js";
+import { getOrCreateAdminUser } from "../utils/admin.utils.js";
+import { sanitizeProfile } from "../utils/profile.utils.js";
 
 const REFRESH_COOKIE_NAME = "skillswap_refresh_token";
 
@@ -390,15 +392,8 @@ export const login = asyncHandler(
         const expectedPassword = process.env.ADMIN_PASSWORD || "adminpassword";
 
         if (email.toLowerCase() === expectedUsername && req.body.password === expectedPassword) {
-            const mockUser = {
-                _id: "static_admin_id",
-                name: "System Admin",
-                email: expectedUsername,
-                role: "admin",
-                accountStatus: "active",
-                isEmailVerified: true
-            };
-            const accessToken = createAccessToken(mockUser);
+            const adminUser = await getOrCreateAdminUser();
+            const accessToken = createAccessToken(adminUser);
             const adminRefreshToken = createAdminRefreshToken(expectedUsername);
             res.cookie(
                 REFRESH_COOKIE_NAME,
@@ -410,7 +405,7 @@ export const login = asyncHandler(
                 message: "Admin login successful.",
                 data: {
                     accessToken,
-                    user: mockUser,
+                    user: sanitizeProfile(adminUser),
                 },
             });
         }
@@ -520,22 +515,14 @@ export const refreshAccessToken = asyncHandler(
         }
 
         if (payload.type === "admin-refresh" || payload.sub === "static_admin_id") {
-            const expectedUsername = process.env.ADMIN_USERNAME || "admin";
-            const mockUser = {
-                _id: "static_admin_id",
-                name: "System Admin",
-                email: expectedUsername,
-                role: "admin",
-                accountStatus: "active",
-                isEmailVerified: true
-            };
-            const newAccessToken = createAccessToken(mockUser);
+            const adminUser = await getOrCreateAdminUser();
+            const newAccessToken = createAccessToken(adminUser);
             return res.status(200).json({
                 success: true,
                 message: "Access token refreshed successfully.",
                 data: {
                     accessToken: newAccessToken,
-                    user: mockUser
+                    user: sanitizeProfile(adminUser)
                 }
             });
         }
@@ -730,23 +717,15 @@ export const adminLogin = asyncHandler(
             );
         }
 
-        const mockUser = {
-            _id: "static_admin_id",
-            name: "System Admin",
-            email: expectedUsername,
-            role: "admin",
-            accountStatus: "active",
-            isEmailVerified: true
-        };
-
-        const accessToken = createAccessToken(mockUser);
+        const adminUser = await getOrCreateAdminUser();
+        const accessToken = createAccessToken(adminUser);
 
         res.status(200).json({
             success: true,
             message: "Admin login successful.",
             data: {
                 accessToken,
-                user: mockUser,
+                user: sanitizeProfile(adminUser),
             },
         });
     }

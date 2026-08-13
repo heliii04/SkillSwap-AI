@@ -147,9 +147,9 @@ const formatChat = (
                         .lastMessage
                         ._id,
 
-                    text: chat
-                        .lastMessage
-                        .text,
+                    text: chat.lastMessage.isDeletedForEveryone
+                        ? `delete message from "${chat.lastMessage.deletedBy?.name || chat.lastMessage.sender?.name || "User"}"`
+                        : chat.lastMessage.text,
 
                     createdAt:
                         chat
@@ -160,7 +160,7 @@ const formatChat = (
                         isSameId(
                             chat
                                 .lastMessage
-                                .sender,
+                                .sender?._id || chat.lastMessage.sender,
                             currentUserId
                         )
                             ? "me"
@@ -188,9 +188,10 @@ const formatMessage = (
     message,
     currentUserId
 ) => {
+    const senderId = message.sender?._id || message.sender;
     const isMine =
         isSameId(
-            message.sender,
+            senderId,
             currentUserId
         );
 
@@ -213,6 +214,12 @@ const formatMessage = (
                 : "delivered";
     }
 
+    const isDeletedForEveryone = Boolean(message.isDeletedForEveryone);
+    const deleterName = message.deletedBy?.name || message.sender?.name || "User";
+    const text = isDeletedForEveryone
+        ? `delete message from "${deleterName}"`
+        : message.text;
+
     return {
         id: message._id,
 
@@ -220,7 +227,11 @@ const formatMessage = (
             ? "me"
             : "other",
 
-        text: message.text,
+        text,
+
+        isDeletedForEveryone,
+
+        deletedByName: deleterName,
 
         createdAt:
             message.createdAt,
@@ -271,6 +282,10 @@ export const getChats =
                     })
                     .populate({
                         path: "lastMessage",
+                        populate: [
+                            { path: "deletedBy", select: "name" },
+                            { path: "sender", select: "name" },
+                        ],
                     })
                     .sort({
                         lastMessageAt:
@@ -425,7 +440,10 @@ export const getMessages =
                 (c) => c.user?.toString() === currentUserId?.toString()
             );
 
-            const messageQuery = { chat: chatId };
+            const messageQuery = {
+                chat: chatId,
+                deletedFor: { $ne: currentUserId },
+            };
             if (userCleared && userCleared.clearedAt) {
                 messageQuery.createdAt = { $gt: userCleared.clearedAt };
             }
@@ -461,6 +479,8 @@ export const getMessages =
                 await Promise.all(
                     [
                         Message.find(messageQuery)
+                            .populate("deletedBy", "name")
+                            .populate("sender", "name")
                             .sort({
                                 createdAt:
                                     -1,
@@ -556,14 +576,14 @@ export const sendMessage =
 
             if (
                 text.length >
-                2000
+                25000000
             ) {
                 return res
                     .status(400)
                     .json({
                         success: false,
                         message:
-                            "Message cannot exceed 2000 characters",
+                            "Message payload exceeds maximum file attachment limit",
                     });
             }
 
@@ -1007,6 +1027,89 @@ export const deleteChatRoom = async (req, res, next) => {
                 message: "Chat deleted successfully"
             });
         }
+    } catch (error) {
+        return next(error);
+    }
+};
+
+export const deleteSelectedMessages = async (req, res, next) => {
+    try {
+        const currentUserId = req.user._id;
+        const currentUserName = req.user.name || "User";
+        const { chatId } = req.params;
+        const { messageIds, deleteType } = req.body;
+
+        if (!Array.isArray(messageIds) || messageIds.length === 0) {
+            return res.status(400).json({
+                success: false,
+                message: "No message IDs provided",
+            });
+        }
+
+        const chat = await Chat.findOne({
+            _id: chatId,
+            participants: currentUserId,
+        });
+
+        if (!chat) {
+            return res.status(404).json({
+                success: false,
+                message: "Chat not found or access denied",
+            });
+        }
+
+        if (deleteType === "everyone") {
+            await Message.updateMany(
+                {
+                    _id: { $in: messageIds },
+                    chat: chatId,
+                    sender: currentUserId,
+                },
+                {
+                    $set: {
+                        isDeletedForEveryone: true,
+                        deletedBy: currentUserId,
+                    },
+                }
+            );
+
+            const io = req.app.get("io");
+            if (io) {
+                io.to(chatId.toString()).emit("messages_deleted", {
+                    chatId,
+                    messageIds,
+                    deleteType: "everyone",
+                    deletedByUserId: currentUserId,
+                    deletedByName: currentUserName,
+                });
+            }
+        } else {
+            await Message.updateMany(
+                {
+                    _id: { $in: messageIds },
+                    chat: chatId,
+                },
+                {
+                    $addToSet: { deletedFor: currentUserId },
+                }
+            );
+
+            const io = req.app.get("io");
+            if (io) {
+                io.to(chatId.toString()).emit("messages_deleted", {
+                    chatId,
+                    messageIds,
+                    deleteType: "me",
+                    userId: currentUserId,
+                });
+            }
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: `Selected messages deleted ${deleteType === "everyone" ? "for everyone" : "for you"}`,
+            deletedByName: currentUserName,
+        });
     } catch (error) {
         return next(error);
     }

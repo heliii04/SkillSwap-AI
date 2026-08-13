@@ -3,6 +3,8 @@ import { FiLoader, FiShield, FiCheckCircle, FiSlash, FiXCircle, FiFilter, FiAler
 import { toast } from "react-toastify";
 import axiosClient from "../../api/axiosClient";
 
+import CustomSelect from "../../components/ui/CustomSelect";
+
 export default function AdminReports() {
     const [reports, setReports] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -70,16 +72,16 @@ export default function AdminReports() {
 
                 <div className="flex items-center gap-2">
                     <FiFilter className="text-white/40 text-sm" />
-                    <select
+                    <CustomSelect
                         value={statusFilter}
                         onChange={(e) => setStatusFilter(e.target.value)}
-                        className="rounded-xl border border-white/10 bg-[#141622] px-4 py-2 text-xs font-semibold text-white focus:outline-none"
-                    >
-                        <option value="all">All Statuses</option>
-                        <option value="pending">Pending</option>
-                        <option value="resolved">Resolved</option>
-                        <option value="dismissed">Dismissed</option>
-                    </select>
+                        options={[
+                            { value: "all", label: "All Statuses" },
+                            { value: "pending", label: "Pending" },
+                            { value: "resolved", label: "Resolved" },
+                            { value: "dismissed", label: "Dismissed" }
+                        ]}
+                    />
                 </div>
             </div>
 
@@ -138,19 +140,6 @@ export default function AdminReports() {
                                                 <FiXCircle /> Dismiss Report
                                             </button>
                                         )}
-
-                                        <button
-                                            disabled={actionLoadingId === report._id}
-                                            onClick={() => {
-                                                const customNotes = window.prompt("Enter warning note / resolution message for the user:", "Official warning: Please maintain respectful communication on SkillSwap AI.");
-                                                if (customNotes !== null) {
-                                                    handleAction(report._id, "resolved", "warning_sent", customNotes);
-                                                }
-                                            }}
-                                            className="flex items-center gap-1.5 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/20 px-4 py-2 text-xs font-semibold hover:bg-amber-500/20 transition disabled:opacity-50"
-                                        >
-                                            <FiAlertTriangle /> Send Warning
-                                        </button>
 
                                         {report.status === "pending" && (
                                             <button

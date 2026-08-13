@@ -7,6 +7,7 @@ import {
     toggleBlockChat,
     clearChatMessages,
     deleteChatRoom,
+    deleteSelectedMessages,
 } from "../controllers/chatController.js";
 import { requireAuth } from "../middleware/authMiddleware.js";
 
@@ -18,6 +19,7 @@ router.get("/", getChats);
 router.post("/", findOrCreateChat);
 router.get("/:chatId/messages", getMessages);
 router.post("/:chatId/messages", sendMessage);
+router.post("/:chatId/messages/delete", deleteSelectedMessages);
 
 router.patch("/:chatId/block", toggleBlockChat);
 router.delete("/:chatId/clear", clearChatMessages);

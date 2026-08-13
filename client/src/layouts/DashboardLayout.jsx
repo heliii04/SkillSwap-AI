@@ -494,12 +494,12 @@ export default function DashboardLayout() {
 
           {!collapsed && (
             <p className="mb-3 px-3 text-xs font-semibold uppercase tracking-[0.24em] text-white/25">
-              {user?.role === "admin" && location.pathname.startsWith("/admin") ? "Admin Panel" : "Workspace"}
+              {user?.role === "admin" ? "Admin Panel" : "Workspace"}
             </p>
           )}
 
           <div className="space-y-1">
-            {(user?.role === "admin" && location.pathname.startsWith("/admin") ? adminNavigationItems : navigationItems).map(
+            {(user?.role === "admin" ? adminNavigationItems : navigationItems).map(
               ({
                 label,
                 path,

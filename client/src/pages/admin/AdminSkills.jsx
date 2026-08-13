@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { FiLoader, FiUsers, FiSearch, FiX } from "react-icons/fi";
 import axiosClient from "../../api/axiosClient";
+import CustomSelect from "../../components/ui/CustomSelect";
 
 export default function AdminSkills() {
     const [skills, setSkills] = useState([]);
@@ -100,19 +101,16 @@ export default function AdminSkills() {
                     )}
                 </div>
 
-                <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0">
+                <div className="flex items-center gap-2 shrink-0">
                     <span className="text-xs text-white/40 font-medium shrink-0">Category:</span>
-                    <select
+                    <CustomSelect
                         value={categoryFilter}
                         onChange={(e) => setCategoryFilter(e.target.value)}
-                        className="rounded-xl border border-white/10 bg-[#090a0f] px-3 py-2 text-xs text-white outline-none focus:border-orange-500/60 capitalize"
-                    >
-                        {categories.map((cat) => (
-                            <option key={cat} value={cat} className="bg-[#101117] capitalize">
-                                {cat}
-                            </option>
-                        ))}
-                    </select>
+                        options={categories.map((cat) => ({
+                            value: cat,
+                            label: cat.charAt(0).toUpperCase() + cat.slice(1)
+                        }))}
+                    />
                 </div>
             </div>
 

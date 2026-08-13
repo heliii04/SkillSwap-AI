@@ -49,6 +49,27 @@ const messageSchema =
                 default: [],
             },
 
+            deletedFor: {
+                type: [
+                    {
+                        type: mongoose.Schema.Types.ObjectId,
+                        ref: "User",
+                    },
+                ],
+                default: [],
+            },
+
+            isDeletedForEveryone: {
+                type: Boolean,
+                default: false,
+            },
+
+            deletedBy: {
+                type: mongoose.Schema.Types.ObjectId,
+                ref: "User",
+                default: null,
+            },
+
             deliveredAt: {
                 type: Date,
                 default: Date.now,

@@ -32,6 +32,8 @@ import {
     HiOutlineTrash,
     HiOutlineLink,
     HiOutlineUser,
+    HiOutlineDocumentText,
+    HiOutlineArrowDownTray,
 } from "react-icons/hi2";
 
 /*
@@ -63,9 +65,13 @@ export default function Messages() {
     const queryChatId = searchParams.get("chatId");
 
     const [conversations, setConversations] = useState([]);
+    const [selectedDocument, setSelectedDocument] = useState(null);
     const [messages, setMessages] = useState([]);
     const [loading, setLoading] = useState(true);
     const [messagesLoading, setMessagesLoading] = useState(false);
+    const [isSelectionMode, setIsSelectionMode] = useState(false);
+    const [selectedMessageIds, setSelectedMessageIds] = useState([]);
+    const [selectDeleteModalOpen, setSelectDeleteModalOpen] = useState(false);
 
     const [
         selectedConversationId,
@@ -248,12 +254,52 @@ export default function Messages() {
             }
         });
 
+        socket.on("messages_deleted", ({ chatId, messageIds, deleteType, deletedByName }) => {
+            if (isMounted) {
+                if (deleteType === "everyone") {
+                    if (chatId === selectedConversationId) {
+                        setMessages((prev) =>
+                            prev.map((m) => {
+                                if (messageIds?.includes(m.id)) {
+                                    return {
+                                        ...m,
+                                        isDeletedForEveryone: true,
+                                        text: `delete message from "${deletedByName || "User"}"`,
+                                    };
+                                }
+                                return m;
+                            })
+                        );
+                    }
+                    setConversations((prev) =>
+                        prev.map((c) => {
+                            if (c.id === chatId && c.lastMessage && messageIds?.includes(c.lastMessage.id)) {
+                                return {
+                                    ...c,
+                                    lastMessage: {
+                                        ...c.lastMessage,
+                                        text: `delete message from "${deletedByName || "User"}"`,
+                                    },
+                                };
+                            }
+                            return c;
+                        })
+                    );
+                } else {
+                    if (chatId === selectedConversationId) {
+                        setMessages((prev) => prev.filter((m) => !messageIds?.includes(m.id)));
+                    }
+                }
+            }
+        });
+
         return () => {
             isMounted = false;
             socket.off("new_message");
             socket.off("chat_block_update");
             socket.off("chat_cleared");
             socket.off("chat_deleted");
+            socket.off("messages_deleted");
             socket.disconnect();
         };
     }, [selectedConversationId]);
@@ -354,10 +400,9 @@ export default function Messages() {
     const selectConversation = (
         conversationId
     ) => {
-        setSelectedConversationId(
-            conversationId
-        );
-
+        setSelectedConversationId(conversationId);
+        setIsSelectionMode(false);
+        setSelectedMessageIds([]);
         setMobileChatOpen(true);
     };
 
@@ -367,18 +412,29 @@ export default function Messages() {
                 messageText.trim();
 
             if (
-                !trimmedMessage ||
+                (!trimmedMessage && !selectedDocument) ||
                 !selectedConversation ||
                 sending
             ) {
                 return;
             }
 
+            let payloadText = trimmedMessage;
+            if (selectedDocument) {
+                const docPayload = JSON.stringify({
+                    fileName: selectedDocument.name,
+                    fileSize: selectedDocument.sizeFormatted,
+                    fileData: selectedDocument.dataUrl,
+                    fileType: selectedDocument.type
+                });
+                payloadText = trimmedMessage ? `${trimmedMessage}\n[DOC_ATTACHMENT:${docPayload}]` : `[DOC_ATTACHMENT:${docPayload}]`;
+            }
+
             try {
                 setSending(true);
 
                 const response = await axiosClient.post(`/chats/${selectedConversation.id}/messages`, {
-                    text: trimmedMessage,
+                    text: payloadText,
                 });
 
                 const newMsg = response.data?.data?.message;
@@ -404,6 +460,7 @@ export default function Messages() {
                         )
                     );
                     setMessageText("");
+                    setSelectedDocument(null);
                 }
             } catch (err) {
                 console.error("Error sending message:", err);
@@ -412,6 +469,98 @@ export default function Messages() {
                 setSending(false);
             }
         };
+
+    const canDeleteForEveryone = useMemo(() => {
+        if (selectedMessageIds.length === 0) return false;
+        const selectedMsgs = messages.filter((m) => selectedMessageIds.includes(m.id));
+        return (
+            selectedMsgs.length > 0 &&
+            selectedMsgs.every(
+                (m) => m.sender === "me" && !m.isDeletedForEveryone
+            )
+        );
+    }, [messages, selectedMessageIds]);
+
+    const toggleMessageSelection = (msgId) => {
+        setSelectedMessageIds((prev) =>
+            prev.includes(msgId)
+                ? prev.filter((id) => id !== msgId)
+                : [...prev, msgId]
+        );
+    };
+
+    const handleSelectAllMessages = () => {
+        if (selectedMessageIds.length === messages.length) {
+            setSelectedMessageIds([]);
+        } else {
+            setSelectedMessageIds(messages.map((m) => m.id));
+        }
+    };
+
+    const handleDeleteSelectedMessages = () => {
+        if (selectedMessageIds.length === 0) return;
+        setSelectDeleteModalOpen(true);
+    };
+
+    const handleConfirmDeleteSelected = async (deleteType) => {
+        setSelectDeleteModalOpen(false);
+        if (!selectedConversation || selectedMessageIds.length === 0) return;
+
+        try {
+            const response = await axiosClient.post(
+                `/chats/${selectedConversation.id}/messages/delete`,
+                {
+                    messageIds: selectedMessageIds,
+                    deleteType,
+                }
+            );
+            if (response.data?.success) {
+                if (deleteType === "everyone") {
+                    const deleterName = response.data.deletedByName || user?.name || "User";
+                    setMessages((prev) =>
+                        prev.map((m) => {
+                            if (selectedMessageIds.includes(m.id)) {
+                                return {
+                                    ...m,
+                                    isDeletedForEveryone: true,
+                                    text: `delete message from "${deleterName}"`,
+                                };
+                            }
+                            return m;
+                        })
+                    );
+                    setConversations((prev) =>
+                        prev.map((c) => {
+                            if (c.id === selectedConversation.id && c.lastMessage && selectedMessageIds.includes(c.lastMessage.id)) {
+                                return {
+                                    ...c,
+                                    lastMessage: {
+                                        ...c.lastMessage,
+                                        text: `delete message from "${deleterName}"`,
+                                    },
+                                };
+                            }
+                            return c;
+                        })
+                    );
+                } else {
+                    setMessages((prev) =>
+                        prev.filter((m) => !selectedMessageIds.includes(m.id))
+                    );
+                }
+                setSelectedMessageIds([]);
+                setIsSelectionMode(false);
+            }
+        } catch (err) {
+            console.error("Error deleting selected messages:", err);
+            alert(err.message || "Failed to delete selected messages");
+        }
+    };
+
+    const handleCancelSelection = () => {
+        setIsSelectionMode(false);
+        setSelectedMessageIds([]);
+    };
 
     const handleKeyDown = (
         event
@@ -496,6 +645,13 @@ export default function Messages() {
                                                 return c;
                                             }));
                                         }}
+                                        isSelectionMode={isSelectionMode}
+                                        selectedCount={selectedMessageIds.length}
+                                        totalCount={messages.length}
+                                        onStartSelection={() => setIsSelectionMode(true)}
+                                        onSelectAll={handleSelectAllMessages}
+                                        onDeleteSelected={handleDeleteSelectedMessages}
+                                        onCancelSelection={handleCancelSelection}
                                     />
 
                                     {messagesLoading ? (
@@ -511,6 +667,9 @@ export default function Messages() {
                                             messagesEndRef={
                                                 messagesEndRef
                                             }
+                                            isSelectionMode={isSelectionMode}
+                                            selectedMessageIds={selectedMessageIds}
+                                            onToggleSelect={toggleMessageSelection}
                                         />
                                     )}
 
@@ -536,6 +695,8 @@ export default function Messages() {
                                         currentUserId={
                                             user?.id || user?._id
                                         }
+                                        selectedDocument={selectedDocument}
+                                        setSelectedDocument={setSelectedDocument}
                                     />
                                 </>
                             ) : (
@@ -545,6 +706,43 @@ export default function Messages() {
                     </div>
                 </section>
             </div>
+
+            {selectDeleteModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in">
+                    <div className="w-full max-w-sm rounded-2xl border border-white/10 bg-[#0f1015] p-6 shadow-2xl">
+                        <h3 className="text-lg font-semibold text-white">
+                            Delete {selectedMessageIds.length} {selectedMessageIds.length === 1 ? "Message" : "Messages"}
+                        </h3>
+                        <p className="mt-2 text-sm text-white/50 leading-relaxed">
+                            {canDeleteForEveryone
+                                ? "Do you want to delete these selected messages only for yourself, or delete them for everyone?"
+                                : "Do you want to delete these selected messages for yourself?"}
+                        </p>
+                        <div className="mt-6 flex flex-col gap-2">
+                            <button
+                                onClick={() => handleConfirmDeleteSelected("me")}
+                                className="w-full rounded-xl bg-white/5 py-3 text-sm font-bold text-white transition hover:bg-white/10"
+                            >
+                                Delete for me
+                            </button>
+                            {canDeleteForEveryone && (
+                                <button
+                                    onClick={() => handleConfirmDeleteSelected("everyone")}
+                                    className="w-full rounded-xl bg-red-500/10 border border-red-500/20 py-3 text-sm font-bold text-red-400 transition hover:bg-red-500/20"
+                                >
+                                    Delete for everyone
+                                </button>
+                            )}
+                            <button
+                                onClick={() => setSelectDeleteModalOpen(false)}
+                                className="mt-2 w-full rounded-xl py-3 text-sm font-bold text-white/30 transition hover:text-white/50"
+                            >
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </main>
     );
 }
@@ -795,26 +993,27 @@ function ConversationItem({
                 </div>
 
                 <div className="mt-3 flex items-end gap-3">
-                    <p
-                        className={`min-w-0 flex-1 truncate text-xs ${conversation.unreadCount >
-                            0
-                            ? "font-medium text-white/70"
-                            : "text-white/30"
-                            }`}
-                    >
-                        {lastMessage?.sender ===
-                            "me" && (
-                                <span className="mr-1 text-white/25">
-                                    You:
-                                </span>
-                            )}
+                    {(() => {
+                        const isDeletedLastMsg = lastMessage?.text?.startsWith("delete message from");
+                        return (
+                            <p
+                                className={`min-w-0 flex-1 truncate text-xs ${conversation.unreadCount > 0
+                                    ? "font-medium text-white/70"
+                                    : "text-white/30"
+                                    } ${isDeletedLastMsg ? "italic text-white/40" : ""}`}
+                            >
+                                {lastMessage?.sender === "me" && !isDeletedLastMsg && (
+                                    <span className="mr-1 text-white/25">
+                                        You:
+                                    </span>
+                                )}
 
-                        {lastMessage?.text ||
-                            "No messages yet"}
-                    </p>
+                                {lastMessage?.text || "No messages yet"}
+                            </p>
+                        );
+                    })()}
 
-                    {conversation.unreadCount >
-                        0 && (
+                    {conversation.unreadCount > 0 && (
                             <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-orange-500 px-1.5 text-[10px] font-bold text-black">
                                 {
                                     conversation.unreadCount
@@ -861,71 +1060,126 @@ function ChatHeader({
     onClear,
     onDelete,
     onBlockToggle,
+    isSelectionMode = false,
+    selectedCount = 0,
+    totalCount = 0,
+    onStartSelection,
+    onSelectAll,
+    onDeleteSelected,
+    onCancelSelection,
 }) {
-    const { user } = conversation;
+    const { user, blockedBy = [] } = conversation;
     const { user: currentUser } = useAuth();
+    const currentUserId = currentUser?.id || currentUser?._id;
+    const isBlockedByMe = blockedBy.some(id => id.toString() === currentUserId?.toString());
+
     const [dropdownOpen, setDropdownOpen] = useState(false);
     const [deleteModalOpen, setDeleteModalOpen] = useState(false);
     const dropdownRef = useRef(null);
 
-    const token = getAccessToken();
-    const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
-
-    const isBlockedByMe = conversation.blockedBy?.some(
-        (id) => id.toString() === (currentUser?._id?.toString() || currentUser?.id?.toString())
-    );
-
     useEffect(() => {
         const handleClickOutside = (event) => {
-            if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+            if (
+                dropdownRef.current &&
+                !dropdownRef.current.contains(event.target)
+            ) {
                 setDropdownOpen(false);
             }
         };
-        document.addEventListener("mousedown", handleClickOutside);
+
+        document.addEventListener(
+            "mousedown",
+            handleClickOutside
+        );
+
         return () => {
-            document.removeEventListener("mousedown", handleClickOutside);
+            document.removeEventListener(
+                "mousedown",
+                handleClickOutside
+            );
         };
     }, []);
 
     const handleBlock = async () => {
         setDropdownOpen(false);
         try {
-            const response = await axiosClient.patch(`/chats/${conversation.id}/block`);
-            if (response.data?.data?.blockedBy) {
+            const response = await axiosClient.post(`/chats/${conversation.id}/block`);
+            if (response.data?.success) {
                 onBlockToggle(response.data.data.blockedBy);
             }
         } catch (err) {
             console.error("Error blocking chat:", err);
+            alert(err.message || "Failed to block user");
         }
     };
 
     const handleClear = async () => {
         setDropdownOpen(false);
-        if (!window.confirm("Are you sure you want to clear all messages in this chat?")) return;
+        if (!window.confirm("Are you sure you want to clear this chat? This cannot be undone.")) return;
         try {
-            await axiosClient.delete(`/chats/${conversation.id}/clear`);
-            onClear();
+            const response = await axiosClient.delete(`/chats/${conversation.id}/messages`);
+            if (response.data?.success) {
+                onClear();
+            }
         } catch (err) {
             console.error("Error clearing chat:", err);
+            alert(err.message || "Failed to clear chat");
         }
     };
 
-    const handleDelete = async (deleteType) => {
+    const handleDelete = async (type) => {
         setDeleteModalOpen(false);
         try {
-            await axiosClient.delete(`/chats/${conversation.id}`, {
-                data: { deleteType }
-            });
-            onDelete();
+            const response = await axiosClient.delete(`/chats/${conversation.id}?type=${type}`);
+            if (response.data?.success) {
+                onDelete();
+            }
         } catch (err) {
             console.error("Error deleting chat:", err);
+            alert(err.message || "Failed to delete chat");
         }
     };
 
-    const handleDummyClick = () => {
-        setDropdownOpen(false);
-        alert("This option is currently mock/disabled.");
-    };
+    if (isSelectionMode) {
+        return (
+            <header className="relative flex min-h-[82px] items-center justify-between gap-4 border-b border-white/10 bg-[#13141c] px-4 py-4 sm:px-6">
+                <div className="flex items-center gap-3">
+                    <button
+                        type="button"
+                        onClick={onCancelSelection}
+                        className="rounded-xl border border-white/10 p-2.5 text-white/60 hover:bg-white/10 hover:text-white transition font-bold"
+                        title="Cancel Selection"
+                    >
+                        <HiOutlineXMark className="text-xl" />
+                    </button>
+                    <div>
+                        <h2 className="font-bold text-white text-sm sm:text-base">
+                            {selectedCount} {selectedCount === 1 ? "Message" : "Messages"} Selected
+                        </h2>
+                        <p className="text-[11px] text-white/40">Click any message to select or deselect</p>
+                    </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                    <button
+                        type="button"
+                        onClick={onSelectAll}
+                        className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-white/80 hover:bg-white/10 hover:text-white transition font-bold"
+                    >
+                        {selectedCount === totalCount && totalCount > 0 ? "Deselect All" : "Select All"}
+                    </button>
+                    <button
+                        type="button"
+                        disabled={selectedCount === 0}
+                        onClick={onDeleteSelected}
+                        className="flex items-center gap-1.5 rounded-xl border border-red-500/30 bg-red-500/10 px-3.5 py-2 text-xs font-bold text-red-400 hover:bg-red-500/20 transition disabled:opacity-40 font-bold"
+                    >
+                        <HiOutlineTrash className="text-sm" /> Delete ({selectedCount})
+                    </button>
+                </div>
+            </header>
+        );
+    }
 
     return (
         <header className="relative flex min-h-[82px] items-center justify-between gap-4 border-b border-white/10 px-4 py-4 sm:px-6">
@@ -987,6 +1241,9 @@ function ChatHeader({
                             <div className="space-y-0.5">
                                 <button onClick={handleBlock} className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-xs text-white/70 transition hover:bg-white/5 hover:text-white font-bold">
                                     <HiOutlineNoSymbol className="text-base text-red-500/80" /> {isBlockedByMe ? "Unblock" : "Block"}
+                                </button>
+                                <button onClick={() => { setDropdownOpen(false); onStartSelection(); }} className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-xs text-white/70 transition hover:bg-white/5 hover:text-white font-bold">
+                                    <HiOutlineCheckCircle className="text-base text-orange-400" /> Select messages
                                 </button>
                                 <button onClick={handleClear} className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-xs text-white/70 transition hover:bg-white/5 hover:text-white font-bold">
                                     <HiOutlineTrash className="text-base text-red-500/80" /> Clear chat
@@ -1063,6 +1320,9 @@ function ChatMessages({
     conversation,
     messages = [],
     messagesEndRef,
+    isSelectionMode = false,
+    selectedMessageIds = [],
+    onToggleSelect,
 }) {
     const groupedMessages =
         groupMessagesByDate(
@@ -1105,6 +1365,9 @@ function ChatMessages({
                                             user={
                                                 conversation.user
                                             }
+                                            isSelectionMode={isSelectionMode}
+                                            isSelected={selectedMessageIds.includes(message.id)}
+                                            onToggleSelect={onToggleSelect}
                                         />
                                     )
                                 )}
@@ -1194,17 +1457,58 @@ function DateSeparator({
 function MessageBubble({
     message,
     user,
+    isSelectionMode = false,
+    isSelected = false,
+    onToggleSelect,
 }) {
     const isMine =
         message.sender === "me";
 
+    let docAttachment = null;
+    let mainText = message.text || "";
+
+    if (mainText.includes("[DOC_ATTACHMENT:")) {
+        try {
+            const parts = mainText.split("[DOC_ATTACHMENT:");
+            mainText = parts[0].trim();
+            const jsonStr = parts[1].slice(0, parts[1].lastIndexOf("]"));
+            docAttachment = JSON.parse(jsonStr);
+        } catch (e) {
+            console.error("Error parsing document attachment:", e);
+        }
+    }
+
+    const isDeleted = message.isDeletedForEveryone || mainText.startsWith("delete message from");
+
+    const handleClick = () => {
+        if (!isDeleted && isSelectionMode && typeof onToggleSelect === "function") {
+            onToggleSelect(message.id);
+        }
+    };
+
     return (
         <div
-            className={`flex items-end gap-2 ${isMine
-                ? "justify-end"
-                : "justify-start"
-                }`}
+            onClick={handleClick}
+            className={`flex items-end gap-2.5 transition-all duration-150 ${
+                isMine
+                    ? "justify-end"
+                    : "justify-start"
+                } ${isSelectionMode && !isDeleted ? "cursor-pointer group select-none" : ""}`}
         >
+            {isSelectionMode && !isMine && !isDeleted && (
+                <div className="mb-2 shrink-0">
+                    <div
+                        className={`flex h-5 w-5 items-center justify-center rounded-full border transition-all ${
+                            isSelected
+                                ? "border-orange-500 bg-orange-500 text-black font-bold"
+                                : "border-white/30 bg-white/5 group-hover:border-orange-400"
+                        }`}
+                    >
+                        {isSelected && <HiOutlineCheck className="text-xs stroke-[3]" />}
+                    </div>
+                </div>
+            )}
+
             {!isMine && (
                 <UserAvatar
                     user={user}
@@ -1219,14 +1523,60 @@ function MessageBubble({
                     } flex flex-col`}
             >
                 <div
-                    className={`rounded-2xl px-4 py-3 ${isMine
-                        ? "rounded-br-md bg-orange-500 text-black"
-                        : "rounded-bl-md border border-white/10 bg-[#15161d] text-white/75"
-                        }`}
+                    className={`rounded-2xl px-4 py-3 transition-all ${
+                        isDeleted
+                            ? "rounded-md border border-white/10 bg-white/[0.03] text-white/40 italic flex items-center gap-2 text-xs"
+                            : isMine
+                            ? "rounded-br-md bg-orange-500 text-black font-medium"
+                            : "rounded-bl-md border border-white/10 bg-[#15161d] text-white/90"
+                        } ${isSelected ? "ring-2 ring-orange-500 shadow-lg shadow-orange-500/10 scale-[1.01]" : ""}`}
                 >
-                    <p className="whitespace-pre-wrap break-words text-sm leading-6">
-                        {message.text}
-                    </p>
+                    {isDeleted ? (
+                        <>
+                            <HiOutlineTrash className="text-sm shrink-0 opacity-70" />
+                            <span>{mainText}</span>
+                        </>
+                    ) : (
+                        <>
+                            {docAttachment && (
+                                <div className={`mb-2 flex items-center justify-between gap-3 rounded-xl p-3 border ${
+                                    isMine
+                                        ? "bg-black/15 border-black/20 text-black"
+                                        : "bg-white/5 border-white/10 text-white"
+                                }`}>
+                                    <div className="flex items-center gap-2.5 overflow-hidden">
+                                        <HiOutlineDocumentText className="text-2xl shrink-0 opacity-90" />
+                                        <div className="min-w-0">
+                                            <p className="truncate text-xs font-bold leading-tight">{docAttachment.fileName}</p>
+                                            <p className="text-[10px] opacity-75 mt-0.5">{docAttachment.fileSize || "Document"}</p>
+                                        </div>
+                                    </div>
+                                    {docAttachment.fileData && (
+                                        <a
+                                            href={docAttachment.fileData}
+                                            download={docAttachment.fileName}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            onClick={(e) => isSelectionMode && e.stopPropagation()}
+                                            className={`shrink-0 flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-bold transition border ${
+                                                isMine
+                                                    ? "bg-black text-orange-400 border-black hover:bg-black/80"
+                                                    : "bg-orange-500 text-black border-orange-500 hover:bg-orange-400"
+                                            }`}
+                                        >
+                                            <HiOutlineArrowDownTray className="text-sm" /> Download
+                                        </a>
+                                    )}
+                                </div>
+                            )}
+
+                            {mainText && (
+                                <p className="whitespace-pre-wrap break-words text-sm leading-6">
+                                    {mainText}
+                                </p>
+                            )}
+                        </>
+                    )}
                 </div>
 
                 <div
@@ -1250,6 +1600,20 @@ function MessageBubble({
                     )}
                 </div>
             </div>
+
+            {isSelectionMode && isMine && !isDeleted && (
+                <div className="mb-2 shrink-0">
+                    <div
+                        className={`flex h-5 w-5 items-center justify-center rounded-full border transition-all ${
+                            isSelected
+                                ? "border-orange-500 bg-orange-500 text-black font-bold"
+                                : "border-white/30 bg-white/5 group-hover:border-orange-400"
+                        }`}
+                    >
+                        {isSelected && <HiOutlineCheck className="text-xs stroke-[3]" />}
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
@@ -1305,7 +1669,10 @@ function MessageComposer({
     onSend,
     blockedBy = [],
     currentUserId,
+    selectedDocument,
+    setSelectedDocument,
 }) {
+    const fileInputRef = useRef(null);
     const isBlocked = blockedBy.length > 0;
     const blockedByMe = blockedBy.some(id => id.toString() === currentUserId?.toString());
 
@@ -1321,17 +1688,77 @@ function MessageComposer({
         );
     }
 
-    const canSend =
-        value.trim().length > 0 &&
-        !sending;
+    const formatBytes = (bytes) => {
+        if (!bytes) return "0 B";
+        const k = 1024;
+        const sizes = ["B", "KB", "MB", "GB"];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
+    };
+
+    const handleFileChange = (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        if (file.size > 10 * 1024 * 1024) {
+            alert("Document size exceeds 10MB limit. Please select a smaller document.");
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            setSelectedDocument({
+                name: file.name,
+                sizeFormatted: formatBytes(file.size),
+                type: file.type,
+                dataUrl: event.target?.result,
+            });
+        };
+        reader.readAsDataURL(file);
+        e.target.value = "";
+    };
+
+    const canSend = (value.trim().length > 0 || Boolean(selectedDocument)) && !sending;
 
     return (
         <footer className="border-t border-white/10 bg-[#101117] p-3 sm:p-4">
+            <input
+                type="file"
+                ref={fileInputRef}
+                accept=".pdf,.doc,.docx,.txt,.csv,.xlsx,.pptx,.zip,.rar,application/*,text/*"
+                onChange={handleFileChange}
+                className="hidden"
+            />
+
+            {selectedDocument && (
+                <div className="mx-auto mb-2 flex max-w-4xl items-center justify-between gap-3 rounded-xl border border-orange-500/40 bg-orange-500/10 px-3.5 py-2 text-xs font-semibold text-orange-300">
+                    <div className="flex items-center gap-2 overflow-hidden">
+                        <HiOutlineDocumentText className="text-lg shrink-0 text-orange-400" />
+                        <span className="truncate">{selectedDocument.name}</span>
+                        <span className="text-[10px] text-white/50 shrink-0">({selectedDocument.sizeFormatted})</span>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={() => setSelectedDocument(null)}
+                        className="rounded-lg p-1 text-white/50 hover:bg-white/10 hover:text-white transition"
+                        title="Remove document"
+                    >
+                        <HiOutlineXMark className="text-base" />
+                    </button>
+                </div>
+            )}
+
             <div className="mx-auto flex max-w-4xl items-end gap-2">
                 <button
                     type="button"
-                    aria-label="Attach file"
-                    className="mb-0.5 shrink-0 rounded-xl border border-white/10 p-3 text-white/35 transition hover:border-orange-500/30 hover:text-orange-400 font-bold"
+                    onClick={() => fileInputRef.current?.click()}
+                    aria-label="Attach document"
+                    title="Upload document (.pdf, .doc, .docx, .txt, etc.)"
+                    className={`mb-0.5 shrink-0 rounded-xl border p-3 font-bold transition ${
+                        selectedDocument
+                            ? "border-orange-500 text-orange-400 bg-orange-500/10"
+                            : "border-white/10 text-white/60 hover:border-orange-500/50 hover:text-orange-400 bg-[#090a0f]"
+                    }`}
                 >
                     <HiOutlinePaperClip className="text-xl" />
                 </button>
@@ -1350,7 +1777,7 @@ function MessageComposer({
                         }
                         rows={1}
                         maxLength={2000}
-                        placeholder="Write a message..."
+                        placeholder={selectedDocument ? "Add a message with document (optional)..." : "Write a message..."}
                         className="max-h-36 min-h-[48px] w-full resize-none bg-transparent px-4 py-3.5 text-sm leading-5 text-white outline-none placeholder:text-white/20"
                     />
                 </div>

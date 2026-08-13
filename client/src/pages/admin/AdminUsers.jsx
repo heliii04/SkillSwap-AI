@@ -66,7 +66,7 @@ export default function AdminUsers() {
                             </thead>
                             <tbody className="divide-y divide-white/5 text-sm">
                                 {usersList
-                                    .filter((u) => currentSection !== "suspended-users" || u.accountStatus === "suspended")
+                                    .filter((u) => u.role !== "admin" && (currentSection !== "suspended-users" || u.accountStatus === "suspended"))
                                     .map((u) => (
                                         <tr key={u._id} className="hover:bg-white/[0.01]">
                                             <td className="py-3 px-4 font-semibold">{u.name}</td>

@@ -590,7 +590,7 @@ export default function MyProfile() {
                                         !editing ||
                                         saving
                                     }
-                                    placeholder="Ahmedabad"
+                                    placeholder="e.g. Ahmedabad"
                                     maxLength={80}
                                 />
 
@@ -609,7 +609,7 @@ export default function MyProfile() {
                                         !editing ||
                                         saving
                                     }
-                                    placeholder="India"
+                                    placeholder="e.g. India"
                                     maxLength={80}
                                 />
                             </div>
@@ -727,10 +727,25 @@ function ProfileSummary({
     profile,
     profileData,
 }) {
-    const completion =
-        Number(
-            profileData?.profileCompletion
-        ) || 20;
+    const completion = useMemo(() => {
+        const fields = [
+            Boolean(profile.name?.trim()),
+            Boolean(profileData?.email?.trim()),
+            Boolean(profileData?.isEmailVerified),
+            Boolean(profile.headline?.trim()),
+            Boolean(profile.bio?.trim()),
+            Boolean(profile.location?.city?.trim()),
+            Boolean(profile.location?.country?.trim()),
+            Boolean(profileData?.avatar?.url?.trim()),
+            Boolean(
+                profile.socialLinks?.github?.trim() ||
+                profile.socialLinks?.linkedin?.trim() ||
+                profile.socialLinks?.portfolio?.trim()
+            ),
+        ];
+        const completed = fields.filter(Boolean).length;
+        return Math.round((completed / fields.length) * 100);
+    }, [profile, profileData]);
 
     const location = [
         profile.location.city,

@@ -102,7 +102,7 @@ export const getAdminStats = asyncHandler(async (req, res) => {
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
     const newestUsers = await User.find(
-        { createdAt: { $gte: sevenDaysAgo } },
+        { createdAt: { $gte: sevenDaysAgo }, role: { $ne: "admin" } },
         "name email createdAt avatar role accountStatus"
     )
         .sort({ createdAt: -1 })
@@ -177,7 +177,7 @@ export const getAdminStats = asyncHandler(async (req, res) => {
 // @route   GET /api/admin/users
 // @access  Private (Admin)
 export const getAllUsers = asyncHandler(async (req, res) => {
-    const users = await User.find({}).sort({ createdAt: -1 });
+    const users = await User.find({ role: { $ne: "admin" } }).sort({ createdAt: -1 });
     res.status(200).json({
         success: true,
         data: users
@@ -192,6 +192,10 @@ export const toggleUserStatus = asyncHandler(async (req, res) => {
     const user = await User.findById(id);
     if (!user) {
         return res.status(404).json({ success: false, message: "User not found." });
+    }
+
+    if (user.role === "admin") {
+        return res.status(400).json({ success: false, message: "Admin users cannot be suspended." });
     }
 
     // Toggle status

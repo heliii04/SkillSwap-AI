@@ -450,7 +450,8 @@ export default function AdminOverview() {
                     </div>
                     <div className="mt-4 space-y-3">
                         {(() => {
-                            const userList = statsData?.recentActivity?.newestUsers || statsData?.recentActivity?.recentUsers || [];
+                            const rawList = statsData?.recentActivity?.newestUsers || statsData?.recentActivity?.recentUsers || [];
+                            const userList = rawList.filter((u) => u.role !== "admin");
                             if (userList.length === 0) {
                                 return <p className="text-sm text-white/30 text-center py-8">No recent registrations this week</p>;
                             }

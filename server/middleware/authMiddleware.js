@@ -2,6 +2,7 @@ import User from "../models/User.js";
 import { ApiError } from "../utils/ApiError.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { verifyAccessToken } from "../utils/token.utils.js";
+import { getOrCreateAdminUser } from "../utils/admin.utils.js";
 
 export const optionalAuth = asyncHandler(async (req, _res, next) => {
     const authorization = req.headers.authorization;
@@ -16,14 +17,7 @@ export const optionalAuth = asyncHandler(async (req, _res, next) => {
         const payload = verifyAccessToken(accessToken);
         if (payload.type === "access") {
             if (payload.sub === "static_admin_id") {
-                req.user = {
-                    _id: "static_admin_id",
-                    name: "System Admin",
-                    email: process.env.ADMIN_USERNAME || "admin",
-                    role: "admin",
-                    accountStatus: "active",
-                    isEmailVerified: true
-                };
+                req.user = await getOrCreateAdminUser();
             } else {
                 const user = await User.findById(payload.sub);
                 if (user && user.accountStatus !== "suspended") {
@@ -98,13 +92,7 @@ export const requireAuth = asyncHandler(
         }
 
         if (payload.sub === "static_admin_id") {
-            req.user = {
-                _id: "static_admin_id",
-                name: "System Admin",
-                email: process.env.ADMIN_USERNAME || "admin",
-                role: "admin",
-                accountStatus: "active"
-            };
+            req.user = await getOrCreateAdminUser();
             return next();
         }
 
