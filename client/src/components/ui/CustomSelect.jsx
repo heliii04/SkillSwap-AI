@@ -7,7 +7,8 @@ export default function CustomSelect({
     placeholder = "Select...",
     className = "",
     buttonClassName = "",
-    label = ""
+    label = "",
+    align = "right"
 }) {
     const [isOpen, setIsOpen] = useState(false);
     const dropdownRef = useRef(null);
@@ -58,7 +59,7 @@ export default function CustomSelect({
             <button
                 type="button"
                 onClick={() => setIsOpen(!isOpen)}
-                className={`flex items-center justify-between gap-3 rounded-xl border border-orange-500/80 bg-[#0d0e15] px-3.5 py-2 text-xs sm:text-sm font-semibold text-white outline-none transition-all duration-200 hover:border-orange-500 hover:bg-white/[0.02] focus:border-orange-500 shadow-sm ${buttonClassName}`}
+                className={`flex items-center justify-between gap-3 min-w-[140px] sm:min-w-[160px] rounded-xl border border-orange-500/80 bg-[#0d0e15] px-3.5 py-2 text-xs sm:text-sm font-semibold text-white outline-none transition-all duration-200 hover:border-orange-500 hover:bg-white/[0.02] focus:border-orange-500 shadow-sm ${buttonClassName}`}
             >
                 <span className="truncate">{selectedOption?.label || placeholder}</span>
                 <svg
@@ -74,7 +75,9 @@ export default function CustomSelect({
             </button>
 
             {isOpen && (
-                <ul className="absolute left-0 z-50 mt-2 max-h-60 w-full min-w-[140px] overflow-y-auto rounded-xl border border-white/10 bg-[#111218] p-1.5 shadow-2xl shadow-black/90 backdrop-blur-xl custom-scrollbar animate-in fade-in zoom-in-95 duration-100">
+                <ul className={`absolute z-50 mt-2 max-h-60 min-w-[220px] sm:min-w-[250px] w-max max-w-[340px] overflow-y-auto rounded-xl border border-white/10 bg-[#111218] p-1.5 shadow-2xl shadow-black/90 backdrop-blur-xl custom-scrollbar animate-in fade-in zoom-in-95 duration-100 ${
+                    align === "left" ? "left-0" : "right-0"
+                }`}>
                     {normalizedOptions.map((option) => {
                         const isSelected = String(option.value) === String(value);
                         return (
@@ -82,7 +85,7 @@ export default function CustomSelect({
                                 <button
                                     type="button"
                                     onClick={() => handleSelect(option.value)}
-                                    className={`flex w-full items-center rounded-lg px-3 py-2 text-left text-xs sm:text-sm font-semibold transition-all duration-150 hover:bg-orange-500/10 hover:text-orange-400 ${
+                                    className={`flex w-full items-center rounded-lg px-3.5 py-2.5 text-left text-xs sm:text-sm font-semibold whitespace-nowrap transition-all duration-150 hover:bg-orange-500/10 hover:text-orange-400 ${
                                         isSelected
                                             ? "bg-orange-500/10 text-orange-400 font-bold"
                                             : "text-white/80"

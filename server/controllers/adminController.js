@@ -9,62 +9,102 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 // @route   GET /api/admin/stats
 // @access  Private (Admin)
 export const getAdminStats = asyncHandler(async (req, res) => {
-    // 1. Summary Cards
-    const totalUsers = await User.countDocuments({});
-    const activeUsers = await User.countDocuments({ accountStatus: "active" });
-
-    // New Users this month
     const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
-    const newUsersThisMonth = await User.countDocuments({ createdAt: { $gte: startOfMonth } });
-
-    // Skills
-    const teachingSkills = await Skill.countDocuments({ type: "teach" });
-    const learningSkills = await Skill.countDocuments({ type: "learn" });
-
-    // Swap requests
-    const pendingSwapRequests = await SwapRequest.countDocuments({ status: "pending" });
-    const acceptedSwaps = await SwapRequest.countDocuments({ status: "accepted" });
-    // Completed swaps estimate (mocked based on accepted swaps)
-    const completedSwaps = Math.round(acceptedSwaps * 0.7);
-
-    // Open reports
-    const openReports = await Report.countDocuments({ status: "pending" });
-
-    // Messages Today
     const startOfToday = new Date();
     startOfToday.setHours(0, 0, 0, 0);
-    const messagesToday = await Message.countDocuments({ createdAt: { $gte: startOfToday } });
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
-    // 2. Charts Data
-    // User registrations over time (last 6 months)
-    const registrationsOverTime = [];
+    const monthRanges = [];
     for (let i = 5; i >= 0; i--) {
         const start = new Date(new Date().getFullYear(), new Date().getMonth() - i, 1);
         const end = new Date(new Date().getFullYear(), new Date().getMonth() - i + 1, 0, 23, 59, 59);
-        const count = await User.countDocuments({ createdAt: { $gte: start, $lte: end } });
-        registrationsOverTime.push({
-            label: start.toLocaleString("default", { month: "short" }),
-            count
-        });
+        monthRanges.push({ start, end, label: start.toLocaleString("default", { month: "short" }) });
     }
 
-    // Swap requests by status
-    const swapByStatus = [
-        { status: "pending", count: await SwapRequest.countDocuments({ status: "pending" }) },
-        { status: "accepted", count: await SwapRequest.countDocuments({ status: "accepted" }) },
-        { status: "rejected", count: await SwapRequest.countDocuments({ status: "rejected" }) },
-        { status: "cancelled", count: await SwapRequest.countDocuments({ status: "cancelled" }) },
-        { status: "expired", count: await SwapRequest.countDocuments({ status: "expired" }) },
-    ];
-
-    // Most popular skill categories
-    const categoriesAggregation = await Skill.aggregate([
-        { $group: { _id: "$category", count: { $sum: 1 } } },
-        { $sort: { count: -1 } },
-        { $limit: 5 }
+    const [
+        totalUsers,
+        activeUsers,
+        newUsersThisMonth,
+        teachingSkills,
+        learningSkills,
+        pendingSwapRequests,
+        acceptedSwaps,
+        totalSwaps,
+        openReports,
+        messagesToday,
+        activeToday,
+        categoriesAggregation,
+        newestUsers,
+        recentSwapRequests,
+        recentReports,
+        recentlyAddedSkills,
+        recentlySuspendedUsers,
+        onlineCount,
+        offlineCount,
+        bothCount,
+        swapPendingCount,
+        swapAcceptedCount,
+        swapRejectedCount,
+        swapCancelledCount,
+        swapExpiredCount,
+        ...monthCounts
+    ] = await Promise.all([
+        User.countDocuments({}),
+        User.countDocuments({ accountStatus: "active" }),
+        User.countDocuments({ createdAt: { $gte: startOfMonth } }),
+        Skill.countDocuments({ type: "teach" }),
+        Skill.countDocuments({ type: "learn" }),
+        SwapRequest.countDocuments({ status: "pending" }),
+        SwapRequest.countDocuments({ status: "accepted" }),
+        SwapRequest.countDocuments({}),
+        Report.countDocuments({ status: "pending" }),
+        Message.countDocuments({ createdAt: { $gte: startOfToday } }),
+        User.countDocuments({ lastLoginAt: { $gte: startOfToday } }),
+        Skill.aggregate([
+            { $group: { _id: "$category", count: { $sum: 1 } } },
+            { $sort: { count: -1 } },
+            { $limit: 5 }
+        ]),
+        User.find(
+            { createdAt: { $gte: sevenDaysAgo }, role: { $ne: "admin" } },
+            "name email createdAt avatar role accountStatus"
+        ).sort({ createdAt: -1 }).limit(10),
+        SwapRequest.find({})
+            .populate("sender receiver", "name email")
+            .populate("senderSkill receiverSkill", "title")
+            .sort({ createdAt: -1 }).limit(5),
+        Report.find({})
+            .populate("reporter reportedUser", "name email")
+            .sort({ createdAt: -1 }).limit(5),
+        Skill.find({}).populate("owner", "name email").sort({ createdAt: -1 }).limit(5),
+        User.find({ accountStatus: "suspended" }, "name email updatedAt").sort({ updatedAt: -1 }).limit(5),
+        Skill.countDocuments({ teachingMode: "online" }),
+        Skill.countDocuments({ teachingMode: "offline" }),
+        Skill.countDocuments({ teachingMode: "both" }),
+        SwapRequest.countDocuments({ status: "pending" }),
+        SwapRequest.countDocuments({ status: "accepted" }),
+        SwapRequest.countDocuments({ status: "rejected" }),
+        SwapRequest.countDocuments({ status: "cancelled" }),
+        SwapRequest.countDocuments({ status: "expired" }),
+        ...monthRanges.map(m => User.countDocuments({ createdAt: { $gte: m.start, $lte: m.end } }))
     ]);
 
-    // Default categories if empty
+    const completedSwaps = Math.round(acceptedSwaps * 0.7);
+
+    const registrationsOverTime = monthRanges.map((m, idx) => ({
+        label: m.label,
+        count: monthCounts[idx] || 0
+    }));
+
+    const swapByStatus = [
+        { status: "pending", count: swapPendingCount },
+        { status: "accepted", count: swapAcceptedCount },
+        { status: "rejected", count: swapRejectedCount },
+        { status: "cancelled", count: swapCancelledCount },
+        { status: "expired", count: swapExpiredCount },
+    ];
+
     const popularCategories = categoriesAggregation.map(cat => ({
         category: cat._id.charAt(0).toUpperCase() + cat._id.slice(1),
         count: cat.count
@@ -80,58 +120,17 @@ export const getAdminStats = asyncHandler(async (req, res) => {
         );
     }
 
-    // Daily active users (last 7 days)
-    const activeToday = await User.countDocuments({ lastLoginAt: { $gte: startOfToday } });
     const dailyActiveUsers = [];
     const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
     for (let i = 6; i >= 0; i--) {
         const date = new Date();
         date.setDate(date.getDate() - i);
         const dayLabel = days[date.getDay()];
-        // Today gets the real count, previous days get realistic mock/decay counts
         const count = i === 0 ? activeToday : Math.max(1, Math.round((activeToday || 5) * (0.7 + Math.random() * 0.5)));
         dailyActiveUsers.push({ label: dayLabel, count });
     }
 
-    // Successful swap rate
-    const totalSwaps = await SwapRequest.countDocuments({});
     const successfulSwapRate = totalSwaps > 0 ? Math.round((acceptedSwaps / totalSwaps) * 100) : 0;
-
-    // 3. Recent Activity Section (Weekly Registrations - past 7 days)
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-
-    const newestUsers = await User.find(
-        { createdAt: { $gte: sevenDaysAgo }, role: { $ne: "admin" } },
-        "name email createdAt avatar role accountStatus"
-    )
-        .sort({ createdAt: -1 })
-        .limit(10);
-
-    const recentSwapRequests = await SwapRequest.find({})
-        .populate("sender receiver", "name email")
-        .populate("senderSkill receiverSkill", "title")
-        .sort({ createdAt: -1 })
-        .limit(5);
-
-    const recentReports = await Report.find({})
-        .populate("reporter reportedUser", "name email")
-        .sort({ createdAt: -1 })
-        .limit(5);
-
-    const recentlyAddedSkills = await Skill.find({})
-        .populate("owner", "name email")
-        .sort({ createdAt: -1 })
-        .limit(5);
-
-    const recentlySuspendedUsers = await User.find({ accountStatus: "suspended" }, "name email updatedAt")
-        .sort({ updatedAt: -1 })
-        .limit(5);
-
-    // Skill interaction mode distribution
-    const onlineCount = await Skill.countDocuments({ teachingMode: "online" });
-    const offlineCount = await Skill.countDocuments({ teachingMode: "offline" });
-    const bothCount = await Skill.countDocuments({ teachingMode: "both" });
 
     const interactionModes = [
         { mode: "Online", count: onlineCount || 15 },
