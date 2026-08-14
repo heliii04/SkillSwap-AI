@@ -294,7 +294,12 @@ export default function DashboardLayout() {
     const token = getAccessToken();
     if (!token || !user || user.role === "admin") return;
 
-    const API_URL = import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || "http://localhost:5000/api/v1";
+    const API_URL =
+        import.meta.env.VITE_API_BASE_URL ||
+        import.meta.env.VITE_API_URL ||
+        (typeof window !== "undefined" && window.location.hostname === "localhost"
+            ? "http://localhost:5000/api/v1"
+            : "https://skillswap-ai-8ill.onrender.com/api/v1");
     const socketHost = API_URL.replace(/\/api\/v1\/?$/, "").replace(/\/api\/?$/, "");
 
     const socket = io(socketHost, {

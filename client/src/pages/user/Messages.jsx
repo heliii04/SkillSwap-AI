@@ -58,7 +58,9 @@ import {
 const API_URL =
     import.meta.env.VITE_API_BASE_URL ||
     import.meta.env.VITE_API_URL ||
-    "http://localhost:5000/api/v1";
+    (typeof window !== "undefined" && window.location.hostname === "localhost"
+        ? "http://localhost:5000/api/v1"
+        : "https://skillswap-ai-8ill.onrender.com/api/v1");
 
 export default function Messages() {
     const { user, isAuthLoading } = useAuth();
@@ -199,7 +201,9 @@ export default function Messages() {
         const API_URL =
             import.meta.env.VITE_API_BASE_URL ||
             import.meta.env.VITE_API_URL ||
-            "http://localhost:5000/api/v1";
+            (typeof window !== "undefined" && window.location.hostname === "localhost"
+                ? "http://localhost:5000/api/v1"
+                : "https://skillswap-ai-8ill.onrender.com/api/v1");
 
         const fetchMessages = async (showLoading = false) => {
             if (showLoading) {
@@ -705,17 +709,19 @@ export default function Messages() {
     return (
         <main className="px-4 pb-8 pt-4 sm:px-6 lg:px-8">
             <div className="mx-auto max-w-[1500px]">
-                <MessagesHero
-                    unreadTotal={
-                        unreadTotal
-                    }
-                    onlineCount={
-                        onlineCount
-                    }
-                />
+                <div className={mobileChatOpen ? "hidden lg:block" : "block"}>
+                    <MessagesHero
+                        unreadTotal={
+                            unreadTotal
+                        }
+                        onlineCount={
+                            onlineCount
+                        }
+                    />
+                </div>
 
-                <section className="mt-6 overflow-hidden rounded-[26px] border border-white/10 bg-[#101117]">
-                    <div className="grid h-[calc(100vh-260px)] min-h-[620px] lg:grid-cols-[350px_minmax(0,1fr)]">
+                <section className={`overflow-hidden rounded-[26px] border border-white/10 bg-[#101117] ${mobileChatOpen ? "mt-0 lg:mt-6" : "mt-6"}`}>
+                    <div className={`grid lg:grid-cols-[350px_minmax(0,1fr)] ${mobileChatOpen ? "h-[calc(100vh-95px)] lg:h-[calc(100vh-260px)] min-h-0 lg:min-h-[620px]" : "h-[calc(100vh-260px)] min-h-[620px]"}`}>
                         <ConversationSidebar
                             loading={loading}
                             conversations={
@@ -740,7 +746,7 @@ export default function Messages() {
                         />
 
                         <div
-                            className={`min-w-0 min-h-0 ${mobileChatOpen
+                            className={`min-w-0 min-h-0 w-full max-w-full overflow-x-hidden ${mobileChatOpen
                                 ? "flex"
                                 : "hidden"
                                 } flex-col lg:flex`}
@@ -1641,13 +1647,13 @@ function MessageBubble({
             )}
 
             <div
-                className={`max-w-[82%] sm:max-w-[68%] ${isMine
+                className={`max-w-[88%] sm:max-w-[75%] md:max-w-[68%] min-w-0 ${isMine
                     ? "items-end"
                     : "items-start"
                     } flex flex-col`}
             >
                 <div
-                    className={`rounded-2xl px-4 py-3 transition-all ${
+                    className={`rounded-2xl px-3 sm:px-4 py-2.5 sm:py-3 transition-all min-w-0 max-w-full overflow-hidden ${
                         isDeleted
                             ? "rounded-md border border-white/10 bg-white/[0.03] text-white/40 italic flex items-center gap-2 text-xs"
                             : isMine
@@ -1663,15 +1669,15 @@ function MessageBubble({
                     ) : (
                         <>
                             {docAttachment && (
-                                <div className={`mb-2 flex items-center justify-between gap-3 rounded-xl p-3 border ${
+                                <div className={`mb-2 flex flex-col xs:flex-row xs:items-center justify-between gap-2.5 rounded-xl p-2.5 sm:p-3 border min-w-0 max-w-full overflow-hidden ${
                                     isMine
                                         ? "bg-black/15 border-black/20 text-black"
                                         : "bg-white/5 border-white/10 text-white"
                                 }`}>
-                                    <div className="flex items-center gap-2.5 overflow-hidden">
-                                        <HiOutlineDocumentText className="text-2xl shrink-0 opacity-90" />
-                                        <div className="min-w-0">
-                                            <p className="truncate text-xs font-bold leading-tight">{docAttachment.fileName}</p>
+                                    <div className="flex items-center gap-2 overflow-hidden min-w-0 flex-1">
+                                        <HiOutlineDocumentText className="text-xl sm:text-2xl shrink-0 opacity-90" />
+                                        <div className="min-w-0 flex-1 overflow-hidden">
+                                            <p className="truncate text-xs font-bold leading-tight max-w-full">{docAttachment.fileName}</p>
                                             <p className="text-[10px] opacity-75 mt-0.5">{docAttachment.fileSize || "Document"}</p>
                                         </div>
                                     </div>
@@ -1706,7 +1712,7 @@ function MessageBubble({
                                                     window.open(docAttachment.fileData, "_blank");
                                                 }
                                             }}
-                                            className={`shrink-0 flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-bold transition border ${
+                                            className={`shrink-0 self-start xs:self-auto flex items-center gap-1 rounded-lg px-2 sm:px-2.5 py-1 sm:py-1.5 text-[11px] sm:text-xs font-bold transition border ${
                                                 isMine
                                                     ? "bg-black text-orange-400 border-black hover:bg-black/80"
                                                     : "bg-orange-500 text-black border-orange-500 hover:bg-orange-400"

@@ -66,7 +66,7 @@ export default function Dashboard() {
                 const incomingPending = receivedReqs.filter(r => r.status === "pending").length;
                 const sentPending = sentReqs.filter(r => r.status === "pending").length;
                 const acceptedConnections = receivedReqs.filter(r => r.status === "accepted").length +
-                                            sentReqs.filter(r => r.status === "accepted").length;
+                    sentReqs.filter(r => r.status === "accepted").length;
 
                 const allReqs = [
                     ...receivedReqs.map(r => ({ ...r, direction: "incoming" })),
@@ -460,7 +460,7 @@ function RecentActivity({ activities = [], loading = false }) {
                         const isIncoming = activity.direction === "incoming";
                         const otherUser = isIncoming ? activity.sender : activity.receiver;
                         const otherName = otherUser?.name || "User";
-                        
+
                         let title = "";
                         let description = "";
                         let statusColor = "text-orange-400 bg-orange-500/10";
@@ -485,14 +485,14 @@ function RecentActivity({ activities = [], loading = false }) {
                             Icon = HiOutlineUserGroup;
                         } else if (activity.status === "rejected") {
                             title = `Request declined`;
-                            description = isIncoming 
+                            description = isIncoming
                                 ? `You declined ${otherName}'s request`
                                 : `${otherName} declined your request`;
                             statusColor = "text-red-400 bg-red-500/10";
                             Icon = HiOutlineClock;
                         } else if (activity.status === "cancelled") {
                             title = `Request cancelled`;
-                            description = isIncoming 
+                            description = isIncoming
                                 ? `${otherName} cancelled their request`
                                 : `You cancelled request to ${otherName}`;
                             statusColor = "text-gray-400 bg-white/10";
@@ -581,7 +581,7 @@ function ProfileProgress({
                 className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-white px-4 py-3 text-sm  text-black transition hover:bg-white/90 font-bold"
             >
                 Complete profile
-                <HiOutlineArrowRight className="animate-arrow-move"  />
+                <HiOutlineArrowRight className="animate-arrow-move" />
             </button>
         </article>
     );
@@ -652,7 +652,7 @@ function AiInsight({
                     className="mt-6 inline-flex items-center gap-2 text-sm  text-orange-500 transition hover:text-orange-400 font-bold"
                 >
                     View recommendations
-                    <HiOutlineArrowRight className="animate-arrow-move"  />
+                    <HiOutlineArrowRight className="animate-arrow-move" />
                 </button>
             </div>
         </article>

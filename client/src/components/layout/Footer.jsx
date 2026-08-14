@@ -187,7 +187,7 @@ export default function Footer() {
                     hover:bg-orange-400
                    font-bold"
                 >
-                  <FaArrowRight className="animate-arrow-move"  />
+                  <FaArrowRight className="animate-arrow-move" />
                 </button>
 
               </div>

@@ -372,10 +372,10 @@ export default function Navbar() {
                     hover:text-orange-400
                    font-bold"
                 >
-                    <FaSignOutAlt />
-                    Logout
-                  </button>
-                </div>
+                  <FaSignOutAlt />
+                  Logout
+                </button>
+              </div>
             ) : (
               <div className="grid grid-cols-2 gap-3">
                 <Link
@@ -421,11 +421,11 @@ export default function Navbar() {
                 layoutId="logo-box"
                 className="z-10 absolute flex h-20 w-20 shrink-0 items-center justify-center rounded-3xl bg-gradient-to-br from-orange-400 to-orange-600 text-3xl font-black text-white"
                 initial={{ scale: 0, x: 0 }}
-                animate={{ 
+                animate={{
                   scale: 1.25,
                   x: isMoving ? -110 : 0
                 }}
-                transition={{ 
+                transition={{
                   scale: { type: "spring", stiffness: 100, damping: 15 },
                   x: { duration: 0.8, ease: [0.16, 1, 0.3, 1] }
                 }}
@@ -433,7 +433,7 @@ export default function Navbar() {
                 S
               </motion.div>
 
-              <div 
+              <div
                 className="absolute overflow-hidden py-2 pl-2 pr-2 z-0"
                 style={{
                   left: "calc(50% - 40px)",
@@ -446,9 +446,9 @@ export default function Navbar() {
                 <motion.div
                   layoutId="logo-text"
                   initial={{ x: "-100%", opacity: 0 }}
-                  animate={{ 
-                    x: isMoving ? 0 : "-100%", 
-                    opacity: isMoving ? 1 : 0 
+                  animate={{
+                    x: isMoving ? 0 : "-100%",
+                    opacity: isMoving ? 1 : 0
                   }}
                   transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
                   className="flex flex-col text-left"

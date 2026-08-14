@@ -55,7 +55,9 @@ export async function registerWebPushSubscription() {
         const API_URL =
             import.meta.env.VITE_API_BASE_URL ||
             import.meta.env.VITE_API_URL ||
-            "http://localhost:5000/api/v1";
+            (typeof window !== "undefined" && window.location.hostname === "localhost"
+                ? "http://localhost:5000/api/v1"
+                : "https://skillswap-ai-8ill.onrender.com/api/v1");
 
         const response = await fetch(`${API_URL}/notifications/subscribe-push`, {
             method: "POST",

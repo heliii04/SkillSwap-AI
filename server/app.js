@@ -67,10 +67,10 @@ app.use(
         origin: (origin, callback) => {
             if (!origin) return callback(null, true);
             const cleanOrigin = origin.replace(/\/$/, "");
-            if (allowedOrigins.includes(cleanOrigin)) {
-                return callback(null, true);
+            if (allowedOrigins.includes(cleanOrigin) || /\.netlify\.app$/.test(cleanOrigin)) {
+                return callback(null, origin);
             }
-            return callback(null, true);
+            return callback(null, origin);
         },
         credentials: true,
         methods: [

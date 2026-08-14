@@ -22,19 +22,18 @@ export default function AIAssistant() {
 
                 <section className="mt-6 overflow-hidden rounded-[26px] border border-white/10 bg-[#121212]">
                     <div className="flex flex-col h-[calc(100vh-260px)] min-h-[620px]">
-                        <div className="flex space-x-2 p-4 sm:p-5 border-b border-white/10 shrink-0 overflow-x-auto custom-scrollbar">
+                        <div className="grid grid-cols-3 gap-1.5 sm:gap-3 p-2.5 sm:p-4 border-b border-white/10 shrink-0 w-full">
                             {tabs.map(tab => (
                                 <button
                                     key={tab.id}
                                     onClick={() => setActiveTab(tab.id)}
-                                    className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-medium transition-all duration-200 border whitespace-nowrap ${
-                                        activeTab === tab.id 
-                                            ? "border-orange-500/25 text-orange-400 bg-orange-500/10" 
+                                    className={`flex items-center justify-center gap-1.5 sm:gap-2 px-2 sm:px-6 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all duration-200 border w-full min-w-0 ${activeTab === tab.id
+                                            ? "border-orange-500/25 text-orange-400 bg-orange-500/10"
                                             : "border-transparent text-white/40 hover:text-white hover:bg-white/5"
-                                    }`}
+                                        }`}
                                 >
-                                    {tab.icon}
-                                    {tab.label}
+                                    <span className="shrink-0 text-sm sm:text-base">{tab.icon}</span>
+                                    <span className="truncate">{tab.label}</span>
                                 </button>
                             ))}
                         </div>
@@ -54,13 +53,13 @@ export default function AIAssistant() {
                                             <AIChatbox />
                                         </div>
                                     )}
-                                    
+
                                     {activeTab === "roadmap" && (
                                         <div className="w-full mx-auto flex-grow flex flex-col min-h-0">
                                             <RoadmapContainer />
                                         </div>
                                     )}
-                                    
+
                                     {activeTab === "quiz" && (
                                         <div className="w-full mx-auto flex-grow flex flex-col min-h-0">
                                             <QuizTaker />

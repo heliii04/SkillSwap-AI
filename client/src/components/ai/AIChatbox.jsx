@@ -7,7 +7,7 @@ import {
     clearAllAiChatSessionsApi,
 } from "../../api/aiApi";
 import { useAuth } from "../../context/AuthContext";
-import { FiSend, FiLoader, FiClock, FiTrash2 } from "react-icons/fi";
+import { FiSend, FiLoader, FiClock, FiTrash2, FiMoreVertical, FiPlus } from "react-icons/fi";
 import { toast } from "react-toastify";
 import useLockBodyScroll from "../../hooks/useLockBodyScroll";
 
@@ -23,6 +23,7 @@ export default function AIChatbox() {
     const [isLoading, setIsLoading] = useState(false);
     const [showHistory, setShowHistory] = useState(false);
     const [isHistoryLoading, setIsHistoryLoading] = useState(false);
+    const [menuOpen, setMenuOpen] = useState(false);
     useLockBodyScroll(showHistory);
     const endRef = useRef(null);
 
@@ -178,7 +179,7 @@ export default function AIChatbox() {
                         if (res?.data?.sessions) {
                             setSessions(res.data.sessions);
                         }
-                    }).catch(() => {});
+                    }).catch(() => { });
                 },
                 onError: (error) => {
                     console.error("Streaming error:", error);
@@ -203,24 +204,54 @@ export default function AIChatbox() {
 
     return (
         <div className="relative flex flex-col flex-grow h-full min-h-0 bg-[#0a0a0a] rounded-lg border border-white/10 overflow-hidden shadow-lg w-full max-w-full">
-            <div className="bg-[#050505] p-3 sm:p-4 border-b border-white/10 flex flex-wrap justify-between items-center gap-3 w-full">
+            <div className="bg-[#050505] p-3 sm:p-4 border-b border-white/10 flex items-center justify-between gap-3 w-full">
                 <div className="min-w-0 flex-1">
-                    <h2 className="text-base sm:text-lg font-semibold text-white">AI Assistant</h2>
+                    <h2 className="text-base sm:text-lg font-bold text-white tracking-wide">AI Assistant</h2>
                     <p className="text-xs text-gray-400 truncate">Ask about programming, mentors, or concepts!</p>
                 </div>
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="relative shrink-0">
                     <button
-                        onClick={startNewChat}
-                        className="flex items-center gap-1.5 text-xs sm:text-sm text-gray-400 hover:text-white transition-colors border border-white/10 hover:border-gray-500 px-2.5 sm:px-3 py-1.5 rounded-md font-bold whitespace-nowrap"
+                        type="button"
+                        onClick={() => setMenuOpen((prev) => !prev)}
+                        className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-gray-300 transition hover:border-orange-500/40 hover:bg-orange-500/10 hover:text-white"
+                        title="Options"
                     >
-                        + New Chat
+                        <FiMoreVertical className="text-lg" />
                     </button>
-                    <button
-                        onClick={openHistory}
-                        className="flex items-center gap-1.5 text-xs sm:text-sm font-bold text-gray-400 hover:text-orange-500 transition-colors border border-white/10 hover:border-orange-500 px-2.5 sm:px-3 py-1.5 rounded-md whitespace-nowrap"
-                    >
-                        <FiClock /> History
-                    </button>
+
+                    {menuOpen && (
+                        <>
+                            <div
+                                className="fixed inset-0 z-40"
+                                onClick={() => setMenuOpen(false)}
+                            />
+                            <div className="absolute right-0 top-11 z-50 min-w-40 rounded-xl border border-white/10 bg-[#12131a] p-1.5 shadow-2xl backdrop-blur-xl animate-fade-in space-y-1">
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setMenuOpen(false);
+                                        startNewChat();
+                                    }}
+                                    className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-xs font-bold text-gray-300 transition hover:bg-white/5 hover:text-white"
+                                >
+                                    <FiPlus className="text-sm text-orange-400" />
+                                    
+                                New Chat
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setMenuOpen(false);
+                                        openHistory();
+                                    }}
+                                    className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-xs font-bold text-gray-300 transition hover:bg-white/5 hover:text-white"
+                                >
+                                    <FiClock className="text-sm text-orange-400" />
+                                    History
+                                </button>
+                            </div>
+                        </>
+                    )}
                 </div>
             </div>
 

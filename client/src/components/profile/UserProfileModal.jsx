@@ -48,14 +48,14 @@ export default function UserProfileModal({ userId, matchScore, onClose }) {
             setLoading(true);
             const res = await axiosClient.get("/skills/teach");
             const mySkills = res.data?.data?.skills || [];
-            
+
             if (mySkills.length === 0) {
                 toast.warning("You must add at least one 'Teach Skill' in your profile before sending a match request.", { toastId: "no-skills" });
                 onClose();
                 navigate("/my-profile");
                 return;
             }
-            
+
             setMyTeachSkills(mySkills);
             setSwapFormData({
                 senderSkillId: mySkills[0]?._id || mySkills[0]?.id || "",
@@ -75,7 +75,7 @@ export default function UserProfileModal({ userId, matchScore, onClose }) {
             toast.error("Please select skills to swap.");
             return;
         }
-        
+
         // Optimistic UI update (0ms instant response)
         setHasPendingRequest(true);
         toast.success("Match request sent successfully!");
@@ -176,12 +176,12 @@ export default function UserProfileModal({ userId, matchScore, onClose }) {
                         <div className="space-y-5">
                             <h3 className="text-lg font-semibold text-white">Request a Skill Swap</h3>
                             <p className="text-sm text-white/60">Choose the skill you want to offer and the skill you want to learn from {user?.name}.</p>
-                            
+
                             <div>
                                 <label className="mb-2 block text-sm font-medium text-white/80">I will teach:</label>
-                                <select 
+                                <select
                                     value={swapFormData.senderSkillId}
-                                    onChange={(e) => setSwapFormData({...swapFormData, senderSkillId: e.target.value})}
+                                    onChange={(e) => setSwapFormData({ ...swapFormData, senderSkillId: e.target.value })}
                                     className="w-full rounded-xl border border-white/10 bg-[#090a0f] px-4 py-3 text-sm text-white outline-none focus:border-orange-500/60"
                                 >
                                     {myTeachSkills.map(skill => (
@@ -189,12 +189,12 @@ export default function UserProfileModal({ userId, matchScore, onClose }) {
                                     ))}
                                 </select>
                             </div>
-                            
+
                             <div>
                                 <label className="mb-2 block text-sm font-medium text-white/80">I want to learn:</label>
-                                <select 
+                                <select
                                     value={swapFormData.receiverSkillId}
-                                    onChange={(e) => setSwapFormData({...swapFormData, receiverSkillId: e.target.value})}
+                                    onChange={(e) => setSwapFormData({ ...swapFormData, receiverSkillId: e.target.value })}
                                     className="w-full rounded-xl border border-white/10 bg-[#090a0f] px-4 py-3 text-sm text-white outline-none focus:border-orange-500/60"
                                 >
                                     {teachSkills.length > 0 ? (
@@ -209,10 +209,10 @@ export default function UserProfileModal({ userId, matchScore, onClose }) {
 
                             <div>
                                 <label className="mb-2 block text-sm font-medium text-white/80">Message (Optional):</label>
-                                <textarea 
+                                <textarea
                                     rows="3"
                                     value={swapFormData.message}
-                                    onChange={(e) => setSwapFormData({...swapFormData, message: e.target.value})}
+                                    onChange={(e) => setSwapFormData({ ...swapFormData, message: e.target.value })}
                                     placeholder="Say hi and explain why you're a good match..."
                                     className="w-full rounded-xl border border-white/10 bg-[#090a0f] px-4 py-3 text-sm text-white outline-none focus:border-orange-500/60 resize-none"
                                 />
@@ -251,7 +251,7 @@ export default function UserProfileModal({ userId, matchScore, onClose }) {
                                                 <HiOutlineCheckBadge className="text-emerald-500 text-[18px]" title="Verified Member" />
                                             )}
                                         </h3>
-                                        
+
                                         {user.headline && user.headline !== "SkillSwap member" && (
                                             <p className="text-[15px] text-white/60 font-light mt-0.5">
                                                 {user.headline}
@@ -362,7 +362,7 @@ export default function UserProfileModal({ userId, matchScore, onClose }) {
                         </>
                     )}
                 </div>
-                
+
                 {/* Footer */}
                 <div className="border-t border-white/5 bg-[#121319]/95 px-5 py-5 sm:px-7 flex justify-end gap-3">
                     <button

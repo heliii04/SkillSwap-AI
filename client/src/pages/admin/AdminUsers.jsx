@@ -73,11 +73,10 @@ export default function AdminUsers() {
                                             <td className="py-3 px-4 text-white/60">{u.email}</td>
                                             <td className="py-3 px-4">
                                                 <span
-                                                    className={`px-2 py-0.5 rounded text-xs font-semibold ${
-                                                        u.accountStatus === "suspended"
+                                                    className={`px-2 py-0.5 rounded text-xs font-semibold ${u.accountStatus === "suspended"
                                                             ? "bg-red-500/10 text-red-400"
                                                             : "bg-emerald-500/10 text-emerald-400"
-                                                    }`}
+                                                        }`}
                                                 >
                                                     {u.accountStatus}
                                                 </span>
@@ -88,11 +87,10 @@ export default function AdminUsers() {
                                             <td className="py-3 px-4 text-right">
                                                 <button
                                                     onClick={() => handleToggleUserStatus(u._id)}
-                                                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition border ${
-                                                        u.accountStatus === "suspended"
+                                                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition border ${u.accountStatus === "suspended"
                                                             ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20"
                                                             : "bg-red-500/10 border-red-500/20 text-red-400 hover:bg-red-500/20"
-                                                    }`}
+                                                        }`}
                                                 >
                                                     {u.accountStatus === "suspended" ? <FiToggleRight /> : <FiToggleLeft />}
                                                     {u.accountStatus === "suspended" ? "Activate" : "Suspend"}
