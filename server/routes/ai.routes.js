@@ -8,6 +8,7 @@ import {
     semanticSearch,
     suggestSkillsFromBio,
     chatDiscussion,
+    streamChatDiscussion,
     getAiChatSessions,
     deleteAiChatSession,
     clearAllAiChatHistory,
@@ -47,6 +48,7 @@ router.get("/chat/sessions", getAiChatSessions);
 router.delete("/chat/sessions/:sessionId", deleteAiChatSession);
 router.delete("/chat/sessions", clearAllAiChatHistory);
 router.post("/chat", aiLimiter, chatDiscussion);
+router.post("/chat/stream", aiLimiter, streamChatDiscussion);
 router.patch("/roadmap/:roadmapId/progress", aiLimiter, updateRoadmapProgress);
 router.post("/roadmap/:roadmapId/daily-plan", aiLimiter, getDailyPlan);
 router.post("/quiz", aiLimiter, generateQuiz);

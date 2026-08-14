@@ -817,6 +817,11 @@ skillSchema.index({
 });
 
 skillSchema.index({
+    owner: 1,
+    isActive: 1,
+});
+
+skillSchema.index({
     title: "text",
     description: "text",
     learningGoal: "text",

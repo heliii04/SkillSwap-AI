@@ -1,7 +1,10 @@
+import mongoose from "mongoose";
 import Chat from "../models/Chat.js";
 import Message from "../models/Message.js";
 import SwapRequest from "../models/SwapRequest.js";
 import Notification from "../models/Notification.js";
+import { decryptMessage } from "../utils/encryption.js";
+import { uploadToCloudinary } from "../utils/cloudinary.js";
 
 const isSameId = (
     firstId,
@@ -149,7 +152,7 @@ const formatChat = (
 
                     text: chat.lastMessage.isDeletedForEveryone
                         ? `delete message from "${chat.lastMessage.deletedBy?.name || chat.lastMessage.sender?.name || "User"}"`
-                        : chat.lastMessage.text,
+                        : decryptMessage(chat.lastMessage.text),
 
                     createdAt:
                         chat
@@ -216,9 +219,10 @@ const formatMessage = (
 
     const isDeletedForEveryone = Boolean(message.isDeletedForEveryone);
     const deleterName = message.deletedBy?.name || message.sender?.name || "User";
+    const rawText = decryptMessage(message.text);
     const text = isDeletedForEveryone
         ? `delete message from "${deleterName}"`
-        : message.text;
+        : rawText;
 
     return {
         id: message._id,
@@ -292,7 +296,8 @@ export const getChats =
                             -1,
                         updatedAt:
                             -1,
-                    });
+                    })
+                    .lean();
 
             const validChats = chats.filter(
                 (chat) =>
@@ -300,10 +305,13 @@ export const getChats =
                     chat.swapRequest.status === "accepted"
             );
 
+            const userObjectId = new mongoose.Types.ObjectId(req.user._id);
+            const userStrId = req.user._id.toString();
+
             const chatIds =
                 validChats.map(
                     (chat) =>
-                        chat._id
+                        new mongoose.Types.ObjectId(chat._id)
                 );
 
             const unreadCounts =
@@ -316,11 +324,11 @@ export const getChats =
                                 },
 
                                 sender: {
-                                    $ne: currentUserId,
+                                    $ne: userObjectId,
                                 },
 
                                 readBy: {
-                                    $ne: currentUserId,
+                                    $ne: userObjectId,
                                 },
                             },
                         },
@@ -440,9 +448,13 @@ export const getMessages =
                 (c) => c.user?.toString() === currentUserId?.toString()
             );
 
+            const chatObjectId = new mongoose.Types.ObjectId(chatId);
+            const userObjectId = new mongoose.Types.ObjectId(currentUserId);
+            const userStrId = currentUserId.toString();
+
             const messageQuery = {
-                chat: chatId,
-                deletedFor: { $ne: currentUserId },
+                chat: chatObjectId,
+                deletedFor: { $nin: [userObjectId, userStrId] },
             };
             if (userCleared && userCleared.clearedAt) {
                 messageQuery.createdAt = { $gt: userCleared.clearedAt };
@@ -450,20 +462,15 @@ export const getMessages =
 
             await Message.updateMany(
                 {
-                    ...messageQuery,
-
+                    chat: chatObjectId,
                     sender: {
-                        $ne: currentUserId,
-                    },
-
-                    readBy: {
-                        $ne: currentUserId,
+                        $ne: userObjectId,
                     },
                 },
                 {
                     $addToSet: {
                         readBy:
-                            currentUserId,
+                            userObjectId,
                     },
                 }
             );
@@ -488,7 +495,8 @@ export const getMessages =
                             .skip(skip)
                             .limit(
                                 limit
-                            ),
+                            )
+                            .lean(),
 
                         Message.countDocuments(messageQuery),
                     ]
@@ -667,6 +675,8 @@ export const sendMessage =
                         )
                 );
 
+            const decryptedMsgText = decryptMessage(message.text);
+
             if (
                 otherParticipant
             ) {
@@ -685,11 +695,10 @@ export const sendMessage =
 
                         message: `${req.user
                             .name
-                            }: ${message.text.substring(
+                            }: ${decryptedMsgText.substring(
                                 0,
                                 50
-                            )}${message
-                                .text
+                            )}${decryptedMsgText
                                 .length >
                                 50
                                 ? "..."
@@ -707,7 +716,7 @@ export const sendMessage =
                 const socketMsg = {
                     id: message._id.toString(),
                     senderId: message.sender.toString(),
-                    text: message.text,
+                    text: decryptedMsgText,
                     createdAt: message.createdAt,
                     status: "delivered"
                 };
@@ -1111,6 +1120,74 @@ export const deleteSelectedMessages = async (req, res, next) => {
             deletedByName: currentUserName,
         });
     } catch (error) {
+        return next(error);
+    }
+};
+
+export const markChatAsRead = async (req, res, next) => {
+    try {
+        const currentUserId = req.user._id;
+        const { chatId } = req.params;
+
+        const chatObjectId = new mongoose.Types.ObjectId(chatId);
+        const userObjectId = new mongoose.Types.ObjectId(currentUserId);
+
+        await Message.updateMany(
+            {
+                chat: chatObjectId,
+                sender: { $ne: userObjectId },
+            },
+            {
+                $addToSet: {
+                    readBy: userObjectId,
+                },
+            }
+        );
+
+        return res.status(200).json({
+            success: true,
+            message: "Messages marked as read",
+        });
+    } catch (error) {
+        return next(error);
+    }
+};
+
+export const uploadChatDocument = async (req, res, next) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({
+                success: false,
+                message: "No document file provided for upload",
+            });
+        }
+
+        const fileBuffer = req.file.buffer;
+        const originalName = req.file.originalname;
+        const mimeType = req.file.mimetype;
+        const sizeFormatted = req.file.size > 1024 * 1024
+            ? `${(req.file.size / (1024 * 1024)).toFixed(1)} MB`
+            : `${Math.round(req.file.size / 1024)} KB`;
+
+        const uploadResult = await uploadToCloudinary(fileBuffer, {
+            folder: "skillswap/chat_documents",
+            originalName,
+            mimeType,
+            resource_type: "auto",
+        });
+
+        return res.status(200).json({
+            success: true,
+            message: "Document uploaded to Cloudinary successfully",
+            data: {
+                fileName: originalName,
+                fileSize: sizeFormatted,
+                fileUrl: uploadResult.url,
+                fileType: mimeType,
+            },
+        });
+    } catch (error) {
+        console.error("Error uploading document to Cloudinary:", error);
         return next(error);
     }
 };

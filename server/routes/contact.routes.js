@@ -5,11 +5,12 @@ import {
     updateInquiryStatus,
 } from "../controllers/contactController.js";
 import { requireAuth, requireAdmin } from "../middleware/authMiddleware.js";
+import { contactLimiter } from "../middleware/rateLimit.middleware.js";
 
 const router = express.Router();
 
-// Public route to submit contact inquiry
-router.post("/", submitContactInquiry);
+// Public route to submit contact inquiry with rate limiting
+router.post("/", contactLimiter, submitContactInquiry);
 
 // Admin-only routes to get and update inquiries
 router.get("/", requireAuth, requireAdmin, getAllContactInquiries);

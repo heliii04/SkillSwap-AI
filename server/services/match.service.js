@@ -315,13 +315,13 @@ export const findMatchesForUser = async (
     { limit = 10, minScore = 0.2 } = {}
 ) => {
     if (!userId || userId === "static_admin_id" || !mongoose.Types.ObjectId.isValid(userId)) {
-        return [];
+        return { matches: [], hasTeachSkills: false, hasLearnSkills: false };
     }
 
     const viewer = await User.findById(userId).lean();
 
     if (!viewer) {
-        return [];
+        return { matches: [], hasTeachSkills: false, hasLearnSkills: false };
     }
 
     const mySkills = await Skill.find({
@@ -332,8 +332,11 @@ export const findMatchesForUser = async (
     const myTeachSkills = mySkills.filter((skill) => skill.type === "teach");
     const myLearnSkills = mySkills.filter((skill) => skill.type === "learn");
 
-    if (myTeachSkills.length === 0 && myLearnSkills.length === 0) {
-        return [];
+    const hasTeachSkills = myTeachSkills.length > 0;
+    const hasLearnSkills = myLearnSkills.length > 0;
+
+    if (!hasTeachSkills && !hasLearnSkills) {
+        return { matches: [], hasTeachSkills, hasLearnSkills };
     }
 
     // AI Expansion for "Skills I Want"
@@ -362,7 +365,7 @@ export const findMatchesForUser = async (
         (term) => new RegExp(escapeRegex(term), "i")
     );
 
-    const candidateSkills = await Skill.find({
+    let candidateSkills = await Skill.find({
         owner: {
             $ne: userId,
         },
@@ -381,8 +384,19 @@ export const findMatchesForUser = async (
         .limit(CANDIDATE_LIMIT)
         .lean();
 
+    // Fallback: if no direct category/tag candidate skills found, query active teach skills from other members
     if (candidateSkills.length === 0) {
-        return [];
+        candidateSkills = await Skill.find({
+            owner: { $ne: userId },
+            isActive: true,
+            type: "teach",
+        })
+            .limit(100)
+            .lean();
+    }
+
+    if (candidateSkills.length === 0) {
+        return { matches: [], hasTeachSkills, hasLearnSkills };
     }
 
     const candidateUserIds = [
@@ -577,9 +591,13 @@ export const findMatchesForUser = async (
         });
     }
 
-    return matches
-        .sort((left, right) => right.score - left.score)
-        .slice(0, limit);
+    return {
+        matches: matches
+            .sort((left, right) => right.score - left.score)
+            .slice(0, limit),
+        hasTeachSkills,
+        hasLearnSkills,
+    };
 };
 
 export const matchWeights = WEIGHTS;

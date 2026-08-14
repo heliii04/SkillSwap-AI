@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import {
     chatWithAi,
+    streamAiChatApi,
     fetchAiChatSessions,
     deleteAiChatSessionApi,
     clearAllAiChatSessionsApi,
@@ -8,6 +9,7 @@ import {
 import { useAuth } from "../../context/AuthContext";
 import { FiSend, FiLoader, FiClock, FiTrash2 } from "react-icons/fi";
 import { toast } from "react-toastify";
+import useLockBodyScroll from "../../hooks/useLockBodyScroll";
 
 export default function AIChatbox() {
     const { user } = useAuth();
@@ -21,6 +23,7 @@ export default function AIChatbox() {
     const [isLoading, setIsLoading] = useState(false);
     const [showHistory, setShowHistory] = useState(false);
     const [isHistoryLoading, setIsHistoryLoading] = useState(false);
+    useLockBodyScroll(showHistory);
     const endRef = useRef(null);
 
     const openHistory = async () => {
@@ -134,62 +137,87 @@ export default function AIChatbox() {
 
     const handleSend = async (e) => {
         e.preventDefault();
-        if (!input.trim()) return;
+        if (!input.trim() || isLoading) return;
 
         const userMsg = input.trim();
-        const newMessages = [...messages, { role: "user", content: userMsg }];
-        setMessages(newMessages);
+        const updatedUserMessages = [...messages, { role: "user", content: userMsg }];
+        const messagesWithAiPlaceholder = [...updatedUserMessages, { role: "ai", content: "" }];
+
+        setMessages(messagesWithAiPlaceholder);
         setInput("");
         setIsLoading(true);
 
+        const history = updatedUserMessages.slice(0, -1).map((m) => ({
+            role: m.role === "ai" ? "model" : "user",
+            content: m.content,
+        }));
+
         try {
-            const history = newMessages.slice(0, -1).map((m) => ({
-                role: m.role === "ai" ? "model" : "user",
-                content: m.content,
-            }));
-
-            const response = await chatWithAi(userMsg, history, currentSessionId);
-            const reply = response?.data?.reply || "Error getting response.";
-            const activeId = response?.data?.sessionId || currentSessionId;
-            setCurrentSessionId(activeId);
-
-            const finalMessages = [...newMessages, { role: "ai", content: reply }];
-            setMessages(finalMessages);
-
-            // Refetch sessions to keep history drawer synced with DB
-            fetchAiChatSessions().then((res) => {
-                if (res?.data?.sessions) {
-                    setSessions(res.data.sessions);
-                }
-            }).catch(() => { });
+            await streamAiChatApi({
+                message: userMsg,
+                history,
+                sessionId: currentSessionId,
+                onChunk: (chunkText, returnedSessionId) => {
+                    if (returnedSessionId) {
+                        setCurrentSessionId(returnedSessionId);
+                    }
+                    setMessages((prev) => {
+                        const lastIndex = prev.length - 1;
+                        if (lastIndex < 0 || prev[lastIndex].role !== "ai") return prev;
+                        const updated = [...prev];
+                        updated[lastIndex] = {
+                            ...updated[lastIndex],
+                            content: updated[lastIndex].content + chunkText,
+                        };
+                        return updated;
+                    });
+                },
+                onDone: () => {
+                    setIsLoading(false);
+                    fetchAiChatSessions().then((res) => {
+                        if (res?.data?.sessions) {
+                            setSessions(res.data.sessions);
+                        }
+                    }).catch(() => {});
+                },
+                onError: (error) => {
+                    console.error("Streaming error:", error);
+                    toast.error(error.message || "Failed to communicate with AI");
+                    setMessages((prev) => {
+                        const lastIndex = prev.length - 1;
+                        if (lastIndex < 0) return prev;
+                        const updated = [...prev];
+                        if (!updated[lastIndex].content) {
+                            updated[lastIndex] = { role: "ai", content: "Sorry, I encountered an error." };
+                        }
+                        return updated;
+                    });
+                    setIsLoading(false);
+                },
+            });
         } catch (error) {
-            toast.error(error.response?.data?.message || "Failed to communicate with AI");
-            setMessages([
-                ...newMessages,
-                { role: "ai", content: "Sorry, I encountered an error." },
-            ]);
-        } finally {
+            console.error("Send error:", error);
             setIsLoading(false);
         }
     };
 
     return (
-        <div className="relative flex flex-col flex-grow h-full min-h-0 bg-[#0a0a0a] rounded-lg border border-white/10 overflow-hidden shadow-lg">
-            <div className="bg-[#050505] p-4 border-b border-white/10 flex justify-between items-center">
-                <div>
-                    <h2 className="text-lg font-semibold text-white">AI Assistant</h2>
-                    <p className="text-xs text-gray-400">Ask about programming, mentors, or concepts!</p>
+        <div className="relative flex flex-col flex-grow h-full min-h-0 bg-[#0a0a0a] rounded-lg border border-white/10 overflow-hidden shadow-lg w-full max-w-full">
+            <div className="bg-[#050505] p-3 sm:p-4 border-b border-white/10 flex flex-wrap justify-between items-center gap-3 w-full">
+                <div className="min-w-0 flex-1">
+                    <h2 className="text-base sm:text-lg font-semibold text-white">AI Assistant</h2>
+                    <p className="text-xs text-gray-400 truncate">Ask about programming, mentors, or concepts!</p>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 shrink-0">
                     <button
                         onClick={startNewChat}
-                        className="flex items-center gap-2 text-sm text-gray-400 hover:text-white transition-colors border border-white/10 hover:border-gray-500 px-3 py-1.5 rounded-md font-bold"
+                        className="flex items-center gap-1.5 text-xs sm:text-sm text-gray-400 hover:text-white transition-colors border border-white/10 hover:border-gray-500 px-2.5 sm:px-3 py-1.5 rounded-md font-bold whitespace-nowrap"
                     >
                         + New Chat
                     </button>
                     <button
                         onClick={openHistory}
-                        className="flex items-center gap-2 text-sm font-bold text-gray-400 hover:text-orange-500 transition-colors border border-white/10 hover:border-orange-500 px-3 py-1.5 rounded-md"
+                        className="flex items-center gap-1.5 text-xs sm:text-sm font-bold text-gray-400 hover:text-orange-500 transition-colors border border-white/10 hover:border-orange-500 px-2.5 sm:px-3 py-1.5 rounded-md whitespace-nowrap"
                     >
                         <FiClock /> History
                     </button>

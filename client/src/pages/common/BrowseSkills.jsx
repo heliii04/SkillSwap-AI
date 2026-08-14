@@ -15,7 +15,8 @@ import {
 } from "react-icons/fi";
 
 import UserProfileModal from "../../components/profile/UserProfileModal";
-import axiosClient from "../../api/axiosClient";
+import { useBrowseSkillsQuery } from "../../hooks/useQueries";
+import useLockBodyScroll from "../../hooks/useLockBodyScroll";
 
 const popularSkills = [
     "React",
@@ -61,32 +62,9 @@ export default function BrowseSkills() {
     const [selectedMode, setSelectedMode] = useState("All Modes");
     const [showMobileFilters, setShowMobileFilters] = useState(false);
     const [selectedUserId, setSelectedUserId] = useState(null);
-    const [skillsData, setSkillsData] = useState([]);
-    const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-        let isMounted = true;
-        
-        axiosClient.get("/skills/browse")
-            .then(res => {
-                if (isMounted) {
-                    console.log("BrowseSkills API response:", res.data);
-                    setSkillsData(res.data.data || []);
-                }
-            })
-            .catch(err => {
-                console.error("Failed to load skills:", err.response ? err.response.data : err);
-            })
-            .finally(() => {
-                if (isMounted) {
-                    setLoading(false);
-                }
-            });
-            
-        return () => {
-            isMounted = false;
-        };
-    }, []);
+    useLockBodyScroll(showMobileFilters || Boolean(selectedUserId));
+    const { data: skillsData = [], isLoading: loading } = useBrowseSkillsQuery();
 
     const filteredSkills = useMemo(() => {
         return skillsData.filter((skill) => {

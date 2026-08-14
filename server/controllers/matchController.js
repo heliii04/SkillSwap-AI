@@ -7,9 +7,8 @@ export const getMyMatches = asyncHandler(async (req, res) => {
         50
     );
 
-    const matches = await findMatchesForUser(req.user._id, {
-        limit,
-    });
+    const { matches = [], hasTeachSkills = false, hasLearnSkills = false } =
+        (await findMatchesForUser(req.user._id, { limit })) || {};
 
     return res.status(200).json({
         success: true,
@@ -17,6 +16,8 @@ export const getMyMatches = asyncHandler(async (req, res) => {
         data: {
             matches,
             count: matches.length,
+            hasTeachSkills,
+            hasLearnSkills,
         },
     });
 });

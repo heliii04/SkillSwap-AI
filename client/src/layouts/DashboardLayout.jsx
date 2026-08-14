@@ -37,6 +37,7 @@ import { getAccessToken } from "../api/tokenStore";
 import axiosClient from "../api/axiosClient";
 import { io } from "socket.io-client";
 import { registerWebPushSubscription } from "../utils/webPush";
+import useLockBodyScroll from "../hooks/useLockBodyScroll";
 
 const navigationItems = [
   {
@@ -219,6 +220,8 @@ export default function DashboardLayout() {
   const [collapsed, setCollapsed] =
     useState(false);
 
+  useLockBodyScroll(sidebarOpen);
+
   const [logoutLoading, setLogoutLoading] =
     useState(false);
 
@@ -296,6 +299,7 @@ export default function DashboardLayout() {
 
     const socket = io(socketHost, {
       withCredentials: true,
+      auth: { token: getAccessToken() },
     });
 
     const currentUserId = user.id || user._id;
@@ -652,19 +656,19 @@ export default function DashboardLayout() {
                 onClick={() =>
                   navigate("/profile")
                 }
-                className="flex items-center gap-2 sm:gap-3 border-l border-white/10 pl-2 sm:pl-3"
+                className="flex items-center gap-2 sm:gap-3 border-l border-white/10 pl-2 sm:pl-3 shrink-0"
               >
                 <div className="flex h-9 w-9 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-xl bg-orange-500 text-xs sm:text-sm font-bold text-black">
                   {initials}
                 </div>
 
-                <div className="max-w-[90px] xs:max-w-[120px] sm:max-w-40 text-left">
-                  <p className="truncate text-xs sm:text-sm font-semibold">
+                <div className="hidden md:block max-w-40 text-left">
+                  <p className="truncate text-sm font-semibold">
                     {user?.name ||
                       "User"}
                   </p>
 
-                  <p className="truncate text-[10px] sm:text-xs text-white/35">
+                  <p className="truncate text-xs text-white/35">
                     Verified member
                   </p>
                 </div>

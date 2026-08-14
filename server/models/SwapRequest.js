@@ -213,6 +213,13 @@ swapRequestSchema.index({
     createdAt: -1,
 });
 
+// Connection check queries
+swapRequestSchema.index({
+    sender: 1,
+    receiver: 1,
+    status: 1,
+});
+
 // Prevent the exact same active request from being created twice
 swapRequestSchema.index(
     {

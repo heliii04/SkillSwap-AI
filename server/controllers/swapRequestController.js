@@ -29,7 +29,8 @@ const populateSwapRequest = (query) => {
             path: "receiverSkill",
             select:
                 "title category level teachingMode availability tags isActive",
-        });
+        })
+        .lean();
 };
 
 /*

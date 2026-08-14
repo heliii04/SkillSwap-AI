@@ -76,6 +76,11 @@ export default function UserProfileModal({ userId, matchScore, onClose }) {
             return;
         }
         
+        // Optimistic UI update (0ms instant response)
+        setHasPendingRequest(true);
+        toast.success("Match request sent successfully!");
+        onClose();
+
         try {
             setIsSubmitting(true);
             await axiosClient.post("/swap-requests", {
@@ -84,9 +89,9 @@ export default function UserProfileModal({ userId, matchScore, onClose }) {
                 receiverSkillId: swapFormData.receiverSkillId,
                 message: swapFormData.message
             });
-            toast.success("Match request sent successfully!");
-            onClose();
         } catch (error) {
+            console.error("Swap request error:", error);
+            setHasPendingRequest(false);
             toast.error(error?.response?.data?.message || "Failed to send match request.");
         } finally {
             setIsSubmitting(false);

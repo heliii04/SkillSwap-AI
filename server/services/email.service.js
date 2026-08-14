@@ -113,3 +113,26 @@ SkillSwap AI
 export async function sendOtpEmail({ email, name, otp }) {
     return sendVerificationOtpEmail({ email, name, otp });
 }
+
+/**
+ * Enqueue OTP verification email for asynchronous non-blocking delivery
+ */
+export function queueVerificationOtpEmail({ name, email, otp }) {
+    import("./queueManager.js").then(({ queueManager, JOB_TYPES }) => {
+        queueManager.enqueue(JOB_TYPES.SEND_OTP_EMAIL, { name, email, otp });
+    }).catch((err) => {
+        console.error("Failed to enqueue OTP email, falling back to direct send:", err);
+        sendVerificationOtpEmail({ name, email, otp }).catch(() => {});
+    });
+}
+
+/**
+ * Enqueue generic/contact email for asynchronous non-blocking delivery
+ */
+export function queueContactEmail({ to, subject, html, text, replyTo }) {
+    import("./queueManager.js").then(({ queueManager, JOB_TYPES }) => {
+        queueManager.enqueue(JOB_TYPES.SEND_CONTACT_EMAIL, { to, subject, html, text, replyTo });
+    }).catch((err) => {
+        console.error("Failed to enqueue contact email:", err);
+    });
+}

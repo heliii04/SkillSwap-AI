@@ -1,6 +1,7 @@
 import Contact from "../models/Contact.js";
 import Report from "../models/Report.js";
 import { sendEmail } from "../utils/sendEmail.js";
+import { queueContactEmail } from "../services/email.service.js";
 import { ApiError } from "../utils/ApiError.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 
@@ -44,25 +45,20 @@ export const submitContactInquiry = asyncHandler(async (req, res) => {
         }
     }
 
-    // Attempt to send email notification to admin/support
-    try {
-        await sendEmail({
-            to: process.env.SUPPORT_EMAIL || "support@skillswap.ai",
-            subject: `[New Support Ticket] - ${subject}`,
-            html: `
-                <h2>New Support Inquiry Received</h2>
-                <p><strong>Name:</strong> ${name}</p>
-                <p><strong>Email:</strong> ${email}</p>
-                <p><strong>Category:</strong> ${category}</p>
-                <p><strong>Subject:</strong> ${subject}</p>
-                <p><strong>Message:</strong></p>
-                <p>${message.replace(/\n/g, "<br>")}</p>
-            `,
-        });
-    } catch (mailError) {
-        console.warn("Could not send admin notification email:", mailError.message);
-        // We do not fail the request if mail sending fails
-    }
+    // Enqueue admin email notification to background queue for non-blocking submission
+    queueContactEmail({
+        to: process.env.SUPPORT_EMAIL || "support@skillswap.ai",
+        subject: `[New Support Ticket] - ${subject}`,
+        html: `
+            <h2>New Support Inquiry Received</h2>
+            <p><strong>Name:</strong> ${name}</p>
+            <p><strong>Email:</strong> ${email}</p>
+            <p><strong>Category:</strong> ${category}</p>
+            <p><strong>Subject:</strong> ${subject}</p>
+            <p><strong>Message:</strong></p>
+            <p>${message.replace(/\n/g, "<br>")}</p>
+        `,
+    });
 
     res.status(201).json({
         success: true,

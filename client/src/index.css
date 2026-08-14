@@ -25,16 +25,16 @@
     scrollbar-color: #1e1f29 #07080d;
 }
 
-html {
-    scroll-behavior: smooth;
-}
-
-body {
+html,
+body,
+#root {
     margin: 0;
+    padding: 0;
+    max-width: 100vw;
     min-width: 320px;
     background: #07080d;
     color: #ffffff;
-    overflow-x: hidden;
+    overflow-x: hidden !important;
 }
 
 button,

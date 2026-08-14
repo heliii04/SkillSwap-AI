@@ -13,6 +13,7 @@ import {
 
 import MatchBadge from "../../components/ui/MatchBadge";
 import { getIcebreaker, getMyMatches } from "../../api/matchApi";
+import { useRecommendationsQuery } from "../../hooks/useQueries";
 
 const scoreTone = (score) => {
     if (score >= 80) {
@@ -29,42 +30,19 @@ const scoreTone = (score) => {
 export default function Recommendations() {
     const navigate = useNavigate();
 
-    const [matches, setMatches] = useState([]);
-    const [loading, setLoading] = useState(true);
     const [drafting, setDrafting] = useState(null);
-    const [reloadKey, setReloadKey] = useState(0);
     const [selectedUserId, setSelectedUserId] = useState(null);
     const [selectedUserScore, setSelectedUserScore] = useState(null);
 
-    useEffect(() => {
-        let isMounted = true;
+    const { data = {}, isLoading: loading, refetch } = useRecommendationsQuery(20);
 
-        getMyMatches(20)
-            .then((data) => {
-                if (isMounted) {
-                    setMatches(data);
-                }
-            })
-            .catch((error) => {
-                toast.error(
-                    error?.response?.data?.message ||
-                        "Recommendations could not be loaded."
-                );
-            })
-            .finally(() => {
-                if (isMounted) {
-                    setLoading(false);
-                }
-            });
-
-        return () => {
-            isMounted = false;
-        };
-    }, [reloadKey]);
+    const matches = Array.isArray(data) ? data : (data.matches || []);
+    const hasTeachSkills = Boolean(data.hasTeachSkills);
+    const hasLearnSkills = Boolean(data.hasLearnSkills);
+    const hasAddedSkills = hasTeachSkills && hasLearnSkills;
 
     const refresh = () => {
-        setLoading(true);
-        setReloadKey((key) => key + 1);
+        refetch();
     };
 
     const draftMessage = async (match) => {
@@ -138,34 +116,46 @@ export default function Recommendations() {
 
                 {!loading && matches.length === 0 && (
                     <div className="mt-6 rounded-[24px] border border-white/10 bg-[#12131A] p-10 text-center">
-                        <HiOutlineBolt className="mx-auto text-3xl text-orange-400" />
+                        <HiOutlineSparkles className="mx-auto text-3xl text-orange-400" />
 
                         <h2 className="mt-4 text-lg font-semibold text-white">
-                            Not enough signal yet
+                            {hasAddedSkills ? "No direct matches found right now" : "Not enough signal yet"}
                         </h2>
 
                         <p className="mx-auto mt-2 max-w-md text-sm text-white/45">
-                            Add at least one skill you can teach and one you want
-                            to learn. Matching uses both sides to find a fair
-                            swap.
+                            {hasAddedSkills
+                                ? "We searched for mentors offering your learning goals, but no new matches are available yet. We'll automatically update your list when new mentors register!"
+                                : "Add at least one skill you can teach and one you want to learn. Matching uses both sides to find a fair swap."}
                         </p>
 
                         <div className="mt-6 flex flex-wrap justify-center gap-3">
-                            <button 
-                                type="button"
-                                onClick={() => navigate("/skills/teach")}
-                                className="rounded-full bg-orange-500 px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-orange-400"
-                            >
-                                Add a skill I teach
-                            </button>
+                            {hasAddedSkills ? (
+                                <button
+                                    type="button"
+                                    onClick={() => navigate("/browse")}
+                                    className="rounded-full bg-orange-500 px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-orange-400 flex items-center gap-2"
+                                >
+                                    Discover All Skills <HiOutlineArrowRight />
+                                </button>
+                            ) : (
+                                <>
+                                    <button 
+                                        type="button"
+                                        onClick={() => navigate("/skills/teach")}
+                                        className="rounded-full bg-orange-500 px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-orange-400"
+                                    >
+                                        Add a skill I teach
+                                    </button>
 
-                            <button 
-                                type="button"
-                                onClick={() => navigate("/skills/learn")}
-                                className="rounded-full border border-white/15 px-6 py-2.5 text-sm font-semibold text-white transition hover:border-white/35"
-                            >
-                                Add a skill I want
-                            </button>
+                                    <button 
+                                        type="button"
+                                        onClick={() => navigate("/skills/learn")}
+                                        className="rounded-full border border-white/15 px-6 py-2.5 text-sm font-semibold text-white transition hover:border-white/35"
+                                    >
+                                        Add a skill I want
+                                    </button>
+                                </>
+                            )}
                         </div>
                     </div>
                 )}

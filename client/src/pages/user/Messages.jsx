@@ -10,6 +10,7 @@ import { io } from "socket.io-client";
 import { getAccessToken } from "../../api/tokenStore";
 import axiosClient from "../../api/axiosClient";
 import { useAuth } from "../../context/AuthContext";
+import useLockBodyScroll from "../../hooks/useLockBodyScroll";
 
 import {
     HiOutlineArrowLeft,
@@ -98,8 +99,27 @@ export default function Messages() {
         setMobileChatOpen,
     ] = useState(false);
 
+    const [isMobileScreen, setIsMobileScreen] = useState(
+        typeof window !== "undefined" ? window.innerWidth < 1024 : false
+    );
+
+    useEffect(() => {
+        const handleResize = () => {
+            setIsMobileScreen(window.innerWidth < 1024);
+        };
+        window.addEventListener("resize", handleResize);
+        return () => window.removeEventListener("resize", handleResize);
+    }, []);
+
+    useLockBodyScroll((isMobileScreen && mobileChatOpen) || Boolean(selectedDocument) || isSelectionMode || selectDeleteModalOpen);
+
     const messagesEndRef =
         useRef(null);
+    const selectedConversationIdRef = useRef(selectedConversationId);
+
+    useEffect(() => {
+        selectedConversationIdRef.current = selectedConversationId;
+    }, [selectedConversationId]);
 
     useEffect(() => {
         if (isAuthLoading) return;
@@ -147,14 +167,16 @@ export default function Messages() {
         socket.on("chat_list_update", (updatedChat) => {
             if (isMounted) {
                 setConversations((prev) => {
-                    const exists = prev.some((c) => c.id === updatedChat.id);
+                    const isCurrentlyOpen = selectedConversationIdRef.current && String(updatedChat.id) === String(selectedConversationIdRef.current);
+                    const chatToUse = isCurrentlyOpen ? { ...updatedChat, unreadCount: 0 } : updatedChat;
+                    const exists = prev.some((c) => c.id === chatToUse.id);
                     if (exists) {
                         return [
-                            updatedChat,
-                            ...prev.filter((c) => c.id !== updatedChat.id),
+                            chatToUse,
+                            ...prev.filter((c) => c.id !== chatToUse.id),
                         ];
                     }
-                    return [updatedChat, ...prev];
+                    return [chatToUse, ...prev];
                 });
             }
         });
@@ -184,10 +206,18 @@ export default function Messages() {
                 setMessagesLoading(true);
             }
             try {
+                axiosClient.post(`/chats/${selectedConversationId}/read`).catch(() => {});
                 const response = await axiosClient.get(`/chats/${selectedConversationId}/messages`);
                 if (isMounted) {
                     const fetchedMessages = response.data?.data?.messages || [];
                     setMessages(fetchedMessages);
+                    setConversations((prev) =>
+                        prev.map((c) =>
+                            String(c.id) === String(selectedConversationId)
+                                ? { ...c, unreadCount: 0 }
+                                : c
+                        )
+                    );
                 }
             } catch (err) {
                 console.error("Error fetching messages:", err);
@@ -203,6 +233,7 @@ export default function Messages() {
         const socketHost = API_URL.replace(/\/api\/v1\/?$/, "").replace(/\/api\/?$/, "");
         const socket = io(socketHost, {
             withCredentials: true,
+            auth: { token: getAccessToken() },
         });
 
         socket.emit("join_chat", selectedConversationId);
@@ -218,10 +249,45 @@ export default function Messages() {
                     sender: msg.senderId?.toString() === currentUserId?.toString() ? "me" : "other"
                 };
 
+                const targetChatId = msg.chatId || selectedConversationIdRef.current;
+                const isChatOpen = selectedConversationIdRef.current && String(targetChatId) === String(selectedConversationIdRef.current);
+
+                if (isChatOpen && formattedMsg.sender !== "me") {
+                    axiosClient.post(`/chats/${selectedConversationIdRef.current}/read`).catch(() => {});
+                }
+
                 setMessages((prev) => {
                     if (prev.some((m) => String(m.id) === String(formattedMsg.id))) return prev;
+                    if (formattedMsg.sender === "me") {
+                        const tempIndex = prev.findIndex((m) => String(m.id).startsWith("temp_"));
+                        if (tempIndex !== -1) {
+                            const next = [...prev];
+                            next[tempIndex] = formattedMsg;
+                            return next;
+                        }
+                    }
                     return [...prev, formattedMsg];
                 });
+
+                setConversations((current) =>
+                    current.map((c) => {
+                        const isMatch = (targetChatId && String(c.id) === String(targetChatId)) || (selectedConversationIdRef.current && String(c.id) === String(selectedConversationIdRef.current));
+                        if (isMatch) {
+                            const isOpen = selectedConversationIdRef.current && String(c.id) === String(selectedConversationIdRef.current);
+                            return {
+                                ...c,
+                                lastMessage: {
+                                    id: formattedMsg.id,
+                                    text: formattedMsg.text,
+                                    createdAt: formattedMsg.createdAt,
+                                    sender: formattedMsg.sender,
+                                },
+                                unreadCount: isOpen ? 0 : (formattedMsg.sender === "me" ? c.unreadCount : (c.unreadCount + 1)),
+                            };
+                        }
+                        return c;
+                    })
+                );
             }
         });
 
@@ -401,6 +467,14 @@ export default function Messages() {
         conversationId
     ) => {
         setSelectedConversationId(conversationId);
+        axiosClient.post(`/chats/${conversationId}/read`).catch(() => {});
+        setConversations((prev) =>
+            prev.map((c) =>
+                String(c.id) === String(conversationId)
+                    ? { ...c, unreadCount: 0 }
+                    : c
+            )
+        );
         setIsSelectionMode(false);
         setSelectedMessageIds([]);
         setMobileChatOpen(true);
@@ -421,14 +495,59 @@ export default function Messages() {
 
             let payloadText = trimmedMessage;
             if (selectedDocument) {
+                let cloudUrl = selectedDocument.dataUrl;
+                if (selectedDocument.rawFile) {
+                    try {
+                        const formData = new FormData();
+                        formData.append("file", selectedDocument.rawFile);
+                        const uploadRes = await axiosClient.post("/chats/upload-document", formData, {
+                            headers: { "Content-Type": "multipart/form-data" },
+                        });
+                        if (uploadRes.data?.data?.fileUrl) {
+                            cloudUrl = uploadRes.data.data.fileUrl;
+                        }
+                    } catch (uploadErr) {
+                        console.error("Cloudinary upload error, using fallback:", uploadErr);
+                    }
+                }
+
                 const docPayload = JSON.stringify({
                     fileName: selectedDocument.name,
                     fileSize: selectedDocument.sizeFormatted,
-                    fileData: selectedDocument.dataUrl,
+                    fileData: cloudUrl,
                     fileType: selectedDocument.type
                 });
                 payloadText = trimmedMessage ? `${trimmedMessage}\n[DOC_ATTACHMENT:${docPayload}]` : `[DOC_ATTACHMENT:${docPayload}]`;
             }
+
+            const tempId = `temp_${Date.now()}`;
+            const optimisticMsg = {
+                id: tempId,
+                sender: "me",
+                text: payloadText,
+                createdAt: new Date().toISOString(),
+                status: "sending"
+            };
+
+            // Instantly render optimistic message and reset inputs (0ms perceived latency)
+            setMessages((prev) => [...prev, optimisticMsg]);
+            setConversations((current) =>
+                current.map((c) =>
+                    c.id === selectedConversation.id
+                        ? {
+                            ...c,
+                            lastMessage: {
+                                id: tempId,
+                                text: payloadText,
+                                createdAt: optimisticMsg.createdAt,
+                                sender: "me",
+                            },
+                        }
+                        : c
+                )
+            );
+            setMessageText("");
+            setSelectedDocument(null);
 
             try {
                 setSending(true);
@@ -441,8 +560,11 @@ export default function Messages() {
 
                 if (newMsg) {
                     setMessages((prev) => {
-                        if (prev.some((m) => String(m.id) === String(newMsg.id))) return prev;
-                        return [...prev, newMsg];
+                        const hasRealMsg = prev.some((m) => String(m.id) === String(newMsg.id));
+                        if (hasRealMsg) {
+                            return prev.filter((m) => !String(m.id).startsWith("temp_"));
+                        }
+                        return prev.map((m) => (m.id === tempId ? newMsg : m));
                     });
                     setConversations((current) =>
                         current.map((c) =>
@@ -459,12 +581,14 @@ export default function Messages() {
                                 : c
                         )
                     );
-                    setMessageText("");
-                    setSelectedDocument(null);
                 }
             } catch (err) {
                 console.error("Error sending message:", err);
-                alert(err.message || "Failed to send message");
+                toast.error(err.message || "Failed to send message");
+                // Mark optimistic message as failed
+                setMessages((prev) =>
+                    prev.map((m) => (m.id === tempId ? { ...m, status: "failed" } : m))
+                );
             } finally {
                 setSending(false);
             }
@@ -1013,7 +1137,7 @@ function ConversationItem({
                         );
                     })()}
 
-                    {conversation.unreadCount > 0 && (
+                    {conversation.unreadCount > 0 && !active && (
                             <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-orange-500 px-1.5 text-[10px] font-bold text-black">
                                 {
                                     conversation.unreadCount
@@ -1552,12 +1676,36 @@ function MessageBubble({
                                         </div>
                                     </div>
                                     {docAttachment.fileData && (
-                                        <a
-                                            href={docAttachment.fileData}
-                                            download={docAttachment.fileName}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            onClick={(e) => isSelectionMode && e.stopPropagation()}
+                                        <button
+                                            type="button"
+                                            onClick={async (e) => {
+                                                e.stopPropagation();
+                                                try {
+                                                    const fileUrl = docAttachment.fileData;
+                                                    const fileName = docAttachment.fileName || "document";
+                                                    if (fileUrl.startsWith("data:")) {
+                                                        const link = document.createElement("a");
+                                                        link.href = fileUrl;
+                                                        link.download = fileName;
+                                                        document.body.appendChild(link);
+                                                        link.click();
+                                                        document.body.removeChild(link);
+                                                        return;
+                                                    }
+                                                    const response = await fetch(fileUrl);
+                                                    const blob = await response.blob();
+                                                    const blobUrl = window.URL.createObjectURL(blob);
+                                                    const link = document.createElement("a");
+                                                    link.href = blobUrl;
+                                                    link.download = fileName;
+                                                    document.body.appendChild(link);
+                                                    link.click();
+                                                    document.body.removeChild(link);
+                                                    window.URL.revokeObjectURL(blobUrl);
+                                                } catch (err) {
+                                                    window.open(docAttachment.fileData, "_blank");
+                                                }
+                                            }}
                                             className={`shrink-0 flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-bold transition border ${
                                                 isMine
                                                     ? "bg-black text-orange-400 border-black hover:bg-black/80"
@@ -1565,7 +1713,7 @@ function MessageBubble({
                                             }`}
                                         >
                                             <HiOutlineArrowDownTray className="text-sm" /> Download
-                                        </a>
+                                        </button>
                                     )}
                                 </div>
                             )}
@@ -1712,6 +1860,7 @@ function MessageComposer({
                 sizeFormatted: formatBytes(file.size),
                 type: file.type,
                 dataUrl: event.target?.result,
+                rawFile: file,
             });
         };
         reader.readAsDataURL(file);

@@ -6,6 +6,8 @@ import app, { allowedOrigins } from "./app.js";
 import { connectDatabase } from "./config/db.js";
 import { env } from "./config/env.js";
 import { verifyMailConnection } from "./config/mailer.js";
+import socketAuthMiddleware from "./middleware/socketAuth.middleware.js";
+import Chat from "./models/Chat.js";
 
 let server;
 
@@ -17,8 +19,8 @@ async function startServer() {
     server = http.createServer(app);
 
     const io = new Server(server, {
-        pingInterval: 10000,
-        pingTimeout: 5000,
+        pingInterval: 25000,
+        pingTimeout: 20000,
         maxHttpBufferSize: 1e6,
         cors: {
             origin: (origin, callback) => {
@@ -36,21 +38,41 @@ async function startServer() {
     app.set("io", io);
     global.io = io;
 
+    // Apply Socket.io JWT Authentication Middleware
+    io.use(socketAuthMiddleware);
+
     io.on("connection", (socket) => {
+        // Automatically joined to socket.userId on auth middleware
+        
         socket.on("register_user", (userId) => {
-            if (userId) {
-                socket.join(userId.toString());
+            // Keep backwards compatibility while enforcing authenticated socket user ID
+            if (socket.userId) {
+                socket.join(socket.userId.toString());
             }
         });
 
-        socket.on("join_chat", (chatId) => {
-            if (chatId) {
-                socket.join(chatId.toString());
+        socket.on("join_chat", async (chatId) => {
+            if (!chatId || !socket.userId) return;
+
+            try {
+                // Verify user is an authorized participant of the chat before joining room
+                const isParticipant = await Chat.exists({
+                    _id: chatId,
+                    participants: socket.userId,
+                });
+
+                if (isParticipant) {
+                    socket.join(chatId.toString());
+                } else {
+                    console.warn(`🔒 [UNAUTHORIZED SOCKET ROOM ACCESS] User ${socket.userId} attempted to join unauthorized chat ${chatId}`);
+                }
+            } catch (err) {
+                console.error("Error verifying chat room access for socket:", err.message);
             }
         });
 
         socket.on("disconnect", () => {
-            // Can be expanded later for online status indicators
+            socket.removeAllListeners();
         });
     });
 
@@ -68,8 +90,15 @@ async function startServer() {
 
 async function shutdown(signal) {
     console.log(
-        `${signal} received. Closing server...`
+        `${signal} received. Closing server and background task queue...`
     );
+
+    try {
+        const { queueManager } = await import("./services/queueManager.js");
+        await queueManager.shutdown(3000);
+    } catch (err) {
+        console.error("Error shutting down queueManager:", err);
+    }
 
     if (server) {
         server.close(async () => {

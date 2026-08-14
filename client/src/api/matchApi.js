@@ -7,7 +7,12 @@ export async function getMyMatches(limit = 10) {
         },
     });
 
-    return response.data?.data?.matches || [];
+    const data = response.data?.data || {};
+    return {
+        matches: data.matches || [],
+        hasTeachSkills: Boolean(data.hasTeachSkills),
+        hasLearnSkills: Boolean(data.hasLearnSkills),
+    };
 }
 
 export async function searchSkills(query, limit = 20) {

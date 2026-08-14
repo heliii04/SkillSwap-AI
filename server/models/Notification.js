@@ -61,55 +61,13 @@ notificationSchema.post("save", async function (doc) {
         console.error("Error emitting real-time socket notification:", err);
     }
 
+    // Enqueue Web Push notification dispatch to background task queue manager
     try {
-        const env = doc.constructor.db.base.env || process.env;
-        const vapidPublicKey = env.VAPID_PUBLIC_KEY;
-        const vapidPrivateKey = env.VAPID_PRIVATE_KEY;
-        const vapidMailto = env.VAPID_MAILTO || "mailto:support@skillswap.ai";
-
-        if (!vapidPublicKey || !vapidPrivateKey) {
-            return;
-        }
-
-        const PushMessSubscription = mongoose.model("PushMessSubscription");
-        const recipientId = doc.recipient?._id ? doc.recipient._id : doc.recipient;
-        const subscriptions = await PushMessSubscription.find({ user: recipientId });
-        if (subscriptions.length === 0) return;
-
-        // Configure webpush details dynamically to ensure environment loading has finished
-        const webpush = (await import("web-push")).default;
-        webpush.setVapidDetails(
-            vapidMailto,
-            vapidPublicKey,
-            vapidPrivateKey
-        );
-
-        const pushPayload = JSON.stringify({
-            title: doc.title,
-            message: doc.message,
-            link: doc.link
+        import("../services/queueManager.js").then(({ queueManager, JOB_TYPES }) => {
+            queueManager.enqueue(JOB_TYPES.SEND_WEB_PUSH_NOTIFICATION, { notificationId: doc._id });
+        }).catch((err) => {
+            console.error("Error enqueuing Web Push notification job:", err);
         });
-
-        const promises = subscriptions.map(async (sub) => {
-            const pushSub = {
-                endpoint: sub.endpoint,
-                keys: {
-                    p256dh: sub.keys.p256dh,
-                    auth: sub.keys.auth
-                }
-            };
-            try {
-                await webpush.sendNotification(pushSub, pushPayload);
-            } catch (err) {
-                if (err.statusCode === 404 || err.statusCode === 410) {
-                    await PushMessSubscription.deleteOne({ _id: sub._id });
-                } else {
-                    console.error("Error sending web push to endpoint:", sub.endpoint, err);
-                }
-            }
-        });
-
-        await Promise.all(promises);
     } catch (err) {
         console.error("Error in Notification Schema post-save hook:", err);
     }

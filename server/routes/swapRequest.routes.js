@@ -17,8 +17,8 @@ import {
 } from "../validators/swapRequest.validator.js";
 
 import { requireAuth } from "../middleware/authMiddleware.js";
-
 import { validateRequest } from "../middleware/validate.middleware.js";
+import { swapRequestLimiter } from "../middleware/rateLimit.middleware.js";
 
 const router = express.Router();
 
@@ -32,6 +32,7 @@ router.use(requireAuth);
 
 router.post(
     "/",
+    swapRequestLimiter,
     validateRequest(
         createSwapRequestSchema
     ),

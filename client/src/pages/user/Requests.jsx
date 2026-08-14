@@ -8,6 +8,7 @@ import { useNavigate } from "react-router-dom";
 
 import { getAccessToken } from "../../api/tokenStore";
 import axiosClient from "../../api/axiosClient";
+import useLockBodyScroll from "../../hooks/useLockBodyScroll";
 
 import {
     HiOutlineAcademicCap,
@@ -81,6 +82,8 @@ export default function Requests() {
         selectedRequest,
         setSelectedRequest,
     ] = useState(null);
+
+    useLockBodyScroll(Boolean(selectedRequest));
 
     const [
         actionLoadingId,
@@ -275,30 +278,32 @@ export default function Requests() {
             activeTab,
             search,
         ]);
-
     const updateStatus = async (
         requestId,
         status
     ) => {
+        const previousStatus = requests.find((r) => r.id === requestId)?.status || "pending";
+
+        // Optimistically update request status (0ms perceived latency)
+        setRequests(
+            (current) =>
+                current.map(
+                    (request) =>
+                        request.id === requestId
+                            ? {
+                                ...request,
+                                status,
+                            }
+                            : request
+                )
+        );
+
         try {
             setActionLoadingId(requestId);
             setMessage("");
 
             const action = status === "accepted" ? "accept" : status === "rejected" ? "reject" : status;
             await axiosClient.patch(`/swap-requests/${requestId}/${action}`);
-
-            setRequests(
-                (current) =>
-                    current.map(
-                        (request) =>
-                            request.id === requestId
-                                ? {
-                                    ...request,
-                                    status,
-                                }
-                                : request
-                    )
-            );
 
             setSelectedRequest(
                 (current) =>

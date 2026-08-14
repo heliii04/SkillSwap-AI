@@ -2,6 +2,7 @@ import { useState } from "react";
 import { FiAlertTriangle, FiX, FiLoader } from "react-icons/fi";
 import { toast } from "react-toastify";
 import axiosClient from "../../api/axiosClient";
+import useLockBodyScroll from "../../hooks/useLockBodyScroll";
 
 export default function ReportModal({
     isOpen,
@@ -11,6 +12,7 @@ export default function ReportModal({
     reportedUser,
     targetName = "Content"
 }) {
+    useLockBodyScroll(isOpen);
     const [reason, setReason] = useState("harassment");
     const [description, setDescription] = useState("");
     const [submitting, setSubmitting] = useState(false);

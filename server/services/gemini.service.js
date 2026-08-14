@@ -36,6 +36,93 @@ export const chatWithGemini = async (prompt, systemInstruction) => {
     return data.choices[0].message.content;
 };
 
+export const streamChatWithGemini = async (prompt, systemInstruction, onChunk) => {
+    if (!env.ai.apiKey) {
+        const fallbackText = "Hello! Welcome to SkillSwap AI. I am your personal learning assistant. How can I help you with your skills today?";
+        const words = fallbackText.split(" ");
+        for (const word of words) {
+            onChunk(word + " ");
+            await new Promise((r) => setTimeout(r, 20));
+        }
+        return fallbackText;
+    }
+
+    const messages = [
+        { role: "system", content: systemInstruction },
+        { role: "user", content: prompt }
+    ];
+
+    try {
+        const response = await fetch(`${env.ai.baseUrl.replace(/\/$/, "")}/chat/completions`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${env.ai.apiKey}`,
+                "HTTP-Referer": env.clientUrl || "http://localhost:5173",
+                "X-Title": "SkillSwap AI",
+            },
+            body: JSON.stringify({
+                model: env.ai.model || "google/gemini-2.5-flash",
+                messages,
+                temperature: 0.7,
+                stream: true,
+            })
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`AI Request failed: ${errorText}`);
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder("utf-8");
+        let fullText = "";
+        let buffer = "";
+
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split("\n");
+            buffer = lines.pop() || "";
+
+            for (const line of lines) {
+                const trimmed = line.trim();
+                if (!trimmed || trimmed.startsWith(":")) continue;
+
+                if (trimmed === "data: [DONE]") {
+                    break;
+                }
+
+                if (trimmed.startsWith("data: ")) {
+                    try {
+                        const json = JSON.parse(trimmed.slice(6));
+                        const content = json.choices?.[0]?.delta?.content || "";
+                        if (content) {
+                            fullText += content;
+                            onChunk(content);
+                        }
+                    } catch {
+                        // ignore JSON parse error for incomplete chunks
+                    }
+                }
+            }
+        }
+
+        return fullText || "No response generated.";
+    } catch (err) {
+        console.warn("Streaming AI failed, falling back to simulated stream:", err.message);
+        const fullContent = await chatWithGemini(prompt, systemInstruction);
+        const words = fullContent.split(" ");
+        for (const word of words) {
+            onChunk(word + " ");
+            await new Promise((r) => setTimeout(r, 15));
+        }
+        return fullContent;
+    }
+};
+
 export const generateStructuredContent = async (prompt, systemInstruction, schemaDefinition) => {
     if (!env.ai.apiKey) throw new Error("AI API key is not configured.");
 

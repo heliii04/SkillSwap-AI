@@ -24,10 +24,13 @@ import {
     errorHandler,
     notFoundHandler,
 } from "./middleware/error.middleware.js";
+import { requestLoggerMiddleware } from "./middleware/requestLogger.middleware.js";
+import { mongoSanitizeMiddleware } from "./middleware/mongoSanitize.middleware.js";
 
 const app = express();
 
 app.set("trust proxy", 1);
+app.use(requestLoggerMiddleware);
 
 app.use(
     compression({
@@ -108,6 +111,7 @@ app.use(
 );
 
 app.use(cookieParser());
+app.use(mongoSanitizeMiddleware);
 
 if (!env.isProduction) {
     app.use(morgan("dev"));

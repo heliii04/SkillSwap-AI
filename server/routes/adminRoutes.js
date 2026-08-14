@@ -8,8 +8,11 @@ import {
     getSkillUsers
 } from "../controllers/adminController.js";
 import { requireAuth, requireAdmin } from "../middleware/authMiddleware.js";
+import { adminLimiter } from "../middleware/rateLimit.middleware.js";
 
 const router = express.Router();
+
+router.use(adminLimiter);
 
 router.get("/stats", requireAuth, requireAdmin, getAdminStats);
 router.get("/users", requireAuth, requireAdmin, getAllUsers);

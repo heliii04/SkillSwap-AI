@@ -94,6 +94,12 @@ messageSchema.index({
     createdAt: -1,
 });
 
+messageSchema.index({
+    chat: 1,
+    sender: 1,
+    readBy: 1,
+});
+
 const Message =
     mongoose.models.Message ||
     mongoose.model(

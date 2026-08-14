@@ -85,3 +85,57 @@ export const aiLimiter = rateLimit({
     keyGenerator: (req, res) =>
         req.user?._id?.toString() || ipKeyGenerator(req, res),
 });
+
+export const swapRequestLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    limit: 15,
+
+    standardHeaders: "draft-8",
+    legacyHeaders: false,
+
+    message: createRateLimitMessage(
+        "Too many swap requests created. Please wait 15 minutes."
+    ),
+
+    keyGenerator: (req, res) =>
+        req.user?._id?.toString() || ipKeyGenerator(req, res),
+});
+
+export const messageLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    limit: 60,
+
+    standardHeaders: "draft-8",
+    legacyHeaders: false,
+
+    message: createRateLimitMessage(
+        "Messaging rate limit reached. Please slow down your messages."
+    ),
+
+    keyGenerator: (req, res) =>
+        req.user?._id?.toString() || ipKeyGenerator(req, res),
+});
+
+export const adminLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    limit: 50,
+
+    standardHeaders: "draft-8",
+    legacyHeaders: false,
+
+    message: createRateLimitMessage(
+        "Admin panel request limit reached. Please wait 15 minutes."
+    ),
+});
+
+export const contactLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000,
+    limit: 5,
+
+    standardHeaders: "draft-8",
+    legacyHeaders: false,
+
+    message: createRateLimitMessage(
+        "Too many support requests submitted. Please try again in an hour."
+    ),
+});

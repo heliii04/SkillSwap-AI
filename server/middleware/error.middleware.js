@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import { ApiError } from "../utils/ApiError.js";
+import logger from "../utils/logger.js";
 
 export function notFoundHandler(req, _res, next) {
     next(
@@ -14,7 +15,7 @@ export function notFoundHandler(req, _res, next) {
 
 export function errorHandler(
     error,
-    _req,
+    req,
     res,
     _next
 ) {
@@ -51,9 +52,14 @@ export function errorHandler(
     const isProduction =
         process.env.NODE_ENV === "production";
 
-    if (statusCode >= 500) {
-        console.error(normalizedError);
-    }
+    // Structured error logging with request context
+    logger.error(`Unhandled API Error: ${normalizedError.message}`, normalizedError, {
+        requestId: req?.requestId,
+        method: req?.method,
+        path: req?.originalUrl || req?.url,
+        userId: req?.user?._id?.toString() || null,
+        statusCode,
+    });
 
     res.status(statusCode).json({
         success: false,

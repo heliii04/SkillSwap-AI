@@ -585,7 +585,7 @@ export const getBrowseSkills = async (req, res, next) => {
             query.owner = { $ne: req.user._id };
         }
 
-        const skills = await Skill.find(query).populate("owner", "name avatar location rating reviews");
+        const skills = await Skill.find(query).populate("owner", "name avatar location rating reviews").lean();
 
         console.log("Found teach skills for browse:", skills.length);
 

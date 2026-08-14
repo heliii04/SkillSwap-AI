@@ -19,6 +19,7 @@ import {
 
 import {
     chatWithGemini,
+    streamChatWithGemini,
     generateStructuredContent,
     roadmapSchema,
     nextFocusSchema,
@@ -474,6 +475,116 @@ export const chatDiscussion = asyncHandler(async (req, res) => {
         },
     });
 });
+
+export const streamChatDiscussion = async (req, res, next) => {
+    try {
+        const { message, history, sessionId } = req.body || {};
+        if (!message || !message.trim()) {
+            return res.status(400).json({ success: false, message: "Message is required" });
+        }
+
+        const activeSessionId = sessionId || Date.now().toString();
+
+        res.setHeader("Content-Type", "text/event-stream");
+        res.setHeader("Cache-Control", "no-cache");
+        res.setHeader("Connection", "keep-alive");
+        res.setHeader("X-Accel-Buffering", "no");
+        res.flushHeaders();
+
+        let systemContext =
+            "You are a helpful AI assistant for SkillSwap, a platform for learning and teaching skills. Default to responding in English unless the user explicitly speaks or requests Hindi or Gujarati. STRICT LIMITATION: You MUST ONLY answer questions related to skills, learning, teaching, or the SkillSwap platform itself. If a user asks something unrelated, inappropriate, or uses bad language, give a VERY SHORT and polite apology (e.g., 'Sorry, I can only help with skill-related topics.'), DO NOT explain further, and DO NOT mention any users. NEVER use bad language. NEVER mention any users on the platform unless the user explicitly asks to learn a specific skill.";
+
+        const lowerMsg = message.toLowerCase();
+        const words = lowerMsg
+            .replace(/[^a-zA-Z0-9\s]/g, "")
+            .split(" ")
+            .filter(
+                (w) =>
+                    w.length > 2 &&
+                    ![
+                        "how",
+                        "to",
+                        "learn",
+                        "teach",
+                        "seekhna",
+                        "want",
+                        "can",
+                        "you",
+                        "help",
+                        "me",
+                        "with",
+                        "what",
+                        "is",
+                        "the",
+                        "for",
+                        "and",
+                    ].includes(w)
+            );
+
+        if (words.length > 0) {
+            const regexes = words.map((w) => new RegExp(w, "i"));
+            const potentialSkills = await Skill.find({
+                type: "teach",
+                isActive: true,
+                $or: [
+                    { title: { $in: regexes } },
+                    { tags: { $in: regexes } },
+                ],
+            })
+                .populate("owner", "name headline")
+                .limit(5)
+                .lean();
+
+            if (potentialSkills.length > 0) {
+                const skillContext = potentialSkills
+                    .map((s) => `${s.owner?.name} teaches ${s.title}`)
+                    .join(", ");
+                systemContext += ` Important context: Here are up to 5 users who teach skills related to the user's query: ${skillContext}. ONLY mention them IF the user explicitly wants to learn these exact skills.`;
+            }
+        }
+
+        let prompt = message;
+        if (history && history.length > 0) {
+            prompt =
+                history
+                    .map((h) => `${h.role || h.sender}: ${h.content || h.text}`)
+                    .join("\n") + `\nuser: ${message}`;
+        } else {
+            systemContext +=
+                " This is the very first message of the conversation. You MUST start your response by warmly welcoming the user to SkillSwap (e.g. 'Welcome to SkillSwap! I am your AI Assistant...'). After the welcome, proceed to answer their question or address their message.";
+        }
+
+        const onChunk = (chunk) => {
+            res.write(`data: ${JSON.stringify({ chunk, sessionId: activeSessionId })}\n\n`);
+        };
+
+        const finalContent = await streamChatWithGemini(prompt, systemContext, onChunk);
+
+        res.write("data: [DONE]\n\n");
+        res.end();
+
+        if (req.user?._id) {
+            const titleSnippet = message.slice(0, 35) + (message.length > 35 ? "..." : "");
+            const userMsg = { sender: "user", text: message, timestamp: new Date() };
+            const aiMsg = { sender: "ai", text: finalContent, timestamp: new Date() };
+
+            await AIChatHistory.findOneAndUpdate(
+                { user: req.user._id, sessionId: activeSessionId },
+                {
+                    $setOnInsert: { title: titleSnippet },
+                    $push: { messages: { $each: [userMsg, aiMsg] } },
+                },
+                { upsert: true, new: true }
+            ).catch((err) => console.error("Error saving AI stream history to DB:", err.message));
+        }
+    } catch (error) {
+        if (!res.headersSent) {
+            return next(error);
+        }
+        res.write(`data: ${JSON.stringify({ error: error.message })}\n\n`);
+        res.end();
+    }
+};
 
 export const generatePersonalizedRoadmap = asyncHandler(async (req, res) => {
     const { skill, currentLevel, targetLevel, availableTime, duration, learningStyle } = req.body;

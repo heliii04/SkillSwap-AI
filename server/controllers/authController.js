@@ -1,7 +1,7 @@
 import { env } from "../config/env.js";
 import { AuthSession } from "../models/AuthSession.js";
 import { User } from "../models/User.js";
-import { sendVerificationOtpEmail } from "../services/email.service.js";
+import { sendVerificationOtpEmail, queueVerificationOtpEmail } from "../services/email.service.js";
 import { ApiError } from "../utils/ApiError.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 
@@ -156,18 +156,11 @@ export const register = asyncHandler(
 
         console.log(`[AUTH OTP GENERATED] Email: ${user.email} | OTP: ${otp}`);
 
-        // Send verification email
-        sendVerificationOtpEmail({
+        // Enqueue verification email to background task queue for instant HTTP response
+        queueVerificationOtpEmail({
             name: user.name,
             email: user.email,
             otp,
-        }).catch((error) => {
-            console.error(
-                `❌ [AUTH OTP EMAIL FAILED] Email: ${user.email} | Error: ${error.message}`
-            );
-            console.error(
-                `💡 TIP: Ensure SMTP_USER, SMTP_PASSWORD, SMTP_HOST, and SMTP_PORT are correctly configured on Render Dashboard Environment Variables.`
-            );
         });
 
         res.status(201).json({
@@ -359,18 +352,11 @@ export const resendOtp = asyncHandler(
 
         console.log(`[AUTH RESEND OTP GENERATED] Email: ${user.email} | OTP: ${otp}`);
 
-        // Send resend OTP email
-        sendVerificationOtpEmail({
+        // Enqueue resend OTP email to background task queue for instant HTTP response
+        queueVerificationOtpEmail({
             name: user.name,
             email: user.email,
             otp,
-        }).catch((error) => {
-            console.error(
-                `❌ [AUTH RESEND OTP EMAIL FAILED] Email: ${user.email} | Error: ${error.message}`
-            );
-            console.error(
-                `💡 TIP: Ensure SMTP_USER, SMTP_PASSWORD, SMTP_HOST, and SMTP_PORT are correctly configured on Render Dashboard Environment Variables.`
-            );
         });
 
         res.status(200).json({
