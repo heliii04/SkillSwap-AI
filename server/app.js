@@ -117,6 +117,8 @@ if (!env.isProduction) {
     app.use(morgan("dev"));
 }
 
+app.get("/favicon.ico", (_req, res) => res.status(204).end());
+
 app.all(["/", "/health", "/api/health", "/api/v1/health"], (_req, res) => {
     res.status(200).json({
         success: true,
