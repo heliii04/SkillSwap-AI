@@ -117,7 +117,7 @@ if (!env.isProduction) {
     app.use(morgan("dev"));
 }
 
-app.get(["/health", "/api/health", "/api/v1/health"], (_req, res) => {
+app.all(["/", "/health", "/api/health", "/api/v1/health"], (_req, res) => {
     res.status(200).json({
         success: true,
         message: "SkillSwap AI API is running.",
