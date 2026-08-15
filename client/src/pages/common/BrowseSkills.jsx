@@ -420,11 +420,11 @@ export default function BrowseSkills() {
                     </div>
                 </div>
             )}
-            
+
             {selectedUserId && (
-                <UserProfileModal 
-                    userId={selectedUserId} 
-                    onClose={() => setSelectedUserId(null)} 
+                <UserProfileModal
+                    userId={selectedUserId}
+                    onClose={() => setSelectedUserId(null)}
                 />
             )}
         </main>

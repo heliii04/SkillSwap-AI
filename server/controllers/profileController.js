@@ -179,7 +179,7 @@ export const changeMyPassword = asyncHandler(
             currentPassword,
             user.passwordHash
         );
-        
+
         if (!isPasswordCorrect) {
             throw new ApiError(
                 400,
@@ -216,7 +216,7 @@ export const getUserProfileById = asyncHandler(
         }
 
         const skills = await Skill.find({ owner: id, isActive: true }).lean();
-        
+
         const teachSkills = skills.filter((skill) => skill.type === "teach");
         const learnSkills = skills.filter((skill) => skill.type === "learn");
 
@@ -305,7 +305,7 @@ export const getAllProfiles = asyncHandler(
 
             const teachSkills = userSkills.filter(s => s.type === "teach");
             const learnSkills = userSkills.filter(s => s.type === "learn");
-            
+
             const mainSkill = teachSkills[0] || learnSkills[0] || {};
 
             return {

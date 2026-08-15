@@ -137,8 +137,8 @@ const availabilityScore = (teachSkill, learnSkill) => {
 
     const slotScore =
         teachSlot === learnSlot ||
-        teachSlot === "flexible" ||
-        learnSlot === "flexible"
+            teachSlot === "flexible" ||
+            learnSlot === "flexible"
             ? 1
             : 0;
 
@@ -164,13 +164,13 @@ const locationScore = (viewer, candidate, needsOffline) => {
         viewerLocation.city &&
         candidateLocation.city &&
         viewerLocation.city.toLowerCase() ===
-            candidateLocation.city.toLowerCase();
+        candidateLocation.city.toLowerCase();
 
     const sameState =
         viewerLocation.state &&
         candidateLocation.state &&
         viewerLocation.state.toLowerCase() ===
-            candidateLocation.state.toLowerCase();
+        candidateLocation.state.toLowerCase();
 
     if (sameCity) {
         return 1;
@@ -375,9 +375,9 @@ export const findMatchesForUser = async (
             { tags: { $in: searchTagsAndKeywords } },
             ...(regexPatterns.length > 0
                 ? [
-                      { title: { $in: regexPatterns } },
-                      { description: { $in: regexPatterns } },
-                  ]
+                    { title: { $in: regexPatterns } },
+                    { description: { $in: regexPatterns } },
+                ]
                 : []),
         ],
     })

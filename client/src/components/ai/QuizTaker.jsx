@@ -8,6 +8,7 @@ import {
 } from "../../api/aiApi";
 import { useAuth } from "../../context/AuthContext";
 import { hasSessionHint } from "../../api/tokenStore";
+import useLockBodyScroll from "../../hooks/useLockBodyScroll";
 import { FiCheck, FiX, FiAward, FiClock, FiTrash2, FiMoreVertical, FiPlus } from "react-icons/fi";
 import { toast } from "react-toastify";
 
@@ -26,6 +27,8 @@ export default function QuizTaker() {
     const [currentSessionId, setCurrentSessionId] = useState(null);
     const [showHistory, setShowHistory] = useState(false);
     const [menuOpen, setMenuOpen] = useState(false);
+
+    useLockBodyScroll(showHistory);
 
     useEffect(() => {
         let isMounted = true;

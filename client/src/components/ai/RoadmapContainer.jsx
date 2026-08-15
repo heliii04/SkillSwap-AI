@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import RoadmapForm from "./RoadmapForm";
 import RoadmapViewer from "./RoadmapViewer";
 import { useAuth } from "../../context/AuthContext";
+import useLockBodyScroll from "../../hooks/useLockBodyScroll";
 import { FiMap, FiClock, FiTrash2, FiMoreVertical, FiPlus } from "react-icons/fi";
 
 export default function RoadmapContainer() {
@@ -16,6 +17,8 @@ export default function RoadmapContainer() {
     const [activeRoadmap, setActiveRoadmap] = useState(null);
     const [showHistory, setShowHistory] = useState(false);
     const [menuOpen, setMenuOpen] = useState(false);
+
+    useLockBodyScroll(showHistory);
 
     useEffect(() => {
         const saved = localStorage.getItem(storageKey);

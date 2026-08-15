@@ -179,7 +179,7 @@ export default function Search() {
 
                     const dynamicMentors = res.data.data.map(user => {
                         const userId = user.id || user._id || Math.random().toString();
-                        
+
                         let score = matchMap.get(userId.toString());
                         if (!score) {
                             const charCodeSum = userId.toString().split("").reduce((sum, char) => sum + char.charCodeAt(0), 0);
@@ -187,25 +187,26 @@ export default function Search() {
                         }
 
                         return {
-                        id: userId,
-                        name: user.name,
-                        initials: user.name ? user.name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2) : "U",
-                        avatar: user.avatar,
-                        role: user.headline || "",
-                        location: user.location?.city ? `${user.location.city}${user.location.country ? `, ${user.location.country}` : ""}` : "Online",
-                        rating: user.rating || 0,
-                        reviews: user.reviews || 0,
-                        completedSessions: user.sessions || 0,
-                        matchPercentage: score,
-                        verified: user.isEmailVerified,
-                        availability: "Available",
-                        mode: user.mode || "online",
-                        level: user.level || "all",
-                        category: user.category || "all",
-                        teaches: user.teaches || [],
-                        wants: user.wants || [],
-                        bio: user.bio || "",
-                    }});
+                            id: userId,
+                            name: user.name,
+                            initials: user.name ? user.name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2) : "U",
+                            avatar: user.avatar,
+                            role: user.headline || "",
+                            location: user.location?.city ? `${user.location.city}${user.location.country ? `, ${user.location.country}` : ""}` : "Online",
+                            rating: user.rating || 0,
+                            reviews: user.reviews || 0,
+                            completedSessions: user.sessions || 0,
+                            matchPercentage: score,
+                            verified: user.isEmailVerified,
+                            availability: "Available",
+                            mode: user.mode || "online",
+                            level: user.level || "all",
+                            category: user.category || "all",
+                            teaches: user.teaches || [],
+                            wants: user.wants || [],
+                            bio: user.bio || "",
+                        }
+                    });
                     setMentors(dynamicMentors);
                 }
             })
@@ -431,7 +432,7 @@ export default function Search() {
 
                     {/* Horizontal Filters Bar */}
                     <div className="mt-6 rounded-[24px] border border-white/10 bg-[#101117] p-5">
-                    
+
                         <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
                             <div className="grid flex-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 max-w-5xl">
                                 <SelectFilter
@@ -669,7 +670,7 @@ function MentorCard({
                 >
                     View profile
 
-                    <HiOutlineArrowRight className="animate-arrow-move"  />
+                    <HiOutlineArrowRight className="animate-arrow-move" />
                 </button>
             </div>
         </article>
@@ -779,9 +780,8 @@ function SelectFilter({
             >
                 <span className="truncate">{selectedOption?.label || ""}</span>
                 <svg
-                    className={`h-4 w-4 shrink-0 text-white/40 transition-transform duration-200 ${
-                        isOpen ? "rotate-180 text-orange-500" : ""
-                    }`}
+                    className={`h-4 w-4 shrink-0 text-white/40 transition-transform duration-200 ${isOpen ? "rotate-180 text-orange-500" : ""
+                        }`}
                     fill="none"
                     viewBox="0 0 24 24"
                     stroke="currentColor"
@@ -804,11 +804,10 @@ function SelectFilter({
                                 <button
                                     type="button"
                                     onClick={() => handleSelect(option.value)}
-                                    className={`font-bold flex w-full items-center px-4 py-3 text-left text-sm transition duration-150 hover:bg-orange-500/10 hover:text-orange-400 ${
-                                        isSelected
+                                    className={`font-bold flex w-full items-center px-4 py-3 text-left text-sm transition duration-150 hover:bg-orange-500/10 hover:text-orange-400 ${isSelected
                                             ? "bg-orange-500/5 text-orange-400"
                                             : "text-white/80"
-                                    }`}
+                                        }`}
                                 >
                                     {option.label}
                                 </button>
