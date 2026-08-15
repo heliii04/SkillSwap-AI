@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import Skill from "../models/Skill.js";
+import Skill, { resolveCanonicalSkill } from "../models/Skill.js";
 import SwapRequest from "../models/SwapRequest.js";
 import LearningRoadmap from "../models/LearningRoadmap.js";
 import AIChatHistory from "../models/AIChatHistory.js";
@@ -585,10 +585,68 @@ export const streamChatDiscussion = async (req, res, next) => {
         res.end();
     }
 };
+const NON_SKILL_PATTERNS = [
+    /\b(slap|punch|hit|kick|kill|murder|steal|rob|hack|abuse|fight|attack|harm|weapon|gun|knife|drug|smoke|beer|alcohol|wine|beat|insult|scold|torture|shoot|destroy|bully|threat|sex|sexual|sexuality)\b/i,
+    /\b(sleep|eating|eat|drink|buying|buy|selling|sell|walk|running|bathroom|wash|shower|clean house|brushing|toilet)\b/i,
+    /\b(recipe|maggi|food|cooking dish|pasta|biryani|cake|tea|coffee|pizza|burger|samosa|momos|icecream|snack|breakfast|lunch|dinner)\b/i,
+    /\b(movie|film|actor|actress|gossip|song|joke|comedy|prank|meme|cinema|trailer|pubg|freefire|ludo|bgmi|fortnite)\b/i,
+    /\b(politics|election|prime minister|president|government|war|news|modi|trump|biden|weather|temperature|rain|climate)\b/i,
+    /\b(dating|gf|bf|girlfriend|boyfriend|love|romance|flirt|breakup|kiss|hug|marry|marriage|relationship)\b/i,
+    /\b(score|ipl|cricket match|football match|match score|match today|fifa)\b/i,
+    /\b(who is|tell me a story|sing a song|say hi|what is your name|hello|hi|how are you|good morning|good night|who made you)\b/i
+];
+
+export const isEducationalSkillTopic = async (topic) => {
+    if (!topic || typeof topic !== "string") return false;
+    const clean = topic.trim();
+    if (clean.length < 2) return false;
+
+    // 1. Fast regex check for harmful, aggressive, violent, or non-skill phrases
+    for (const pattern of NON_SKILL_PATTERNS) {
+        if (pattern.test(clean)) return false;
+    }
+
+    // 2. Canonical skill check
+    const canonical = resolveCanonicalSkill(clean);
+    if (canonical) return true;
+
+    // 3. AI Guardrail check for unrecognized / ambiguous phrases
+    try {
+        const prompt = `Topic: "${clean}"\nIs this a legitimate educational, technical, creative, business, language, music, fitness, photography, or professional skill? Or is it a non-skill phrase, violent/harmful action, casual chat, recipe, or random sentence?`;
+        const systemInstruction = "You are a strict skill validator. Return JSON strictly with key 'isValidSkill' (boolean true or false). Any non-skill, violent action, daily chore, recipe, gossip, or joke MUST return false.";
+        const schema = {
+            type: "object",
+            properties: { isValidSkill: { type: "boolean" } },
+            required: ["isValidSkill"]
+        };
+        const res = await generateStructuredContent(prompt, systemInstruction, schema);
+        if (res && typeof res.isValidSkill === "boolean") {
+            return res.isValidSkill;
+        }
+    } catch {
+        // Fallback for network issues
+    }
+
+    return true;
+};
 
 export const generatePersonalizedRoadmap = asyncHandler(async (req, res) => {
     const { skill, currentLevel, targetLevel, availableTime, duration, learningStyle } = req.body;
-    
+    const userId = req.user?._id || req.user?.id;
+
+    if (!userId) {
+        throw new ApiError(401, "Authentication required to generate roadmap.");
+    }
+
+    if (!skill || !skill.trim()) {
+        throw new ApiError(400, "Failed to generate roadmap");
+    }
+
+    const isValidSkill = await isEducationalSkillTopic(skill);
+    if (!isValidSkill) {
+        throw new ApiError(400, "Failed to generate roadmap");
+    }
+
     const prompt = `Generate a personalized learning roadmap for the following:
 Skill: ${skill}
 Current Level: ${currentLevel}
@@ -599,22 +657,80 @@ Learning Style: ${learningStyle}
 Create a structured week-by-week plan.`;
 
     const systemInstruction = "You are an expert tutor. Generate a highly structured roadmap in JSON format matching the schema exactly.";
-    
-    const roadmapData = await generateStructuredContent(prompt, systemInstruction, roadmapSchema);
-    
-    // Save to DB
+
+    let roadmapData;
+    try {
+        roadmapData = await generateStructuredContent(prompt, systemInstruction, roadmapSchema);
+        if (!roadmapData || !Array.isArray(roadmapData.weeks) || roadmapData.weeks.length === 0) {
+            throw new Error("Invalid roadmap structure");
+        }
+        // Sanitize LLM response to match schema strictly
+        roadmapData.weeks = roadmapData.weeks.map((w, idx) => ({
+            weekNumber: w.weekNumber || idx + 1,
+            focus: w.focus || `Week ${idx + 1} Focus`,
+            tasks: Array.isArray(w.tasks) ? w.tasks.map(t => ({
+                title: typeof t === 'string' ? t : (t.title || 'Task'),
+                description: typeof t === 'object' ? (t.description || '') : '',
+                isCompleted: false
+            })) : []
+        }));
+    } catch (err) {
+        console.warn("AI roadmap generation failed, using structured template fallback:", err.message);
+        roadmapData = {
+            weeks: [
+                {
+                    weekNumber: 1,
+                    focus: `Foundational Knowledge & Environment Setup for ${skill}`,
+                    tasks: [
+                        { title: `Introduction to ${skill}`, description: `Understand core principles, syntax, and foundational concepts of ${skill}.`, isCompleted: false },
+                        { title: "Environment & Tooling", description: `Install required compilers, extensions, dependencies, and set up your workspace.`, isCompleted: false },
+                        { title: "First Hands-on Project", description: `Build a basic 'Hello World' and run fundamental scripts in ${skill}.`, isCompleted: false }
+                    ]
+                },
+                {
+                    weekNumber: 2,
+                    focus: `Core Syntax, Functions & Control Flow in ${skill}`,
+                    tasks: [
+                        { title: "Control Flow & Logic", description: "Master conditionals, loops, functions, and standard error handling.", isCompleted: false },
+                        { title: "Data Structures & State", description: "Learn variables, arrays, objects, maps, and state representation.", isCompleted: false },
+                        { title: "Practice Challenge", description: "Implement 3 small practical exercises solving real-world micro-problems.", isCompleted: false }
+                    ]
+                },
+                {
+                    weekNumber: 3,
+                    focus: `Intermediate Patterns & Architecture in ${skill}`,
+                    tasks: [
+                        { title: "Modular Architecture", description: "Break code into reusable modules, services, components, and clean folders.", isCompleted: false },
+                        { title: "Asynchronous Operations & APIs", description: "Understand async/await, promises, HTTP requests, or event listeners.", isCompleted: false },
+                        { title: "Mini Project", description: "Build a functional mini application incorporating all learned patterns.", isCompleted: false }
+                    ]
+                },
+                {
+                    weekNumber: 4,
+                    focus: `Advanced Topics, Optimization & Capstone Project in ${skill}`,
+                    tasks: [
+                        { title: "Performance Optimization", description: "Analyze bottlenecks, refactor code, and follow industry best practices.", isCompleted: false },
+                        { title: "Testing & Debugging", description: "Write unit/integration tests and debug edge cases efficiently.", isCompleted: false },
+                        { title: "Full Capstone Project", description: "Deploy a complete portfolio-ready project demonstrating ${skill} mastery.", isCompleted: false }
+                    ]
+                }
+            ]
+        };
+    }
+
+    // Save to DB safely
     const newRoadmap = await LearningRoadmap.create({
-        user: req.user._id,
+        user: userId,
         skill,
-        currentLevel,
-        targetLevel,
-        availableTime,
-        duration,
-        learningStyle,
+        currentLevel: currentLevel || "Beginner",
+        targetLevel: targetLevel || "Job-ready",
+        availableTime: availableTime || "1 hour daily",
+        duration: duration || "4 weeks",
+        learningStyle: learningStyle || "Project based",
         weeks: roadmapData.weeks,
         progress: 0
     });
-    
+
     return res.status(201).json({
         success: true,
         message: "Roadmap generated successfully",
@@ -625,15 +741,15 @@ Create a structured week-by-week plan.`;
 export const updateRoadmapProgress = asyncHandler(async (req, res) => {
     const { roadmapId } = req.params;
     const { weekNumber, taskTitle, isCompleted } = req.body;
-    
+
     const roadmap = await LearningRoadmap.findOne({ _id: roadmapId, user: req.user._id });
     if (!roadmap) {
         throw new ApiError(404, "Roadmap not found");
     }
-    
+
     let totalTasks = 0;
     let completedTasks = 0;
-    
+
     for (const week of roadmap.weeks) {
         if (week.weekNumber === weekNumber) {
             for (const task of week.tasks) {
@@ -647,15 +763,15 @@ export const updateRoadmapProgress = asyncHandler(async (req, res) => {
             if (task.isCompleted) completedTasks++;
         }
     }
-    
+
     roadmap.progress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
     await roadmap.save();
-    
+
     const prompt = `User has updated their progress on ${roadmap.skill}. They are now at ${roadmap.progress}% completion. Last task updated: ${taskTitle} (Completed: ${isCompleted}). Based on this, generate an encouraging message and tell them their next focus area.`;
     const systemInstruction = "You are an encouraging AI tutor. Return a structured JSON containing a short message and the next focus.";
-    
+
     const aiResponse = await generateStructuredContent(prompt, systemInstruction, nextFocusSchema);
-    
+
     return res.status(200).json({
         success: true,
         data: {
@@ -669,19 +785,19 @@ export const updateRoadmapProgress = asyncHandler(async (req, res) => {
 export const getDailyPlan = asyncHandler(async (req, res) => {
     const { roadmapId } = req.params;
     const { availableMinutes } = req.body;
-    
+
     const roadmap = await LearningRoadmap.findOne({ _id: roadmapId, user: req.user._id });
     if (!roadmap) {
         throw new ApiError(404, "Roadmap not found");
     }
-    
+
     const currentWeek = roadmap.weeks.find(w => w.tasks.some(t => !t.isCompleted)) || roadmap.weeks[0];
-    
+
     const prompt = `The user is studying ${roadmap.skill} and is on week ${currentWeek.weekNumber} focusing on ${currentWeek.focus}. They have ${availableMinutes} minutes today. Create a daily study plan for them dividing this time between concept learning, coding/practice, and quiz/review.`;
     const systemInstruction = "Return a JSON plan breaking down the available minutes into activities.";
-    
+
     const planData = await generateStructuredContent(prompt, systemInstruction, dailyPlanSchema);
-    
+
     return res.status(200).json({
         success: true,
         data: planData
@@ -690,12 +806,69 @@ export const getDailyPlan = asyncHandler(async (req, res) => {
 
 export const generateQuiz = asyncHandler(async (req, res) => {
     const { topic, numQuestions = 5 } = req.body;
-    
+
+    if (!topic || !topic.trim()) {
+        throw new ApiError(400, "Failed to generate quiz");
+    }
+
+    const isValidSkill = await isEducationalSkillTopic(topic);
+    if (!isValidSkill) {
+        throw new ApiError(400, "Failed to generate quiz");
+    }
+
     const prompt = `Generate a ${numQuestions}-question quiz on the topic: ${topic}. Include a mix of MCQs and coding/text-based questions if applicable. For MCQs provide exactly 4 options. For coding/text questions, provide an empty array for options. Ensure the questions are highly varied and different from common examples (Randomized Seed: ${Math.random().toString(36).substring(7)} - ${Date.now()}).`;
     const systemInstruction = "You are an expert examiner. Return the quiz in the specified JSON format.";
-    
-    const quizData = await generateStructuredContent(prompt, systemInstruction, quizSchema);
-    
+
+    let quizData;
+    try {
+        quizData = await generateStructuredContent(prompt, systemInstruction, quizSchema);
+        if (!quizData || !Array.isArray(quizData.questions) || quizData.questions.length === 0) {
+            throw new Error("Invalid quiz structure returned from AI model");
+        }
+    } catch (err) {
+        console.warn("AI quiz generation failed, using structured template fallback:", err.message);
+        quizData = {
+            questions: [
+                {
+                    type: "MCQ",
+                    questionText: `What is the primary core concept of ${topic}?`,
+                    options: [
+                        `Understanding foundational principles of ${topic}`,
+                        `Using irrelevant unrelated tools`,
+                        `Ignoring syntax and structure`,
+                        `None of the above`
+                    ],
+                    correctAnswer: `Understanding foundational principles of ${topic}`,
+                    explanation: `${topic} relies heavily on its core principles for effective implementation.`
+                },
+                {
+                    type: "MCQ",
+                    questionText: `Which of the following is considered a best practice in ${topic}?`,
+                    options: [
+                        `Writing modular, well-documented code/workflows`,
+                        `Hardcoding static values everywhere`,
+                        `Avoiding testing and validation`,
+                        `Using deprecated features`
+                    ],
+                    correctAnswer: `Writing modular, well-documented code/workflows`,
+                    explanation: `Modularity and documentation ensure long-term maintainability in ${topic}.`
+                },
+                {
+                    type: "MCQ",
+                    questionText: `How do you optimize performance when working with ${topic}?`,
+                    options: [
+                        `By identifying bottlenecks and refactoring inefficient logic`,
+                        `By increasing unnecessary memory usage`,
+                        `By skipping optimization entirely`,
+                        `By disabling caching`
+                    ],
+                    correctAnswer: `By identifying bottlenecks and refactoring inefficient logic`,
+                    explanation: `Identifying bottlenecks and refactoring is key to optimal performance in ${topic}.`
+                }
+            ]
+        };
+    }
+
     return res.status(200).json({
         success: true,
         data: quizData
@@ -703,7 +876,12 @@ export const generateQuiz = asyncHandler(async (req, res) => {
 });
 
 export const saveQuizResult = asyncHandler(async (req, res) => {
-    const { topic, score, totalQuestions, quizData, userAnswers } = req.body;
+    const { id, topic, score, totalQuestions, quizData, userAnswers } = req.body;
+    const userId = req.user?._id || req.user?.id;
+
+    if (!userId) {
+        throw new ApiError(401, "Authentication required.");
+    }
 
     if (!topic || score === undefined || !totalQuestions) {
         throw new ApiError(400, "Topic, score, and totalQuestions are required.");
@@ -711,25 +889,48 @@ export const saveQuizResult = asyncHandler(async (req, res) => {
 
     const percentage = Math.round((score / totalQuestions) * 100);
 
-    const newResult = await QuizResult.create({
-        user: req.user._id,
-        topic,
-        score,
-        totalQuestions,
-        percentage,
-        quizData: quizData || [],
-        userAnswers: userAnswers || {}
-    });
+    let result;
+    if (id && mongoose.Types.ObjectId.isValid(id)) {
+        result = await QuizResult.findOneAndUpdate(
+            { _id: id, user: userId },
+            {
+                topic,
+                score,
+                totalQuestions,
+                percentage,
+                quizData: quizData || [],
+                userAnswers: userAnswers || {}
+            },
+            { new: true }
+        );
+    }
 
-    return res.status(201).json({
+    if (!result) {
+        result = await QuizResult.create({
+            user: userId,
+            topic,
+            score,
+            totalQuestions,
+            percentage,
+            quizData: quizData || [],
+            userAnswers: userAnswers || {}
+        });
+    }
+
+    return res.status(200).json({
         success: true,
         message: "Quiz result saved successfully",
-        data: { quizResult: newResult }
+        data: { quizResult: result }
     });
 });
 
 export const getUserQuizResults = asyncHandler(async (req, res) => {
-    const results = await QuizResult.find({ user: req.user._id })
+    const userId = req.user?._id || req.user?.id;
+    if (!userId) {
+        throw new ApiError(401, "Authentication required.");
+    }
+
+    const results = await QuizResult.find({ user: userId })
         .sort({ createdAt: -1 })
         .lean();
 
@@ -741,8 +942,13 @@ export const getUserQuizResults = asyncHandler(async (req, res) => {
 
 export const deleteQuizResult = asyncHandler(async (req, res) => {
     const { id } = req.params;
+    const userId = req.user?._id || req.user?.id;
 
-    await QuizResult.deleteOne({ _id: id, user: req.user._id });
+    if (!userId) {
+        throw new ApiError(401, "Authentication required.");
+    }
+
+    await QuizResult.deleteOne({ _id: id, user: userId });
 
     return res.status(200).json({
         success: true,
@@ -751,7 +957,13 @@ export const deleteQuizResult = asyncHandler(async (req, res) => {
 });
 
 export const clearAllQuizResults = asyncHandler(async (req, res) => {
-    await QuizResult.deleteMany({ user: req.user._id });
+    const userId = req.user?._id || req.user?.id;
+
+    if (!userId) {
+        throw new ApiError(401, "Authentication required.");
+    }
+
+    await QuizResult.deleteMany({ user: userId });
 
     return res.status(200).json({
         success: true,

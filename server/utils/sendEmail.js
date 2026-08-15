@@ -13,19 +13,25 @@ export const sendEmail = async ({
         throw new Error("Email recipient is required");
     }
 
-    try {
-        const info = await mailTransporter.sendMail({
-            from: {
-                name: env.MAIL_FROM_NAME,
-                address: env.MAIL_FROM_ADDRESS,
-            },
+    const fromName = env.MAIL_FROM_NAME || env.smtp?.fromName || "SkillSwap AI";
+    const fromAddress = env.MAIL_FROM_ADDRESS || env.smtp?.user || process.env.SMTP_USER || "gohilraviiiii012@gmail.com";
 
+    // Auto-generate clean plain text fallback if not provided
+    const plainTextBody = text || (html ? html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim() : "");
+
+    try {
+        const recipientList = Array.isArray(to) ? to : [to];
+        const info = await mailTransporter.sendMail({
+            from: `"${fromName}" <${fromAddress}>`,
             to,
             subject,
-            text,
+            text: plainTextBody,
             html,
-            replyTo,
-
+            replyTo: replyTo || fromAddress,
+            envelope: {
+                from: fromAddress,
+                to: recipientList,
+            },
             headers: {
                 "X-Application": "SkillSwap AI",
             },

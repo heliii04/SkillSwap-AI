@@ -50,7 +50,7 @@ export default function RoadmapViewer({ roadmap, onUpdate }) {
                     <h2 className="text-xl font-bold text-white">Your {roadmap.skill} Roadmap</h2>
                     <div className="text-orange-500 font-bold">{roadmap.progress}% Completed</div>
                 </div>
-                
+
                 {/* Progress Bar */}
                 <div className="w-full bg-[#111111] rounded-full h-2.5 mb-6">
                     <div className="bg-orange-600 h-2.5 rounded-full transition-all duration-500" style={{ width: `${roadmap.progress}%` }}></div>
@@ -70,7 +70,7 @@ export default function RoadmapViewer({ roadmap, onUpdate }) {
                             <div className="space-y-3">
                                 {week.tasks.map((task, idx) => (
                                     <div key={idx} className="flex items-start gap-3 p-3 bg-[#111111] rounded-md">
-                                        <button className="font-bold" 
+                                        <button className="font-bold"
                                             onClick={() => handleToggleTask(week.weekNumber, task.title, task.isCompleted)}
                                             disabled={loadingTask === task.title}
                                             className="mt-1 flex-shrink-0"
@@ -103,14 +103,14 @@ export default function RoadmapViewer({ roadmap, onUpdate }) {
                     <FiCalendar className="text-orange-500" /> Get Daily Plan
                 </h3>
                 <div className="flex gap-4 mb-4">
-                    <input 
-                        type="number" 
+                    <input
+                        type="number"
                         value={availableMins}
                         onChange={(e) => setAvailableMins(Number(e.target.value))}
                         className="bg-[#111111] text-white rounded-md px-4 py-2 focus:outline-none w-32"
                         placeholder="Minutes"
                     />
-                    <button 
+                    <button
                         onClick={handleGetDailyPlan}
                         disabled={loadingPlan}
                         className="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-md transition-colors disabled:opacity-50 font-bold"
@@ -118,7 +118,7 @@ export default function RoadmapViewer({ roadmap, onUpdate }) {
                         {loadingPlan ? "Generating..." : "Generate Plan"}
                     </button>
                 </div>
-                
+
                 {dailyPlan && (
                     <div className="mt-6 space-y-3">
                         <h4 className="text-md font-semibold text-white">Today's Schedule ({dailyPlan.totalMinutes} mins)</h4>

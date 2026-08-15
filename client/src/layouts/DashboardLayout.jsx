@@ -45,11 +45,6 @@ const navigationItems = [
     path: "/dashboard",
     icon: HiOutlineHome,
   },
-  // {
-  //   label: "My Profile",
-  //   path: "/profile",
-  //   icon: HiOutlineUser,
-  // },
   {
     label: "Skills I Teach",
     path: "/skills/teach",
@@ -122,11 +117,6 @@ const adminNavigationItems = [
     label: "Reports & Moderation",
     path: "/admin?section=reports",
     icon: HiOutlineFlag,
-  },
-  {
-    label: "Reported Messages",
-    path: "/admin?section=reported-messages",
-    icon: HiOutlineChatBubbleLeftRight,
   },
   // {
   //   label: "Notifications",

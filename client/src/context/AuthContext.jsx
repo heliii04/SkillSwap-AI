@@ -23,6 +23,7 @@ import axiosClient, {
 import {
     clearAccessToken,
     getAccessToken,
+    hasSessionHint,
     setAccessToken,
 } from "../api/tokenStore";
 
@@ -85,6 +86,11 @@ export function AuthProvider({ children }) {
 
     const restoreSession = useCallback(async () => {
         try {
+            if (!hasSessionHint()) {
+                clearSession();
+                return;
+            }
+
             if (getAccessToken()) {
                 try {
                     await loadCurrentUser();
@@ -103,7 +109,7 @@ export function AuthProvider({ children }) {
     }, [clearSession, loadCurrentUser]);
 
     useEffect(() => {
-        axiosClient.get("/health").catch(() => {});
+        axiosClient.get("/health").catch(() => { });
         restoreSession();
     }, [restoreSession]);
 

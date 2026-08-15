@@ -420,49 +420,49 @@ skillSchema.pre(
 export const CANONICAL_SKILL_MAP = [
     // Design & Creative
     {
-        regex: /^\s*(ui[\/\s\-]*ux(\s*design)?|ux[\/\s\-]*ui|user\s*interface(\s*design)?|ui\s*design|ux\s*design)\s*$/i,
+        regex: /\b(ui[\/\s\-]*ux|ux[\/\s\-]*ui|user\s*interface|user\s*experience|ui\s*design|ux\s*design)\b/i,
         title: "UI/UX Design",
         normalizedTitle: "ui/ux design",
         category: "design"
     },
     {
-        regex: /^\s*(figma|figma\s*design)\s*$/i,
+        regex: /\b(figma|figma\s*design)\b/i,
         title: "Figma",
         normalizedTitle: "figma",
         category: "design"
     },
     {
-        regex: /^\s*(graphic\s*design|graphics\s*design)\s*$/i,
+        regex: /\b(graphic\s*design|graphics\s*design|canva|indesign)\b/i,
         title: "Graphic Design",
         normalizedTitle: "graphic design",
         category: "design"
     },
     {
-        regex: /^\s*(photoshop|adobe\s*photoshop|ps)\s*$/i,
+        regex: /\b(photoshop|adobe\s*photoshop|ps)\b/i,
         title: "Photoshop",
         normalizedTitle: "photoshop",
         category: "design"
     },
     {
-        regex: /^\s*(illustrator|adobe\s*illustrator)\s*$/i,
+        regex: /\b(illustrator|adobe\s*illustrator)\b/i,
         title: "Illustrator",
         normalizedTitle: "illustrator",
         category: "design"
     },
     {
-        regex: /^\s*(web\s*design|website\s*design)\s*$/i,
+        regex: /\b(web\s*design|website\s*design)\b/i,
         title: "Web Design",
         normalizedTitle: "web design",
         category: "design"
     },
     {
-        regex: /^\s*(video\s*editing|video\s*editor|premiere\s*pro|capcut|da\s*vinci)\s*$/i,
+        regex: /\b(video\s*editing|video\s*editor|premiere\s*pro|capcut|da\s*vinci|after\s*effects)\b/i,
         title: "Video Editing",
         normalizedTitle: "video editing",
         category: "design"
     },
     {
-        regex: /^\s*(3d\s*modeling|blender|3ds\s*max|maya)\s*$/i,
+        regex: /\b(3d\s*modeling|blender|3ds\s*max|maya|unreal)\b/i,
         title: "3D Modeling",
         normalizedTitle: "3d modeling",
         category: "design"
@@ -470,97 +470,97 @@ export const CANONICAL_SKILL_MAP = [
 
     // Technology & Programming
     {
-        regex: /^\s*(react|reactjs|react\.js|react\s*js|react\s*native)\s*$/i,
-        title: "React",
-        normalizedTitle: "react",
-        category: "technology"
-    },
-    {
-        regex: /^\s*(node|nodejs|node\.js|node\s*js|express|expressjs|express\.js)\s*$/i,
+        regex: /\b(node|nodejs|node\.js|node\s*js|express|expressjs|express\.js|node\.api|node\s*api)\b/i,
         title: "Node.js",
         normalizedTitle: "node.js",
         category: "technology"
     },
     {
-        regex: /^\s*(python|python3|python\s*3|py)\s*$/i,
+        regex: /\b(react|reactjs|react\.js|react\s*js|react\s*native)\b/i,
+        title: "React",
+        normalizedTitle: "react",
+        category: "technology"
+    },
+    {
+        regex: /\b(python|python3|python\s*3|py|django|flask|fastapi)\b/i,
         title: "Python",
         normalizedTitle: "python",
         category: "technology"
     },
     {
-        regex: /^\s*(js|javascript|java\s*script|es6)\s*$/i,
+        regex: /\b(javascript|java\s*script|js|es6|es2015|vanilla\s*js)\b/i,
         title: "JavaScript",
         normalizedTitle: "javascript",
         category: "technology"
     },
     {
-        regex: /^\s*(ts|typescript|type\s*script)\s*$/i,
+        regex: /\b(typescript|type\s*script|ts)\b/i,
         title: "TypeScript",
         normalizedTitle: "typescript",
         category: "technology"
     },
     {
-        regex: /^\s*(java|core\s*java|java\s*8|java\s*programming)\s*$/i,
+        regex: /\b(java|core\s*java|java\s*8|springboot|spring\s*boot)\b/i,
         title: "Java",
         normalizedTitle: "java",
         category: "technology"
     },
     {
-        regex: /^\s*(c\+\+|cpp|c\s*plus\s*plus)\s*$/i,
+        regex: /\b(c\+\+|cpp|c\s*plus\s*plus)\b/i,
         title: "C++",
         normalizedTitle: "c++",
         category: "technology"
     },
     {
-        regex: /^\s*(c\#|csharp|c\s*sharp)\s*$/i,
+        regex: /\b(c\#|csharp|c\s*sharp|\.net|dotnet)\b/i,
         title: "C#",
         normalizedTitle: "c#",
         category: "technology"
     },
     {
-        regex: /^\s*(php|php7|php8|laravel)\s*$/i,
+        regex: /\b(php|php7|php8|laravel|wordpress)\b/i,
         title: "PHP",
         normalizedTitle: "php",
         category: "technology"
     },
     {
-        regex: /^\s*(go|golang)\s*$/i,
+        regex: /\b(go|golang|go\s*lang)\b/i,
         title: "Go",
         normalizedTitle: "go",
         category: "technology"
     },
     {
-        regex: /^\s*(rust|rustlang|rust\s*lang)\s*$/i,
+        regex: /\b(rust|rustlang)\b/i,
         title: "Rust",
         normalizedTitle: "rust",
         category: "technology"
     },
     {
-        regex: /^\s*(sql|mysql|postgres|postgresql|mongodb|mongo|database|db)\s*$/i,
+        regex: /\b(sql|mysql|postgres|postgresql|mongodb|mongo|database|db|redis|oracle)\b/i,
         title: "SQL & Databases",
         normalizedTitle: "sql & databases",
         category: "technology"
     },
     {
-        regex: /^\s*(html|css|html5|css3|html[\/\s]*css|tailwind|bootstrap)\s*$/i,
+        regex: /\b(html|css|html5|css3|html[\/\s]*css|tailwind|tailwindcss|bootstrap|sass|scss)\b/i,
         title: "HTML & CSS",
         normalizedTitle: "html & css",
         category: "technology"
     },
     {
-        regex: /^\s*(ai|ml|ai\s*\&\s*ml|ai[\/\s]*ml|machine\s*learning|artificial\s*intelligence|deep\s*learning|data\s*science)\s*$/i,
+        regex: /\b(ai|ml|ai\s*\&\s*ml|ai[\/\s]*ml|machine\s*learning|artificial\s*intelligence|deep\s*learning|data\s*science|tensorflow|pytorch)\b/i,
         title: "AI & Machine Learning",
         normalizedTitle: "ai & machine learning",
         category: "technology"
     },
     {
-        regex: /^\s*(aws|docker|kubernetes|devops|cloud|azure|gcp)\s*$/i,
+        regex: /\b(aws|docker|kubernetes|k8s|devops|cloud|azure|gcp|terraform)\b/i,
         title: "Cloud & DevOps",
         normalizedTitle: "cloud & devops",
         category: "technology"
     },
     {
-        regex: /^\s*(flutter|android|ios|swift|kotlin|mobile\s*app\s*dev)\s*$/i,
+        regex: /\b(flutter|android|ios|swift|kotlin|mobile\s*app)\b/i,
         title: "Mobile App Development",
         normalizedTitle: "mobile app development",
         category: "technology"
@@ -568,31 +568,31 @@ export const CANONICAL_SKILL_MAP = [
 
     // Business & Management
     {
-        regex: /^\s*(project\s*management|pmp|agile|scrum)\s*$/i,
+        regex: /\b(project\s*management|pmp|agile|scrum|jira)\b/i,
         title: "Project Management",
         normalizedTitle: "project management",
         category: "business"
     },
     {
-        regex: /^\s*(product\s*management|product\s*manager)\s*$/i,
+        regex: /\b(product\s*management|product\s*manager|product\s*owner)\b/i,
         title: "Product Management",
         normalizedTitle: "product management",
         category: "business"
     },
     {
-        regex: /^\s*(business\s*analytics|data\s*analytics|excel|power\s*bi|tableau)\s*$/i,
+        regex: /\b(business\s*analytics|data\s*analytics|excel|power\s*bi|tableau)\b/i,
         title: "Business Analytics",
         normalizedTitle: "business analytics",
         category: "business"
     },
     {
-        regex: /^\s*(entrepreneurship|startup|business\s*development)\s*$/i,
+        regex: /\b(entrepreneurship|startup|business\s*development)\b/i,
         title: "Entrepreneurship",
         normalizedTitle: "entrepreneurship",
         category: "business"
     },
     {
-        regex: /^\s*(finance|accounting|bookkeeping|tally|stock\s*market)\s*$/i,
+        regex: /\b(finance|accounting|bookkeeping|tally|stock\s*market|trading)\b/i,
         title: "Finance & Accounting",
         normalizedTitle: "finance & accounting",
         category: "business"
@@ -600,31 +600,31 @@ export const CANONICAL_SKILL_MAP = [
 
     // Marketing & Communication
     {
-        regex: /^\s*(digital\s*marketing|online\s*marketing)\s*$/i,
+        regex: /\b(digital\s*marketing|online\s*marketing|performance\s*marketing)\b/i,
         title: "Digital Marketing",
         normalizedTitle: "digital marketing",
         category: "marketing"
     },
     {
-        regex: /^\s*(seo|search\s*engine\s*optimization|content\s*marketing)\s*$/i,
+        regex: /\b(seo|search\s*engine\s*optimization|content\s*marketing)\b/i,
         title: "SEO & Content Marketing",
         normalizedTitle: "seo & content marketing",
         category: "marketing"
     },
     {
-        regex: /^\s*(social\s*media|smm|instagram\s*marketing|facebook\s*ads)\s*$/i,
+        regex: /\b(social\s*media|smm|instagram\s*marketing|facebook\s*ads)\b/i,
         title: "Social Media Marketing",
         normalizedTitle: "social media marketing",
         category: "marketing"
     },
     {
-        regex: /^\s*(public\s*speaking|communication\s*skills|presentation)\s*$/i,
+        regex: /\b(public\s*speaking|communication\s*skills|presentation)\b/i,
         title: "Public Speaking",
         normalizedTitle: "public speaking",
         category: "marketing"
     },
     {
-        regex: /^\s*(copywriting|content\s*writing)\s*$/i,
+        regex: /\b(copywriting|content\s*writing|technical\s*writing)\b/i,
         title: "Copywriting",
         normalizedTitle: "copywriting",
         category: "marketing"
@@ -632,37 +632,37 @@ export const CANONICAL_SKILL_MAP = [
 
     // Languages
     {
-        regex: /^\s*(english|spoken\s*english|english\s*grammar|ielts|toefl)\s*$/i,
+        regex: /\b(english|spoken\s*english|english\s*grammar|ielts|toefl)\b/i,
         title: "English",
         normalizedTitle: "english",
         category: "languages"
     },
     {
-        regex: /^\s*(spanish|espanol)\s*$/i,
+        regex: /\b(spanish|espanol)\b/i,
         title: "Spanish",
         normalizedTitle: "spanish",
         category: "languages"
     },
     {
-        regex: /^\s*(french|francais)\s*$/i,
+        regex: /\b(french|francais)\b/i,
         title: "French",
         normalizedTitle: "french",
         category: "languages"
     },
     {
-        regex: /^\s*(german|deutsch)\s*$/i,
+        regex: /\b(german|deutsch)\b/i,
         title: "German",
         normalizedTitle: "german",
         category: "languages"
     },
     {
-        regex: /^\s*(hindi|spoken\s*hindi)\s*$/i,
+        regex: /\b(hindi|spoken\s*hindi)\b/i,
         title: "Hindi",
         normalizedTitle: "hindi",
         category: "languages"
     },
     {
-        regex: /^\s*(japanese|nihongo)\s*$/i,
+        regex: /\b(japanese|nihongo)\b/i,
         title: "Japanese",
         normalizedTitle: "japanese",
         category: "languages"
@@ -670,31 +670,31 @@ export const CANONICAL_SKILL_MAP = [
 
     // Music & Arts
     {
-        regex: /^\s*(guitar|acoustic\s*guitar|electric\s*guitar)\s*$/i,
+        regex: /\b(guitar|acoustic\s*guitar|electric\s*guitar|ukulele)\b/i,
         title: "Guitar",
         normalizedTitle: "guitar",
         category: "music"
     },
     {
-        regex: /^\s*(piano|keyboard)\s*$/i,
+        regex: /\b(piano|keyboard)\b/i,
         title: "Piano",
         normalizedTitle: "piano",
         category: "music"
     },
     {
-        regex: /^\s*(singing|vocal|vocals)\s*$/i,
+        regex: /\b(singing|vocal|vocals)\b/i,
         title: "Singing",
         normalizedTitle: "singing",
         category: "music"
     },
     {
-        regex: /^\s*(music\s*production|fl\s*studio|ableton|logic\s*pro)\s*$/i,
+        regex: /\b(music\s*production|fl\s*studio|ableton|logic\s*pro)\b/i,
         title: "Music Production",
         normalizedTitle: "music production",
         category: "music"
     },
     {
-        regex: /^\s*(drawing|painting|sketching|digital\s*art)\s*$/i,
+        regex: /\b(drawing|painting|sketching|digital\s*art)\b/i,
         title: "Drawing & Art",
         normalizedTitle: "drawing & art",
         category: "music"
@@ -702,25 +702,25 @@ export const CANONICAL_SKILL_MAP = [
 
     // Fitness & Lifestyle
     {
-        regex: /^\s*(yoga|meditation|mindfulness)\s*$/i,
+        regex: /\b(yoga|meditation|mindfulness|pranayama)\b/i,
         title: "Yoga & Meditation",
         normalizedTitle: "yoga & meditation",
         category: "fitness"
     },
     {
-        regex: /^\s*(fitness|gym|weight\s*training|calisthenics)\s*$/i,
+        regex: /\b(fitness|gym|weight\s*training|calisthenics|workout)\b/i,
         title: "Fitness & Gym Training",
         normalizedTitle: "fitness & gym training",
         category: "fitness"
     },
     {
-        regex: /^\s*(cooking|baking|culinary)\s*$/i,
+        regex: /\b(cooking|baking|culinary|chef)\b/i,
         title: "Cooking & Baking",
         normalizedTitle: "cooking & baking",
         category: "lifestyle"
     },
     {
-        regex: /^\s*(photography|photo\s*editing|lightroom)\s*$/i,
+        regex: /\b(photography|photo\s*editing|lightroom)\b/i,
         title: "Photography",
         normalizedTitle: "photography",
         category: "photography"

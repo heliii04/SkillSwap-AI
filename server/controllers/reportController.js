@@ -8,6 +8,7 @@ import Notification from "../models/Notification.js";
 import { sendEmail } from "../utils/sendEmail.js";
 import { ApiError } from "../utils/ApiError.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
+import { baseEmailLayout } from "../templates/baseEmailLayout.js";
 
 /**
  * Submit a report for a user, skill, or chat message
@@ -147,21 +148,27 @@ export const updateReportStatus = asyncHandler(async (req, res) => {
                 await sendEmail({
                     to: report.reportedUser.email,
                     subject: `[SkillSwap AI Safety Team] Warning: Policy Violation Notice`,
-                    html: `
-                        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #0d0e15; color: #ffffff; padding: 24px; border-radius: 16px; border: 1px solid rgba(245,158,11,0.3);">
-                            <h2 style="color: #f59e0b; margin-top: 0;">Official Community Guideline Warning</h2>
-                            <p style="color: #e2e8f0; font-size: 15px;">Hello ${report.reportedUser.name},</p>
-                            <p style="color: #cbd5e1; font-size: 14px; line-height: 1.6;">
+                    html: baseEmailLayout({
+                        title: "Official Warning Notice",
+                        preheader: "Official Community Guideline Warning Notice",
+                        bodyHtml: `
+                            <h2 style="margin: 0 0 16px 0; font-size: 20px; font-weight: 700; color: #f59e0b;">
+                                Community Guideline Warning
+                            </h2>
+                            <p style="margin: 0 0 16px 0; font-size: 15px; color: #cbd5e1;">
+                                Hello <strong style="color: #ffffff;">${report.reportedUser.name}</strong>,
+                            </p>
+                            <p style="margin: 0 0 16px 0; font-size: 14px; color: #94a3b8; line-height: 1.6;">
                                 Our safety and moderation team has reviewed a report regarding your activity on SkillSwap AI. This email serves as an official warning notice.
                             </p>
-                            <div style="background: rgba(245,158,11,0.1); padding: 16px; border-radius: 12px; margin: 16px 0; border-left: 4px solid #f59e0b;">
-                                <p style="margin: 0; font-size: 14px; color: #fde68a;"><strong>Warning Details:</strong> ${notes || "Adhere to platform guidelines and maintain respectful communication with all members."}</p>
+                            <div style="background: rgba(245,158,11,0.08); border-left: 4px solid #f59e0b; border-radius: 12px; padding: 20px; margin: 20px 0; color: #fde68a; font-size: 14px; line-height: 1.6;">
+                                <strong style="color: #f59e0b;">Warning Details:</strong> ${notes || "Adhere to platform guidelines and maintain respectful communication with all members."}
                             </div>
-                            <p style="color: #94a3b8; font-size: 13px;">Repeated policy violations may result in temporary or permanent account suspension.</p>
-                            <hr style="border: none; border-top: 1px solid rgba(255,255,255,0.1); margin: 20px 0;" />
-                            <p style="color: #64748b; font-size: 12px; margin: 0;">SkillSwap AI Safety & Moderation Team</p>
-                        </div>
-                    `
+                            <p style="margin: 0; font-size: 13px; color: #64748b; line-height: 1.5;">
+                                Repeated policy violations may result in temporary or permanent account suspension.
+                            </p>
+                        `
+                    })
                 });
             } catch (warnMailErr) {
                 console.error("Could not send warning email:", warnMailErr.message);
@@ -177,19 +184,27 @@ export const updateReportStatus = asyncHandler(async (req, res) => {
                 await sendEmail({
                     to: report.reportedUser.email,
                     subject: `[SkillSwap AI Safety Team] Important: Account Moderation Notice`,
-                    html: `
-                        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #0d0e15; color: #ffffff; padding: 24px; border-radius: 16px; border: 1px solid rgba(239,68,68,0.3);">
-                            <h2 style="color: #ef4444; margin-top: 0;">Account Moderation Notice</h2>
-                            <p style="color: #e2e8f0; font-size: 15px;">Hello ${report.reportedUser.name},</p>
-                            <p style="color: #cbd5e1; font-size: 14px; line-height: 1.6;">
-                                Your SkillSwap AI account status has been updated to <strong>Suspended</strong> following a safety & policy violation review.
+                    html: baseEmailLayout({
+                        title: "Account Moderation Notice",
+                        preheader: "Important Account Status Moderation Notice",
+                        bodyHtml: `
+                            <h2 style="margin: 0 0 16px 0; font-size: 20px; font-weight: 700; color: #ef4444;">
+                                Account Moderation Notice
+                            </h2>
+                            <p style="margin: 0 0 16px 0; font-size: 15px; color: #cbd5e1;">
+                                Hello <strong style="color: #ffffff;">${report.reportedUser.name}</strong>,
                             </p>
-                            <div style="background: rgba(239,68,68,0.1); padding: 16px; border-radius: 12px; margin: 16px 0; border-left: 4px solid #ef4444;">
-                                <p style="margin: 0; font-size: 14px; color: #fca5a5;"><strong>Reason:</strong> ${notes || `Violation report #${report._id}`}</p>
+                            <p style="margin: 0 0 16px 0; font-size: 14px; color: #94a3b8; line-height: 1.6;">
+                                Your SkillSwap AI account status has been updated to <strong style="color: #ef4444;">Suspended</strong> following a safety & policy violation review.
+                            </p>
+                            <div style="background: rgba(239,68,68,0.08); border-left: 4px solid #ef4444; border-radius: 12px; padding: 20px; margin: 20px 0; color: #fca5a5; font-size: 14px; line-height: 1.6;">
+                                <strong style="color: #ef4444;">Reason:</strong> ${notes || `Violation report #${report._id}`}
                             </div>
-                            <p style="color: #94a3b8; font-size: 13px;">If you believe this is an error or wish to appeal, please contact support@skillswap.ai.</p>
-                        </div>
-                    `
+                            <p style="margin: 0; font-size: 13px; color: #64748b; line-height: 1.5;">
+                                If you believe this is an error or wish to appeal, please contact support@skillswap.ai.
+                            </p>
+                        `
+                    })
                 });
             } catch (userMailErr) {
                 console.error("Could not send suspension notice email:", userMailErr.message);
@@ -209,29 +224,35 @@ export const updateReportStatus = asyncHandler(async (req, res) => {
         if (reporterEmail) {
             const isDismissed = targetStatus === "dismissed";
             const subjectHeader = isDismissed ? "Report Review - Dismissed" : "Report Review - Resolved";
-            const statusColor = isDismissed ? "#94a3b8" : "#38bdf8";
+            const statusColor = isDismissed ? "#94a3b8" : "#ff5a00";
 
             try {
                 await sendEmail({
                     to: reporterEmail,
                     subject: `[SkillSwap AI Safety Team] Report #${report._id.toString().slice(-6)} ${subjectHeader}`,
-                    html: `
-                        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #0d0e15; color: #ffffff; padding: 24px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.1);">
-                            <h2 style="color: #f97316; margin-top: 0;">SkillSwap AI Moderation Update</h2>
-                            <p style="color: #e2e8f0; font-size: 15px;">Hello,</p>
-                            <p style="color: #cbd5e1; font-size: 14px; line-height: 1.6;">
-                                Your report ticket regarding <strong>${report.targetType}</strong> (Reason: <em>${report.reason.replace("_", " ")}</em>) has been reviewed and processed by our moderation team.
+                    html: baseEmailLayout({
+                        title: "Moderation Ticket Update",
+                        preheader: `Report update: ${targetStatus.toUpperCase()}`,
+                        bodyHtml: `
+                            <h2 style="margin: 0 0 16px 0; font-size: 20px; font-weight: 700; color: #ffffff;">
+                                Moderation Status Update
+                            </h2>
+                            <p style="margin: 0 0 16px 0; font-size: 15px; color: #cbd5e1;">
+                                Hello,
                             </p>
-                            <div style="background: rgba(255,255,255,0.05); padding: 16px; border-radius: 12px; margin: 16px 0; border-left: 4px solid ${isDismissed ? '#64748b' : '#f97316'};">
-                                <p style="margin: 0 0 8px 0; font-size: 14px;"><strong>Status:</strong> <span style="color: ${statusColor};">${targetStatus.toUpperCase()}</span></p>
-                                <p style="margin: 0 0 8px 0; font-size: 14px;"><strong>Action Taken:</strong> ${targetAction}</p>
-                                ${notes ? `<p style="margin: 0; font-size: 14px;"><strong>Moderation Notes:</strong> ${notes}</p>` : ""}
+                            <p style="margin: 0 0 16px 0; font-size: 14px; color: #94a3b8; line-height: 1.6;">
+                                Your report ticket regarding <strong style="color: #ffffff;">${report.targetType}</strong> (Reason: <em>${report.reason.replace("_", " ")}</em>) has been reviewed and processed by our moderation team.
+                            </p>
+                            <div style="background: rgba(255,255,255,0.04); border-left: 4px solid ${isDismissed ? '#64748b' : '#ff5a00'}; border-radius: 12px; padding: 20px; margin: 20px 0; color: #cbd5e1; font-size: 14px; line-height: 1.6;">
+                                <p style="margin: 0 0 8px 0;"><strong style="color: #ffffff;">Status:</strong> <span style="color: ${statusColor}; font-weight: 700;">${targetStatus.toUpperCase()}</span></p>
+                                <p style="margin: 0 0 8px 0;"><strong style="color: #ffffff;">Action Taken:</strong> ${targetAction}</p>
+                                ${notes ? `<p style="margin: 0;"><strong style="color: #ffffff;">Moderation Notes:</strong> ${notes}</p>` : ""}
                             </div>
-                            <p style="color: #94a3b8; font-size: 13px;">Thank you for helping keep SkillSwap AI safe and respectful for everyone.</p>
-                            <hr style="border: none; border-top: 1px solid rgba(255,255,255,0.1); margin: 20px 0;" />
-                            <p style="color: #64748b; font-size: 12px; margin: 0;">SkillSwap AI Safety & Moderation Team</p>
-                        </div>
-                    `
+                            <p style="margin: 0; font-size: 13px; color: #64748b; line-height: 1.5;">
+                                Thank you for helping keep SkillSwap AI safe and respectful for everyone.
+                            </p>
+                        `
+                    })
                 });
             } catch (repMailErr) {
                 console.error("Could not send status update email to reporter:", repMailErr.message);

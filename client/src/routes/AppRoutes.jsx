@@ -60,7 +60,6 @@ const AdminUsers = lazyWithRetry(() => import("../pages/admin/AdminUsers"));
 const AdminSwaps = lazyWithRetry(() => import("../pages/admin/AdminSwaps"));
 const AdminSupport = lazyWithRetry(() => import("../pages/admin/AdminSupport"));
 const AdminReports = lazyWithRetry(() => import("../pages/admin/AdminReports"));
-const AdminReportedMessages = lazyWithRetry(() => import("../pages/admin/AdminReportedMessages"));
 const AdminAnalytics = lazyWithRetry(() => import("../pages/admin/AdminAnalytics"));
 const AdminAuditLogs = lazyWithRetry(() => import("../pages/admin/AdminAuditLogs"));
 
@@ -129,7 +128,6 @@ export default function AppRoutes() {
                             <Route path="/admin/swaps" element={<AdminSwaps />} />
                             <Route path="/admin/support" element={<AdminSupport />} />
                             <Route path="/admin/reports" element={<AdminReports />} />
-                            <Route path="/admin/reported-messages" element={<AdminReportedMessages />} />
                             <Route path="/admin/analytics" element={<AdminAnalytics />} />
                             <Route path="/admin/audit-logs" element={<AdminAuditLogs />} />
                         </Route>

@@ -225,18 +225,17 @@ export default function AIChatbox() {
                                 className="fixed inset-0 z-40"
                                 onClick={() => setMenuOpen(false)}
                             />
-                            <div className="absolute right-0 top-11 z-50 min-w-40 rounded-xl border border-white/10 bg-[#12131a] p-1.5 shadow-2xl backdrop-blur-xl animate-fade-in space-y-1">
+                            <div className="absolute right-0 top-11 z-50 min-w-[175px] rounded-xl border border-white/10 bg-[#12131a] p-1.5 shadow-2xl backdrop-blur-xl animate-fade-in space-y-1">
                                 <button
                                     type="button"
                                     onClick={() => {
                                         setMenuOpen(false);
                                         startNewChat();
                                     }}
-                                    className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-xs font-bold text-gray-300 transition hover:bg-white/5 hover:text-white"
+                                    className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-xs font-bold text-gray-300 transition hover:bg-white/5 hover:text-white whitespace-nowrap"
                                 >
                                     <FiPlus className="text-sm text-orange-400" />
-                                    
-                                New Chat
+                                    New Chat
                                 </button>
                                 <button
                                     type="button"
@@ -244,7 +243,7 @@ export default function AIChatbox() {
                                         setMenuOpen(false);
                                         openHistory();
                                     }}
-                                    className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-xs font-bold text-gray-300 transition hover:bg-white/5 hover:text-white"
+                                    className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-xs font-bold text-gray-300 transition hover:bg-white/5 hover:text-white whitespace-nowrap"
                                 >
                                     <FiClock className="text-sm text-orange-400" />
                                     History

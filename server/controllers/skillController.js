@@ -1,4 +1,4 @@
-import Skill from "../models/Skill.js";
+import Skill, { resolveCanonicalSkill } from "../models/Skill.js";
 
 const sanitizeTags = (tags = []) => {
     return [
@@ -108,10 +108,12 @@ export const createTeachSkill = async (
     next
 ) => {
     try {
-        const normalizedTitle =
-            createNormalizedTitle(
-                req.body.title
-            );
+        const canonical = resolveCanonicalSkill(req.body.title);
+        const titleToUse = canonical ? canonical.title : req.body.title.trim();
+        const normalizedTitle = canonical
+            ? canonical.normalizedTitle
+            : createNormalizedTitle(req.body.title);
+        const categoryToUse = canonical ? canonical.category : req.body.category;
 
         const existingSkill =
             await Skill.findOne({
@@ -133,13 +135,11 @@ export const createTeachSkill = async (
                 owner: req.user._id,
                 type: "teach",
 
-                title:
-                    req.body.title.trim(),
+                title: titleToUse,
 
                 normalizedTitle,
 
-                category:
-                    req.body.category,
+                category: categoryToUse,
 
                 level:
                     req.body.level,
@@ -358,10 +358,12 @@ export const createLearnSkill = async (
     next
 ) => {
     try {
-        const normalizedTitle =
-            createNormalizedTitle(
-                req.body.title
-            );
+        const canonical = resolveCanonicalSkill(req.body.title);
+        const titleToUse = canonical ? canonical.title : req.body.title.trim();
+        const normalizedTitle = canonical
+            ? canonical.normalizedTitle
+            : createNormalizedTitle(req.body.title);
+        const categoryToUse = canonical ? canonical.category : req.body.category;
 
         const existingSkill =
             await Skill.findOne({
@@ -383,13 +385,11 @@ export const createLearnSkill = async (
                 owner: req.user._id,
                 type: "learn",
 
-                title:
-                    req.body.title.trim(),
+                title: titleToUse,
 
                 normalizedTitle,
 
-                category:
-                    req.body.category,
+                category: categoryToUse,
 
                 currentLevel:
                     req.body.currentLevel,

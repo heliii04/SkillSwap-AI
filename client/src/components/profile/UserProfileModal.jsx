@@ -21,47 +21,63 @@ const getMatchBadgeStyle = (score) => {
     return "border-white/20 bg-white/5 text-white/60";
 };
 
-export default function UserProfileModal({ userId, matchScore, onClose }) {
+export default function UserProfileModal({
+    userId,
+    matchScore,
+    onClose,
+    autoOpenSwap = false,
+    initialUser = null,
+    initialMatch = null
+}) {
     const navigate = useNavigate();
     useLockBodyScroll();
-    const [user, setUser] = useState(null);
-    const [teachSkills, setTeachSkills] = useState([]);
+
+    const initialTeach = initialMatch?.theyTeach
+        ? [{ _id: initialMatch.theyTeach._id || initialMatch.theyTeach.id, title: initialMatch.theyTeach.title }]
+        : [];
+    const initialMyTeach = initialMatch?.youTeach
+        ? [{ _id: initialMatch.youTeach._id || initialMatch.youTeach.id, title: initialMatch.youTeach.title }]
+        : [];
+
+    const [user, setUser] = useState(initialUser);
+    const [teachSkills, setTeachSkills] = useState(initialTeach);
     const [learnSkills, setLearnSkills] = useState([]);
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(autoOpenSwap ? false : !initialUser);
     const [imageError, setImageError] = useState(false);
     const [isConnected, setIsConnected] = useState(false);
     const [chatId, setChatId] = useState(null);
     const [hasPendingRequest, setHasPendingRequest] = useState(false);
 
     // Swap request states
-    const [isRequestingSwap, setIsRequestingSwap] = useState(false);
-    const [myTeachSkills, setMyTeachSkills] = useState([]);
+    const [isRequestingSwap, setIsRequestingSwap] = useState(autoOpenSwap);
+    const [myTeachSkills, setMyTeachSkills] = useState(initialMyTeach);
     const [swapFormData, setSwapFormData] = useState({
-        senderSkillId: "",
-        receiverSkillId: "",
+        senderSkillId: initialMyTeach[0]?._id || initialMyTeach[0]?.id || "",
+        receiverSkillId: initialTeach[0]?._id || initialTeach[0]?.id || "",
         message: ""
     });
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const handleOpenSwapForm = async () => {
+    const handleOpenSwapForm = async (targetTeachSkills = teachSkills) => {
         try {
-            setLoading(true);
+            if (myTeachSkills.length === 0) setLoading(true);
             const res = await axiosClient.get("/skills/teach");
             const mySkills = res.data?.data?.skills || [];
 
-            if (mySkills.length === 0) {
+            if (mySkills.length === 0 && !myTeachSkills.length) {
                 toast.warning("You must add at least one 'Teach Skill' in your profile before sending a match request.", { toastId: "no-skills" });
                 onClose();
                 navigate("/my-profile");
                 return;
             }
 
-            setMyTeachSkills(mySkills);
-            setSwapFormData({
-                senderSkillId: mySkills[0]?._id || mySkills[0]?.id || "",
-                receiverSkillId: teachSkills.length > 0 ? (teachSkills[0]._id || teachSkills[0].id) : "",
-                message: ""
-            });
+            const activeMySkills = mySkills.length > 0 ? mySkills : myTeachSkills;
+            setMyTeachSkills(activeMySkills);
+            setSwapFormData((prev) => ({
+                ...prev,
+                senderSkillId: prev.senderSkillId || activeMySkills[0]?._id || activeMySkills[0]?.id || "",
+                receiverSkillId: prev.receiverSkillId || (targetTeachSkills.length > 0 ? (targetTeachSkills[0]._id || targetTeachSkills[0].id) : "")
+            }));
             setIsRequestingSwap(true);
         } catch (error) {
             toast.error("Failed to fetch your skills.");
@@ -102,26 +118,51 @@ export default function UserProfileModal({ userId, matchScore, onClose }) {
         if (!userId) return;
 
         let isMounted = true;
-        setLoading(true);
+        if (!initialUser && !autoOpenSwap) {
+            setLoading(true);
+        }
 
-        axiosClient
-            .get(`/profile/user/${userId}`)
-            .then((res) => {
+        Promise.all([
+            axiosClient.get(`/profile/user/${userId}`),
+            axiosClient.get("/skills/teach").catch(() => ({ data: { data: { skills: [] } } }))
+        ])
+            .then(([res, mySkillsRes]) => {
                 if (isMounted) {
-                    setUser(res.data?.data?.user);
-                    setTeachSkills(res.data?.data?.teachSkills || []);
+                    const fetchedUser = res.data?.data?.user;
+                    const fetchedTeach = res.data?.data?.teachSkills || [];
+                    const mySkills = mySkillsRes.data?.data?.skills || [];
+
+                    setUser(fetchedUser);
+                    setTeachSkills(fetchedTeach);
                     setLearnSkills(res.data?.data?.learnSkills || []);
                     setIsConnected(res.data?.data?.isConnected || false);
                     setChatId(res.data?.data?.chatId || null);
                     setHasPendingRequest(res.data?.data?.hasPendingRequest || false);
+
+                    if (autoOpenSwap && mySkills.length === 0 && !initialMyTeach.length) {
+                        toast.warning("You must add at least one 'Teach Skill' in your profile before sending a match request.", { toastId: "no-skills" });
+                        onClose();
+                        navigate("/my-profile");
+                        return;
+                    }
+
+                    const activeMySkills = mySkills.length > 0 ? mySkills : initialMyTeach;
+                    setMyTeachSkills(activeMySkills);
+                    setSwapFormData((prev) => ({
+                        ...prev,
+                        senderSkillId: prev.senderSkillId || activeMySkills[0]?._id || activeMySkills[0]?.id || "",
+                        receiverSkillId: prev.receiverSkillId || (fetchedTeach.length > 0 ? (fetchedTeach[0]._id || fetchedTeach[0].id) : "")
+                    }));
                 }
             })
             .catch((err) => {
-                toast.error(
-                    err?.response?.data?.message || "User profile could not be loaded.",
-                    { toastId: "profile-error" }
-                );
-                onClose();
+                if (!initialUser) {
+                    toast.error(
+                        err?.response?.data?.message || "User profile could not be loaded.",
+                        { toastId: "profile-error" }
+                    );
+                    onClose();
+                }
             })
             .finally(() => {
                 if (isMounted) {
@@ -132,7 +173,7 @@ export default function UserProfileModal({ userId, matchScore, onClose }) {
         return () => {
             isMounted = false;
         };
-    }, [userId, onClose]);
+    }, [userId, onClose, autoOpenSwap, navigate, initialUser]);
 
     if (!userId) return null;
 
@@ -368,8 +409,11 @@ export default function UserProfileModal({ userId, matchScore, onClose }) {
                     <button
                         type="button"
                         onClick={() => {
-                            if (isRequestingSwap) setIsRequestingSwap(false);
-                            else onClose();
+                            if (isRequestingSwap && !autoOpenSwap) {
+                                setIsRequestingSwap(false);
+                            } else {
+                                onClose();
+                            }
                         }}
                         className="rounded-xl border border-white/5 bg-[#171821] px-6 py-3 text-[14px] text-white/60 hover:bg-white/5 hover:text-white transition font-bold"
                     >

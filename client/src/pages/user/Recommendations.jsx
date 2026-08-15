@@ -33,6 +33,8 @@ export default function Recommendations() {
     const [drafting, setDrafting] = useState(null);
     const [selectedUserId, setSelectedUserId] = useState(null);
     const [selectedUserScore, setSelectedUserScore] = useState(null);
+    const [selectedMatch, setSelectedMatch] = useState(null);
+    const [autoOpenSwap, setAutoOpenSwap] = useState(false);
 
     const { data = {}, isLoading: loading, refetch } = useRecommendationsQuery(20);
 
@@ -278,8 +280,13 @@ export default function Recommendations() {
                                         <>
                                             <button 
                                                 type="button"
-                                                onClick={() => navigate("/search")}
-                                                className="inline-flex items-center gap-2 rounded-full bg-orange-500 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-orange-400"
+                                                onClick={() => {
+                                                    setSelectedUserId(match.user.id);
+                                                    setSelectedUserScore(match.score);
+                                                    setSelectedMatch(match);
+                                                    setAutoOpenSwap(true);
+                                                }}
+                                                className="inline-flex items-center gap-2 rounded-full bg-orange-500 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-orange-400 font-bold"
                                             >
                                                 Send swap request
                                                 <HiOutlineArrowRight className="animate-arrow-move"  />
@@ -290,8 +297,10 @@ export default function Recommendations() {
                                                 onClick={() => {
                                                     setSelectedUserId(match.user.id);
                                                     setSelectedUserScore(match.score);
+                                                    setSelectedMatch(match);
+                                                    setAutoOpenSwap(false);
                                                 }}
-                                                className="inline-flex items-center gap-2 rounded-full border border-white/15 px-5 py-2.5 text-sm font-semibold text-white transition hover:border-white/35"
+                                                className="inline-flex items-center gap-2 rounded-full border border-white/15 px-5 py-2.5 text-sm font-semibold text-white transition hover:border-white/35 font-bold"
                                             >
                                                 View details
                                                 <HiOutlineArrowRight className="animate-arrow-move"  />
@@ -308,9 +317,14 @@ export default function Recommendations() {
                     <UserProfileModal
                         userId={selectedUserId}
                         matchScore={selectedUserScore}
+                        autoOpenSwap={autoOpenSwap}
+                        initialUser={selectedMatch?.user}
+                        initialMatch={selectedMatch}
                         onClose={() => {
                             setSelectedUserId(null);
                             setSelectedUserScore(null);
+                            setSelectedMatch(null);
+                            setAutoOpenSwap(false);
                         }}
                     />
                 )}

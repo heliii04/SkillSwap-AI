@@ -4,6 +4,7 @@ import { sendEmail } from "../utils/sendEmail.js";
 import { queueContactEmail } from "../services/email.service.js";
 import { ApiError } from "../utils/ApiError.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
+import { baseEmailLayout } from "../templates/baseEmailLayout.js";
 
 // @desc    Submit a new contact inquiry
 // @route   POST /api/contact
@@ -49,15 +50,25 @@ export const submitContactInquiry = asyncHandler(async (req, res) => {
     queueContactEmail({
         to: process.env.SUPPORT_EMAIL || "support@skillswap.ai",
         subject: `[New Support Ticket] - ${subject}`,
-        html: `
-            <h2>New Support Inquiry Received</h2>
-            <p><strong>Name:</strong> ${name}</p>
-            <p><strong>Email:</strong> ${email}</p>
-            <p><strong>Category:</strong> ${category}</p>
-            <p><strong>Subject:</strong> ${subject}</p>
-            <p><strong>Message:</strong></p>
-            <p>${message.replace(/\n/g, "<br>")}</p>
-        `,
+        html: baseEmailLayout({
+            title: "New Support Inquiry Received",
+            preheader: `New ticket from ${name}: ${subject}`,
+            bodyHtml: `
+                <h2 style="margin: 0 0 16px 0; font-size: 20px; font-weight: 700; color: #ffffff;">
+                    New Support Inquiry Received
+                </h2>
+                <div style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); padding: 20px; border-radius: 16px; margin-bottom: 20px;">
+                    <p style="margin: 0 0 8px 0; font-size: 14px; color: #cbd5e1;"><strong style="color: #ffffff;">Name:</strong> ${name}</p>
+                    <p style="margin: 0 0 8px 0; font-size: 14px; color: #cbd5e1;"><strong style="color: #ffffff;">Email:</strong> ${email}</p>
+                    <p style="margin: 0 0 8px 0; font-size: 14px; color: #cbd5e1;"><strong style="color: #ffffff;">Category:</strong> ${category}</p>
+                    <p style="margin: 0; font-size: 14px; color: #cbd5e1;"><strong style="color: #ffffff;">Subject:</strong> ${subject}</p>
+                </div>
+                <h3 style="margin: 0 0 8px 0; font-size: 15px; font-weight: 600; color: #ff5a00;">Message Content:</h3>
+                <div style="background: rgba(255,90,0,0.05); border-left: 4px solid #ff5a00; padding: 16px; border-radius: 8px; color: #e2e8f0; font-size: 14px; line-height: 1.6;">
+                    ${message.replace(/\n/g, "<br>")}
+                </div>
+            `
+        }),
     });
 
     res.status(201).json({
@@ -150,19 +161,27 @@ export const updateInquiryStatus = asyncHandler(async (req, res) => {
             await sendEmail({
                 to: inquiry.email,
                 subject: `Re: ${inquiry.subject} - Support Ticket Resolved`,
-                html: `
-                    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #0d0e15; color: #ffffff; padding: 24px; border-radius: 16px; border: 1px solid rgba(249,115,22,0.3);">
-                        <h2 style="color: #f97316; margin-top: 0;">SkillSwap AI Support Team Response</h2>
-                        <p style="color: #e2e8f0; font-size: 15px;">Hello ${inquiry.name},</p>
-                        <p style="color: #cbd5e1; font-size: 14px; line-height: 1.6;">Our support team has reviewed and responded to your inquiry:</p>
-                        <blockquote style="border-left: 4px solid #f97316; padding-left: 15px; margin: 15px 0; color: #e2e8f0; background: rgba(255,255,255,0.05); padding: 12px; border-radius: 8px;">
+                html: baseEmailLayout({
+                    title: "Support Ticket Response",
+                    preheader: `Re: ${inquiry.subject}`,
+                    bodyHtml: `
+                        <h2 style="margin: 0 0 16px 0; font-size: 20px; font-weight: 700; color: #ff5a00;">
+                            Support Team Response
+                        </h2>
+                        <p style="margin: 0 0 16px 0; font-size: 15px; color: #cbd5e1;">
+                            Hello <strong style="color: #ffffff;">${inquiry.name}</strong>,
+                        </p>
+                        <p style="margin: 0 0 16px 0; font-size: 14px; color: #94a3b8; line-height: 1.6;">
+                            Our support team has reviewed and responded to your inquiry regarding <strong>"${inquiry.subject}"</strong>:
+                        </p>
+                        <div style="background: rgba(255,90,0,0.06); border-left: 4px solid #ff5a00; border-radius: 12px; padding: 20px; margin: 20px 0; color: #ffffff; font-size: 15px; line-height: 1.7;">
                             ${messageToSend.replace(/\n/g, "<br>")}
-                        </blockquote>
-                        <p style="color: #94a3b8; font-size: 13px;">If you have further questions, feel free to reply to this email or submit a new inquiry on SkillSwap AI.</p>
-                        <hr style="border: none; border-top: 1px solid rgba(255,255,255,0.1); margin: 20px 0;" />
-                        <p style="color: #64748b; font-size: 12px; margin: 0;">Best regards,<br /><strong>SkillSwap AI Support Team</strong></p>
-                    </div>
-                `,
+                        </div>
+                        <p style="margin: 20px 0 0 0; font-size: 13px; color: #64748b; line-height: 1.5;">
+                            If you have further questions, feel free to reply to this email or submit a new inquiry on SkillSwap AI.
+                        </p>
+                    `
+                }),
             });
         } catch (mailError) {
             console.error("Could not send reply email to user:", mailError.message);

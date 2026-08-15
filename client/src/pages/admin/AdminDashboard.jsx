@@ -5,7 +5,6 @@ import AdminSkills from "./AdminSkills";
 import AdminSwaps from "./AdminSwaps";
 import AdminSupport from "./AdminSupport";
 import AdminReports from "./AdminReports";
-import AdminReportedMessages from "./AdminReportedMessages";
 import AdminAnalytics from "./AdminAnalytics";
 import AdminAuditLogs from "./AdminAuditLogs";
 
@@ -26,8 +25,6 @@ export default function AdminDashboard() {
                 return <AdminSupport />;
             case "reports":
                 return <AdminReports />;
-            case "reported-messages":
-                return <AdminReportedMessages />;
             case "analytics":
                 return <AdminAnalytics />;
             case "audit-logs":
