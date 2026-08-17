@@ -86,6 +86,10 @@ export function sanitizeProfile(user) {
         isEmailVerified:
             user.isEmailVerified,
 
+        rating: user.rating || 0,
+        reviews: user.reviews || 0,
+        sessions: user.sessions || 0,
+
         createdAt: user.createdAt,
 
         updatedAt: user.updatedAt,

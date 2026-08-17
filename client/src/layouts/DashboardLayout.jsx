@@ -285,11 +285,11 @@ export default function DashboardLayout() {
     if (!token || !user || user.role === "admin") return;
 
     const API_URL =
-        import.meta.env.VITE_API_BASE_URL ||
-        import.meta.env.VITE_API_URL ||
-        (typeof window !== "undefined" && window.location.hostname === "localhost"
-            ? "http://localhost:5000/api/v1"
-            : "https://skillswap-ai-8ill.onrender.com/api/v1");
+      import.meta.env.VITE_API_BASE_URL ||
+      import.meta.env.VITE_API_URL ||
+      (typeof window !== "undefined" && window.location.hostname === "localhost"
+        ? "http://localhost:5000/api/v1"
+        : "https://skillswap-ai-8ill.onrender.com/api/v1");
     const socketHost = API_URL.replace(/\/api\/v1\/?$/, "").replace(/\/api\/?$/, "");
 
     const socket = io(socketHost, {
@@ -370,7 +370,23 @@ export default function DashboardLayout() {
       }
     });
 
+    socket.on("notifications_cleared", () => {
+      axiosClient.get("/notifications").then((res) => {
+        const list = res.data?.data?.notifications || [];
+        setUnreadNotificationsCount(list.filter((n) => !n.isRead).length);
+      }).catch(() => { });
+    });
+
+    socket.on("user_rating_updated", (data) => {
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("user_rating_updated", { detail: data }));
+      }
+    });
+
     return () => {
+      socket.off("new_notification");
+      socket.off("notifications_cleared");
+      socket.off("user_rating_updated");
       socket.disconnect();
     };
   }, [user, navigate]);

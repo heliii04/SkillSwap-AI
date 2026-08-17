@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 import Skill from "../models/Skill.js";
 import User from "../models/User.js";
 import SwapRequest from "../models/SwapRequest.js";
+import Review from "../models/Review.js";
 
 import {
     arraySimilarity,
@@ -292,11 +293,12 @@ const formatSkillRef = (skill) => ({
     tags: skill.tags || [],
 });
 
-const formatUserRef = (user) => ({
+const formatUserRef = (user, dynamicSessions = null, dynamicReviewData = null) => ({
     id: user._id,
     name: user.name,
     headline: user.headline,
-    avatar: user.avatar?.url || null,
+    bio: user.bio || "",
+    avatar: user.avatar?.url || (typeof user.avatar === "string" ? user.avatar : null),
 
     location: [user.location?.city, user.location?.country]
         .filter(Boolean)
@@ -304,6 +306,9 @@ const formatUserRef = (user) => ({
 
     profileCompletion: user.profileCompletion || 0,
     isEmailVerified: Boolean(user.isEmailVerified),
+    rating: dynamicReviewData ? dynamicReviewData.rating : (user.rating || 0),
+    reviews: dynamicReviewData ? dynamicReviewData.reviews : (user.reviews || 0),
+    sessions: dynamicSessions !== null ? dynamicSessions : (user.sessions || 0),
 });
 
 /**
@@ -405,12 +410,17 @@ export const findMatchesForUser = async (
         ),
     ];
 
-    const candidateUsers = await User.find({
+    const rawCandidateUsers = await User.find({
         _id: {
             $in: candidateUserIds,
         },
         accountStatus: "active",
+        role: { $ne: "admin" },
     }).lean();
+
+    const candidateUsers = rawCandidateUsers.filter(
+        (u) => u.role !== "admin" && u._id.toString() !== "static_admin_id" && u.email !== (process.env.ADMIN_USERNAME || "admin").toLowerCase()
+    );
 
     const usersById = new Map(
         candidateUsers.map((user) => [user._id.toString(), user])
@@ -431,6 +441,46 @@ export const findMatchesForUser = async (
                 : req.sender.toString()
         )
     );
+
+    const allAcceptedSwaps = await SwapRequest.find({
+        status: "accepted",
+        $or: [
+            { sender: { $in: candidateUserIds } },
+            { receiver: { $in: candidateUserIds } }
+        ]
+    }).select("sender receiver").lean();
+
+    const sessionMap = new Map();
+    allAcceptedSwaps.forEach((swap) => {
+        if (swap.sender) {
+            const s = swap.sender.toString();
+            sessionMap.set(s, (sessionMap.get(s) || 0) + 1);
+        }
+        if (swap.receiver) {
+            const r = swap.receiver.toString();
+            sessionMap.set(r, (sessionMap.get(r) || 0) + 1);
+        }
+    });
+
+    const candidateReviewStats = await Review.aggregate([
+        { $match: { targetUser: { $in: candidateUserIds } } },
+        {
+            $group: {
+                _id: "$targetUser",
+                avgRating: { $avg: "$rating" },
+                totalReviews: { $sum: 1 }
+            }
+        }
+    ]);
+    const reviewMap = new Map();
+    candidateReviewStats.forEach((r) => {
+        if (r._id) {
+            reviewMap.set(r._id.toString(), {
+                rating: Math.round(r.avgRating * 10) / 10,
+                reviews: r.totalReviews
+            });
+        }
+    });
 
     const skillsByOwner = candidateSkills.reduce((map, skill) => {
         const ownerId = skill.owner.toString();
@@ -559,7 +609,7 @@ export const findMatchesForUser = async (
         );
 
         matches.push({
-            user: formatUserRef(candidate),
+            user: formatUserRef(candidate, sessionMap.get(ownerId) || 0, reviewMap.get(ownerId) || null),
             score: Math.round(finalScore * 100),
             mutual: isMutual,
             isRelatedMatch: Boolean(bestIncoming.isRelatedMatch),

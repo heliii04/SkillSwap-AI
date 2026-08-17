@@ -804,6 +804,50 @@ export const getDailyPlan = asyncHandler(async (req, res) => {
     });
 });
 
+export const getUserRoadmaps = asyncHandler(async (req, res) => {
+    const roadmaps = await LearningRoadmap.find({ user: req.user._id })
+        .sort({ updatedAt: -1 })
+        .lean();
+
+    const formatted = roadmaps.map((r) => ({
+        id: r._id.toString(),
+        roadmap: r,
+        updatedAt: r.updatedAt,
+    }));
+
+    return res.status(200).json({
+        success: true,
+        data: {
+            sessions: formatted,
+        },
+    });
+});
+
+export const deleteUserRoadmap = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+
+    await LearningRoadmap.deleteOne({
+        _id: id,
+        user: req.user._id,
+    });
+
+    return res.status(200).json({
+        success: true,
+        message: "Roadmap deleted successfully",
+    });
+});
+
+export const clearAllUserRoadmaps = asyncHandler(async (req, res) => {
+    await LearningRoadmap.deleteMany({
+        user: req.user._id,
+    });
+
+    return res.status(200).json({
+        success: true,
+        message: "All roadmaps cleared successfully",
+    });
+});
+
 export const generateQuiz = asyncHandler(async (req, res) => {
     const { topic, numQuestions = 5 } = req.body;
 

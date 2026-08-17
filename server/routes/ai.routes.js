@@ -13,6 +13,9 @@ import {
     deleteAiChatSession,
     clearAllAiChatHistory,
     generatePersonalizedRoadmap,
+    getUserRoadmaps,
+    deleteUserRoadmap,
+    clearAllUserRoadmaps,
     updateRoadmapProgress,
     getDailyPlan,
     generateQuiz,
@@ -37,6 +40,9 @@ router.post("/suggest-skills", aiLimiter, suggestSkillsFromBio);
 
 // Fix: Put specific roadmap routes before parameter routes
 router.post("/roadmap/generate", aiLimiter, generatePersonalizedRoadmap);
+router.get("/roadmap/history", getUserRoadmaps);
+router.delete("/roadmap/history/:id", deleteUserRoadmap);
+router.delete("/roadmap/history", clearAllUserRoadmaps);
 
 router.get("/roadmap/:requestId", getSwapRoadmap);
 router.post("/roadmap/:requestId", aiLimiter, createSwapRoadmap);

@@ -96,6 +96,21 @@ export const generateRoadmap = async (data) => {
     return response.data;
 };
 
+export const fetchRoadmapHistory = async () => {
+    const response = await axiosClient.get("/ai/roadmap/history");
+    return response.data;
+};
+
+export const deleteRoadmapApi = async (id) => {
+    const response = await axiosClient.delete(`/ai/roadmap/history/${id}`);
+    return response.data;
+};
+
+export const clearAllRoadmapsApi = async () => {
+    const response = await axiosClient.delete("/ai/roadmap/history");
+    return response.data;
+};
+
 export const updateRoadmapProgress = async (roadmapId, weekNumber, taskTitle, isCompleted) => {
     const response = await axiosClient.patch(`/ai/roadmap/${roadmapId}/progress`, {
         weekNumber,

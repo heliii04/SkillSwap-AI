@@ -177,36 +177,39 @@ export default function Search() {
                         matchMap.set(m.user.id.toString(), m.score);
                     });
 
-                    const dynamicMentors = res.data.data.map(user => {
-                        const userId = user.id || user._id || Math.random().toString();
+                    const dynamicMentors = res.data.data
+                        .filter(user => user.role !== "admin" && user.name !== "System Admin" && user.headline !== "System Administrator")
+                        .map(user => {
+                            const userId = user.id || user._id || Math.random().toString();
 
-                        let score = matchMap.get(userId.toString());
-                        if (!score) {
-                            const charCodeSum = userId.toString().split("").reduce((sum, char) => sum + char.charCodeAt(0), 0);
-                            score = 40 + (charCodeSum % 30);
-                        }
+                            let score = matchMap.get(userId.toString());
+                            if (!score) {
+                                const charCodeSum = userId.toString().split("").reduce((sum, char) => sum + char.charCodeAt(0), 0);
+                                score = 40 + (charCodeSum % 30);
+                            }
 
-                        return {
-                            id: userId,
-                            name: user.name,
-                            initials: user.name ? user.name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2) : "U",
-                            avatar: user.avatar,
-                            role: user.headline || "",
-                            location: user.location?.city ? `${user.location.city}${user.location.country ? `, ${user.location.country}` : ""}` : "Online",
-                            rating: user.rating || 0,
-                            reviews: user.reviews || 0,
-                            completedSessions: user.sessions || 0,
-                            matchPercentage: score,
-                            verified: user.isEmailVerified,
-                            availability: "Available",
-                            mode: user.mode || "online",
-                            level: user.level || "all",
-                            category: user.category || "all",
-                            teaches: user.teaches || [],
-                            wants: user.wants || [],
-                            bio: user.bio || "",
-                        }
-                    });
+                            return {
+                                id: userId,
+                                name: user.name,
+                                initials: user.name ? user.name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2) : "U",
+                                avatar: user.avatar,
+                                role: user.headline || "",
+                                location: user.location?.city ? `${user.location.city}${user.location.country ? `, ${user.location.country}` : ""}` : "Online",
+                                rating: user.rating || 0,
+                                reviews: user.reviews || 0,
+                                completedSessions: user.sessions || 0,
+                                matchPercentage: score,
+                                isConnected: Boolean(user.isConnected),
+                                verified: user.isEmailVerified,
+                                availability: "Available",
+                                mode: user.mode || "online",
+                                level: user.level || "all",
+                                category: user.category || "all",
+                                teaches: user.teaches || [],
+                                wants: user.wants || [],
+                                bio: user.bio || "",
+                            }
+                        });
                     setMentors(dynamicMentors);
                 }
             })
@@ -218,7 +221,43 @@ export default function Search() {
                 if (isMounted) setLoading(false);
             });
 
-        return () => { isMounted = false; };
+        return () => {
+            isMounted = false;
+        };
+    }, []);
+
+    useEffect(() => {
+        const handleRatingUpdate = (e) => {
+            const { userId: updatedId, rating, reviews } = e.detail || {};
+            if (!updatedId) return;
+            setMentors((prev) =>
+                prev.map((m) => {
+                    if (m.id && m.id.toString() === updatedId.toString()) {
+                        return {
+                            ...m,
+                            rating,
+                            reviews,
+                        };
+                    }
+                    return m;
+                })
+            );
+            setSelectedMentor((prev) => {
+                if (prev && prev.id && prev.id.toString() === updatedId.toString()) {
+                    return {
+                        ...prev,
+                        rating,
+                        reviews,
+                    };
+                }
+                return prev;
+            });
+        };
+
+        window.addEventListener("user_rating_updated", handleRatingUpdate);
+        return () => {
+            window.removeEventListener("user_rating_updated", handleRatingUpdate);
+        };
     }, []);
 
     const [
@@ -527,6 +566,7 @@ export default function Search() {
                 <UserProfileModal
                     userId={selectedMentor.id}
                     matchScore={selectedMentor.matchPercentage}
+                    initialUser={selectedMentor}
                     onClose={() => setSelectedMentor(null)}
                 />
             )}
@@ -593,15 +633,14 @@ function MentorCard({
                         </p>
                     )}
 
-                    <div className="mt-2 flex items-center gap-1.5 text-xs text-white/30">
-                        <HiOutlineMapPin />
-
-                        <span>
-                            {
-                                mentor.location
-                            }
-                        </span>
-                    </div>
+                    {mentor.location && mentor.location !== "Online" && mentor.location.trim() !== "" && (
+                        <div className="mt-2 flex items-center gap-1.5 text-xs text-white/30">
+                            <HiOutlineMapPin />
+                            <span>
+                                {mentor.location}
+                            </span>
+                        </div>
+                    )}
                 </div>
 
                 <MatchBadge
@@ -805,8 +844,8 @@ function SelectFilter({
                                     type="button"
                                     onClick={() => handleSelect(option.value)}
                                     className={`font-bold flex w-full items-center px-4 py-3 text-left text-sm transition duration-150 hover:bg-orange-500/10 hover:text-orange-400 ${isSelected
-                                            ? "bg-orange-500/5 text-orange-400"
-                                            : "text-white/80"
+                                        ? "bg-orange-500/5 text-orange-400"
+                                        : "text-white/80"
                                         }`}
                                 >
                                     {option.label}

@@ -828,13 +828,12 @@ function ProfileSummary({
                     }
                 />
 
-                <SummaryItem
-                    icon={HiOutlineMapPin}
-                    text={
-                        location ||
-                        "Location not added"
-                    }
-                />
+                {location ? (
+                    <SummaryItem
+                        icon={HiOutlineMapPin}
+                        text={location}
+                    />
+                ) : null}
 
                 <SummaryItem
                     icon={HiOutlineBriefcase}

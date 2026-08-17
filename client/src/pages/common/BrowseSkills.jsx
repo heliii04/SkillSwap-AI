@@ -68,6 +68,8 @@ export default function BrowseSkills() {
 
     const filteredSkills = useMemo(() => {
         return skillsData.filter((skill) => {
+            if (skill.teacher?.name === "System Admin" || skill.role === "admin") return false;
+
             const normalizedSearch = searchTerm.toLowerCase().trim();
 
             const matchesSearch =
@@ -552,7 +554,7 @@ function SkillCard({ skill, onViewProfile }) {
                 <div className="flex items-center gap-2">
                     <FiMapPin className="shrink-0 text-orange-400" />
                     <span>
-                        {skill.mode} · {skill.location}
+                        {skill.mode}{skill.location && skill.location !== "Unknown" ? ` · ${skill.location}` : ""}
                     </span>
                 </div>
 

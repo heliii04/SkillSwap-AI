@@ -19,6 +19,7 @@ import notificationRoutes from "./routes/notification.routes.js";
 import contactRoutes from "./routes/contact.routes.js";
 import adminRoutes from "./routes/adminRoutes.js";
 import reportRoutes from "./routes/report.routes.js";
+import reviewRoutes from "./routes/review.routes.js";
 
 import {
     errorHandler,
@@ -168,6 +169,9 @@ app.use("/api/matches", matchRoutes);
 
 app.use("/api/v1/ai", aiRoutes);
 app.use("/api/ai", aiRoutes);
+
+app.use("/api/v1/reviews", reviewRoutes);
+app.use("/api/reviews", reviewRoutes);
 
 app.use("/api/v1/contact", contactRoutes);
 app.use("/api/contact", contactRoutes);

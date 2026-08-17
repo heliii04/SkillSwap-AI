@@ -38,7 +38,8 @@ export default function Recommendations() {
 
     const { data = {}, isLoading: loading, refetch } = useRecommendationsQuery(20);
 
-    const matches = Array.isArray(data) ? data : (data.matches || []);
+    const rawMatches = Array.isArray(data) ? data : (data.matches || []);
+    const matches = rawMatches.filter(m => m.user?.role !== "admin" && m.user?.name !== "System Admin");
     const hasTeachSkills = Boolean(data.hasTeachSkills);
     const hasLearnSkills = Boolean(data.hasLearnSkills);
     const hasAddedSkills = hasTeachSkills && hasLearnSkills;
@@ -46,6 +47,20 @@ export default function Recommendations() {
     const refresh = () => {
         refetch();
     };
+
+    useEffect(() => {
+        const handleRatingUpdate = (e) => {
+            const { userId: updatedId } = e.detail || {};
+            if (updatedId) {
+                refetch();
+            }
+        };
+
+        window.addEventListener("user_rating_updated", handleRatingUpdate);
+        return () => {
+            window.removeEventListener("user_rating_updated", handleRatingUpdate);
+        };
+    }, [refetch]);
 
     const draftMessage = async (match) => {
         setDrafting(match.user.id);
@@ -63,7 +78,7 @@ export default function Recommendations() {
         } catch (error) {
             toast.error(
                 error?.response?.data?.message ||
-                    "Message suggestion could not be generated."
+                "Message suggestion could not be generated."
             );
         } finally {
             setDrafting(null);
@@ -141,7 +156,7 @@ export default function Recommendations() {
                                 </button>
                             ) : (
                                 <>
-                                    <button 
+                                    <button
                                         type="button"
                                         onClick={() => navigate("/skills/teach")}
                                         className="rounded-full bg-orange-500 px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-orange-400"
@@ -149,7 +164,7 @@ export default function Recommendations() {
                                         Add a skill I teach
                                     </button>
 
-                                    <button 
+                                    <button
                                         type="button"
                                         onClick={() => navigate("/skills/learn")}
                                         className="rounded-full border border-white/15 px-6 py-2.5 text-sm font-semibold text-white transition hover:border-white/35"
@@ -255,7 +270,7 @@ export default function Recommendations() {
                                 <footer className="mt-5 flex flex-wrap gap-3 border-t border-white/10 pt-4">
                                     {match.isConnected ? (
                                         <>
-                                            <button 
+                                            <button
                                                 type="button"
                                                 onClick={() => navigate("/messages")}
                                                 className="inline-flex items-center gap-2 rounded-full bg-orange-500 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-orange-400"
@@ -264,21 +279,22 @@ export default function Recommendations() {
                                                 <HiOutlineChatBubbleLeftRight />
                                             </button>
 
-                                            <button 
+                                            <button
                                                 type="button"
                                                 onClick={() => {
                                                     setSelectedUserId(match.user.id);
                                                     setSelectedUserScore(match.score);
+                                                    setSelectedMatch(match);
                                                 }}
                                                 className="inline-flex items-center gap-2 rounded-full border border-white/15 px-5 py-2.5 text-sm font-semibold text-white transition hover:border-white/35"
                                             >
                                                 View details
-                                                <HiOutlineArrowRight className="animate-arrow-move"  />
+                                                <HiOutlineArrowRight className="animate-arrow-move" />
                                             </button>
                                         </>
                                     ) : (
                                         <>
-                                            <button 
+                                            <button
                                                 type="button"
                                                 onClick={() => {
                                                     setSelectedUserId(match.user.id);
@@ -289,10 +305,10 @@ export default function Recommendations() {
                                                 className="inline-flex items-center gap-2 rounded-full bg-orange-500 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-orange-400 font-bold"
                                             >
                                                 Send swap request
-                                                <HiOutlineArrowRight className="animate-arrow-move"  />
+                                                <HiOutlineArrowRight className="animate-arrow-move" />
                                             </button>
 
-                                            <button 
+                                            <button
                                                 type="button"
                                                 onClick={() => {
                                                     setSelectedUserId(match.user.id);
@@ -303,7 +319,7 @@ export default function Recommendations() {
                                                 className="inline-flex items-center gap-2 rounded-full border border-white/15 px-5 py-2.5 text-sm font-semibold text-white transition hover:border-white/35 font-bold"
                                             >
                                                 View details
-                                                <HiOutlineArrowRight className="animate-arrow-move"  />
+                                                <HiOutlineArrowRight className="animate-arrow-move" />
                                             </button>
                                         </>
                                     )}
@@ -312,13 +328,13 @@ export default function Recommendations() {
                         ))}
                     </div>
                 )}
-                
+
                 {selectedUserId && (
                     <UserProfileModal
                         userId={selectedUserId}
                         matchScore={selectedUserScore}
                         autoOpenSwap={autoOpenSwap}
-                        initialUser={selectedMatch?.user}
+                        initialUser={selectedMatch ? { ...selectedMatch.user, isConnected: selectedMatch.isConnected } : null}
                         initialMatch={selectedMatch}
                         onClose={() => {
                             setSelectedUserId(null);

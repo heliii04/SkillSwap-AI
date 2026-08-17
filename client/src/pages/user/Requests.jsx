@@ -9,7 +9,9 @@ import { useNavigate } from "react-router-dom";
 import { getAccessToken } from "../../api/tokenStore";
 import axiosClient from "../../api/axiosClient";
 import useLockBodyScroll from "../../hooks/useLockBodyScroll";
+import RatingStarStrip from "../../components/common/RatingStarStrip";
 
+import { toast } from "react-toastify";
 import {
     HiOutlineAcademicCap,
     HiOutlineArrowRight,
@@ -21,6 +23,7 @@ import {
     HiOutlineMapPin,
     HiOutlinePaperAirplane,
     HiOutlineSparkles,
+    HiOutlineStar,
     HiOutlineUserGroup,
     HiOutlineXMark,
 } from "react-icons/hi2";
@@ -28,12 +31,12 @@ import {
 const formatAvailability = (availability) => {
     if (!availability) return "Flexible";
     if (typeof availability === "string") return availability;
-    
+
     const timeSlot = availability.timeSlot ? availability.timeSlot.charAt(0).toUpperCase() + availability.timeSlot.slice(1) : "";
-    const days = availability.days && availability.days.length > 0 
-        ? availability.days.map(d => d.charAt(0).toUpperCase() + d.slice(1)).join(", ") 
+    const days = availability.days && availability.days.length > 0
+        ? availability.days.map(d => d.charAt(0).toUpperCase() + d.slice(1)).join(", ")
         : "";
-        
+
     if (timeSlot && days) {
         return `${timeSlot} (${days})`;
     }
@@ -137,51 +140,61 @@ export default function Requests() {
                 const sentData = sentRes.data;
 
                 const receivedReqs = (receivedData?.data?.requests || []).map(req => ({
-                        ...req,
-                        direction: "incoming",
-                        user: {
-                            name: req.sender?.name || "User",
-                            initials: req.sender?.name 
-                                ? req.sender.name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)
-                                : "U",
-                            role: req.sender?.headline || "",
-                            location: req.sender?.location 
-                                ? [req.sender.location.city, req.sender.location.country].filter(Boolean).join(", ")
-                                : "Unknown Location",
-                            verified: true,
-                        },
-                        offeredSkill: req.senderSkill || { title: "None", level: "" },
-                        requestedSkill: req.receiverSkill || { title: "None", level: "" },
-                        mode: req.senderSkill?.teachingMode || "online",
-                        preferredTime: formatAvailability(req.senderSkill?.availability)
-                    }));
+                    ...req,
+                    direction: "incoming",
+                    user: {
+                        id: req.sender?._id || req.sender?.id || req.sender,
+                        _id: req.sender?._id || req.sender?.id || req.sender,
+                        name: req.sender?.name || "User",
+                        avatar: req.sender?.avatar?.url || (typeof req.sender?.avatar === "string" ? req.sender.avatar : null),
+                        rating: req.sender?.rating || 0,
+                        reviews: req.sender?.reviews || 0,
+                        initials: req.sender?.name
+                            ? req.sender.name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)
+                            : "U",
+                        role: req.sender?.headline || "",
+                        location: req.sender?.location
+                            ? [req.sender.location.city, req.sender.location.country].filter(Boolean).join(", ")
+                            : "Unknown Location",
+                        verified: true,
+                    },
+                    offeredSkill: req.senderSkill || { title: "None", level: "" },
+                    requestedSkill: req.receiverSkill || { title: "None", level: "" },
+                    mode: req.senderSkill?.teachingMode || "online",
+                    preferredTime: formatAvailability(req.senderSkill?.availability)
+                }));
 
-                    const sentReqs = (sentData?.data?.requests || []).map(req => ({
-                        ...req,
-                        direction: "sent",
-                        user: {
-                            name: req.receiver?.name || "User",
-                            initials: req.receiver?.name 
-                                ? req.receiver.name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)
-                                : "U",
-                            role: req.receiver?.headline || "",
-                            location: req.receiver?.location 
-                                ? [req.receiver.location.city, req.receiver.location.country].filter(Boolean).join(", ")
-                                : "Unknown Location",
-                            verified: true,
-                        },
-                        offeredSkill: req.senderSkill || { title: "None", level: "" },
-                        requestedSkill: req.receiverSkill || { title: "None", level: "" },
-                        mode: req.receiverSkill?.teachingMode || "online",
-                        preferredTime: formatAvailability(req.receiverSkill?.availability)
-                    }));
+                const sentReqs = (sentData?.data?.requests || []).map(req => ({
+                    ...req,
+                    direction: "sent",
+                    user: {
+                        id: req.receiver?._id || req.receiver?.id || req.receiver,
+                        _id: req.receiver?._id || req.receiver?.id || req.receiver,
+                        name: req.receiver?.name || "User",
+                        avatar: req.receiver?.avatar?.url || (typeof req.receiver?.avatar === "string" ? req.receiver.avatar : null),
+                        rating: req.receiver?.rating || 0,
+                        reviews: req.receiver?.reviews || 0,
+                        initials: req.receiver?.name
+                            ? req.receiver.name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)
+                            : "U",
+                        role: req.receiver?.headline || "",
+                        location: req.receiver?.location
+                            ? [req.receiver.location.city, req.receiver.location.country].filter(Boolean).join(", ")
+                            : "Unknown Location",
+                        verified: true,
+                    },
+                    offeredSkill: req.senderSkill || { title: "None", level: "" },
+                    requestedSkill: req.receiverSkill || { title: "None", level: "" },
+                    mode: req.receiverSkill?.teachingMode || "online",
+                    preferredTime: formatAvailability(req.receiverSkill?.availability)
+                }));
 
-                    const merged = [...receivedReqs, ...sentReqs].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+                const merged = [...receivedReqs, ...sentReqs].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
-                    if (isMounted) {
-                        setRequests(merged);
-                        setLoading(false);
-                    }
+                if (isMounted) {
+                    setRequests(merged);
+                    setLoading(false);
+                }
             } catch (err) {
                 console.error("Error fetching requests:", err);
                 if (isMounted) {
@@ -193,6 +206,34 @@ export default function Requests() {
         fetchRequests();
         return () => {
             isMounted = false;
+        };
+    }, []);
+
+    useEffect(() => {
+        const handleRatingUpdate = (e) => {
+            const { userId: updatedId, rating, reviews } = e.detail || {};
+            if (!updatedId) return;
+            setRequests((prev) =>
+                prev.map((req) => {
+                    const reqUserId = req.user?.id || req.user?._id;
+                    if (reqUserId && reqUserId.toString() === updatedId.toString()) {
+                        return {
+                            ...req,
+                            user: {
+                                ...req.user,
+                                rating,
+                                reviews,
+                            },
+                        };
+                    }
+                    return req;
+                })
+            );
+        };
+
+        window.addEventListener("user_rating_updated", handleRatingUpdate);
+        return () => {
+            window.removeEventListener("user_rating_updated", handleRatingUpdate);
         };
     }, []);
 
@@ -631,8 +672,8 @@ function RequestTabs({
                             )
                         }
                         className={`font-bold shrink-0 rounded-xl px-4 py-2.5 text-sm font-semibold transition ${active
-                                ? "bg-orange-500 text-black"
-                                : "border border-white/10 bg-[#090a0f] text-white/40 hover:border-orange-500/30 hover:text-white"
+                            ? "bg-orange-500 text-black"
+                            : "border border-white/10 bg-[#090a0f] text-white/40 hover:border-orange-500/30 hover:text-white"
                             }`}
                     >
                         {tab.label}
@@ -689,14 +730,12 @@ function RequestCard({
                         )}
 
                         <div className="mt-2 flex flex-wrap gap-4 text-xs text-white/30">
-                            <span className="inline-flex items-center gap-1.5">
-                                <HiOutlineMapPin className="text-orange-400" />
-
-                                {
-                                    request.user
-                                        .location
-                                }
-                            </span>
+                            {request.user.location && request.user.location.trim() !== "" && (
+                                <span className="inline-flex items-center gap-1.5">
+                                    <HiOutlineMapPin className="text-orange-400" />
+                                    {request.user.location}
+                                </span>
+                            )}
 
                             <span className="inline-flex items-center gap-1.5">
                                 <HiOutlineClock className="text-orange-400" />
@@ -723,7 +762,7 @@ function RequestCard({
                     />
 
                     <span className="hidden h-10 w-10 items-center justify-center rounded-full border border-orange-500/20 bg-orange-500/10 text-orange-400 sm:flex">
-                        <HiOutlineArrowRight className="animate-arrow-move"  />
+                        <HiOutlineArrowRight className="animate-arrow-move" />
                     </span>
 
                     <SkillBox
@@ -743,6 +782,13 @@ function RequestCard({
             <p className="mt-5 line-clamp-2 text-sm leading-7 text-white/40">
                 {request.message}
             </p>
+
+            {request.status === "accepted" && (
+                <RatingStarStrip
+                    targetUser={request.user}
+                    swapRequestId={request.id || request._id}
+                />
+            )}
 
             <div className="mt-5 flex flex-col gap-3 border-t border-white/10 pt-5 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex flex-wrap gap-3 text-xs text-white/35">
@@ -852,9 +898,70 @@ function RequestActions({
                         className="inline-flex items-center gap-2 rounded-xl bg-orange-500 px-4 py-2.5 text-sm  text-black transition hover:bg-orange-400 font-bold"
                     >
                         Open chat
-                        <HiOutlineArrowRight className="animate-arrow-move"  />
+                        <HiOutlineArrowRight className="animate-arrow-move" />
                     </button>
                 )}
+        </div>
+    );
+}
+
+function RequestRatingStrip({ targetUser, swapRequestId }) {
+    const [rating, setRating] = useState(targetUser?.rating || 0);
+    const [submitting, setSubmitting] = useState(false);
+
+    const handleRating = async (selectedRating) => {
+        try {
+            setRating(selectedRating);
+            setSubmitting(true);
+            const res = await axiosClient.post("/reviews", {
+                targetUserId: targetUser.id || targetUser._id,
+                rating: selectedRating,
+                swapRequestId: swapRequestId,
+            });
+            const stats = res.data?.data?.targetUserStats;
+            if (stats) {
+                window.dispatchEvent(
+                    new CustomEvent("user_rating_updated", {
+                        detail: {
+                            userId: targetUser.id || targetUser._id,
+                            rating: stats.rating,
+                            reviews: stats.reviews,
+                        },
+                    })
+                );
+            }
+            toast.success(`Rated ${selectedRating} stars for ${targetUser.name}!`);
+        } catch (err) {
+            toast.error(err?.response?.data?.message || "Failed to submit rating.");
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    return (
+        <div className="mt-4 flex items-center justify-between rounded-[16px] border border-orange-500/20 bg-orange-500/[0.03] px-4 py-3">
+            <span className="text-xs font-medium text-white/80">
+                Rate {targetUser.name}'s mentorship:
+            </span>
+            <div className="flex items-center gap-1.5">
+                {[1, 2, 3, 4, 5].map((star) => (
+                    <button
+                        key={star}
+                        type="button"
+                        disabled={submitting}
+                        onClick={() => handleRating(star)}
+                        className="text-lg transition hover:scale-125 disabled:opacity-50"
+                    >
+                        <HiOutlineStar
+                            className={
+                                star <= Math.round(rating)
+                                    ? "text-orange-400 fill-orange-400"
+                                    : "text-white/30"
+                            }
+                        />
+                    </button>
+                ))}
+            </div>
         </div>
     );
 }
@@ -894,9 +1001,9 @@ function DirectionBadge({
     return (
         <span
             className={`rounded-full border px-3 py-1 text-xs capitalize ${direction ===
-                    "incoming"
-                    ? "border-blue-500/20 bg-blue-500/10 text-blue-300"
-                    : "border-purple-500/20 bg-purple-500/10 text-purple-300"
+                "incoming"
+                ? "border-blue-500/20 bg-blue-500/10 text-blue-300"
+                : "border-purple-500/20 bg-purple-500/10 text-purple-300"
                 }`}
         >
             {direction}
@@ -1005,15 +1112,12 @@ function RequestModal({
                                 }
                             </p>
 
-                            <div className="mt-2 flex items-center gap-2 text-xs text-white/30">
-                                <HiOutlineMapPin className="text-orange-400" />
-
-                                {
-                                    request
-                                        .user
-                                        .location
-                                }
-                            </div>
+                            {request.user.location && request.user.location.trim() !== "" && (
+                                <div className="mt-2 flex items-center gap-2 text-xs text-white/30">
+                                    <HiOutlineMapPin className="text-orange-400" />
+                                    {request.user.location}
+                                </div>
+                            )}
                         </div>
                     </div>
 
@@ -1031,7 +1135,7 @@ function RequestModal({
                         />
 
                         <span className="hidden h-11 w-11 items-center justify-center rounded-full bg-orange-500 text-black sm:flex">
-                            <HiOutlineArrowRight className="animate-arrow-move"  />
+                            <HiOutlineArrowRight className="animate-arrow-move" />
                         </span>
 
                         <SkillBox
@@ -1192,7 +1296,7 @@ function RequestModal({
                                 >
                                     Open chat
 
-                                    <HiOutlineArrowRight className="animate-arrow-move"  />
+                                    <HiOutlineArrowRight className="animate-arrow-move" />
                                 </button>
                             )}
                     </div>

@@ -14,11 +14,11 @@ const populateSwapRequest = (query) => {
     return query
         .populate({
             path: "sender",
-            select: "name email avatar headline location",
+            select: "name email avatar headline location rating reviews",
         })
         .populate({
             path: "receiver",
-            select: "name email avatar headline location",
+            select: "name email avatar headline location rating reviews",
         })
         .populate({
             path: "senderSkill",
@@ -46,11 +46,14 @@ const formatUser = (user) => {
 
     return {
         id: user._id,
+        _id: user._id,
         name: user.name,
         email: user.email,
         avatar: user.avatar || null,
         headline: user.headline || null,
         location: user.location || null,
+        rating: user.rating || 0,
+        reviews: user.reviews || 0,
     };
 };
 

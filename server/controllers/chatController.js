@@ -460,20 +460,33 @@ export const getMessages =
                 messageQuery.createdAt = { $gt: userCleared.clearedAt };
             }
 
-            await Message.updateMany(
-                {
-                    chat: chatObjectId,
-                    sender: {
-                        $ne: userObjectId,
+            await Promise.all([
+                Message.updateMany(
+                    {
+                        chat: chatObjectId,
+                        sender: {
+                            $ne: userObjectId,
+                        },
                     },
-                },
-                {
-                    $addToSet: {
-                        readBy:
-                            userObjectId,
-                    },
-                }
-            );
+                    {
+                        $addToSet: {
+                            readBy: userObjectId,
+                        },
+                    }
+                ),
+                Notification.deleteMany({
+                    recipient: userObjectId,
+                    $or: [
+                        { type: "message", link: `/messages?chatId=${chatId}` },
+                        { type: "message", sender: { $ne: userObjectId } }
+                    ]
+                })
+            ]);
+
+            const io = req.app.get("io");
+            if (io && userObjectId) {
+                io.to(userObjectId.toString()).emit("notifications_cleared", { chatId });
+            }
 
             const skip =
                 (page - 1) *
@@ -677,9 +690,12 @@ export const sendMessage =
 
             const decryptedMsgText = decryptMessage(message.text);
 
-            if (
-                otherParticipant
-            ) {
+            if (otherParticipant) {
+                await Notification.deleteMany({
+                    recipient: currentUserId,
+                    sender: otherParticipant
+                });
+
                 await Notification.create(
                     {
                         recipient:

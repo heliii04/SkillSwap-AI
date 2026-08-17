@@ -2,6 +2,7 @@ import User from "../models/User.js";
 import Skill from "../models/Skill.js";
 import Chat from "../models/Chat.js";
 import SwapRequest from "../models/SwapRequest.js";
+import Review from "../models/Review.js";
 
 import { ApiError } from "../utils/ApiError.js";
 
@@ -51,6 +52,24 @@ export const getMyProfile = asyncHandler(
             await user.save();
         }
 
+        const sessionsCount = await SwapRequest.countDocuments({
+            status: "accepted",
+            $or: [{ sender: user._id }, { receiver: user._id }]
+        });
+
+        const reviewStats = await Review.aggregate([
+            { $match: { targetUser: user._id } },
+            {
+                $group: {
+                    _id: "$targetUser",
+                    avgRating: { $avg: "$rating" },
+                    totalReviews: { $sum: 1 }
+                }
+            }
+        ]);
+        const rating = reviewStats[0] ? Math.round(reviewStats[0].avgRating * 10) / 10 : 0;
+        const reviewsCount = reviewStats[0] ? reviewStats[0].totalReviews : 0;
+
         res.status(200).json({
             success: true,
 
@@ -58,7 +77,12 @@ export const getMyProfile = asyncHandler(
                 "Profile retrieved successfully.",
 
             data: {
-                user: sanitizeProfile(user),
+                user: {
+                    ...sanitizeProfile(user),
+                    rating,
+                    reviews: reviewsCount,
+                    sessions: sessionsCount
+                },
             },
         });
     }
@@ -270,11 +294,34 @@ export const getUserProfileById = asyncHandler(
             }
         }
 
+        const sessionsCount = await SwapRequest.countDocuments({
+            status: "accepted",
+            $or: [{ sender: user._id }, { receiver: user._id }]
+        });
+
+        const reviewStats = await Review.aggregate([
+            { $match: { targetUser: user._id } },
+            {
+                $group: {
+                    _id: "$targetUser",
+                    avgRating: { $avg: "$rating" },
+                    totalReviews: { $sum: 1 }
+                }
+            }
+        ]);
+        const rating = reviewStats[0] ? Math.round(reviewStats[0].avgRating * 10) / 10 : 0;
+        const reviewsCount = reviewStats[0] ? reviewStats[0].totalReviews : 0;
+
         res.status(200).json({
             success: true,
             message: "User profile retrieved successfully.",
             data: {
-                user: sanitizeProfile(user),
+                user: {
+                    ...sanitizeProfile(user),
+                    rating,
+                    reviews: reviewsCount,
+                    sessions: sessionsCount
+                },
                 teachSkills,
                 learnSkills,
                 isConnected,
@@ -289,16 +336,63 @@ export const getAllProfiles = asyncHandler(
     async (req, res) => {
         const query = {
             accountStatus: "active",
+            role: { $ne: "admin" },
         };
         if (req.user && req.user._id !== "static_admin_id") {
             query._id = { $ne: req.user._id };
         }
 
         const users = await User.find(query).lean();
+        const nonAdminUsers = users.filter(
+            (u) => u.role !== "admin" && u._id.toString() !== "static_admin_id" && u.email !== (process.env.ADMIN_USERNAME || "admin").toLowerCase()
+        );
 
         const allSkills = await Skill.find({ isActive: true }).lean();
 
-        const formattedUsers = users.map(user => {
+        const acceptedSwaps = await SwapRequest.find({ status: "accepted" }).select("sender receiver").lean();
+        const sessionCountMap = new Map();
+        const connectedUserIds = new Set();
+
+        acceptedSwaps.forEach(s => {
+            if (s.sender) {
+                const senderStr = s.sender.toString();
+                sessionCountMap.set(senderStr, (sessionCountMap.get(senderStr) || 0) + 1);
+            }
+            if (s.receiver) {
+                const receiverStr = s.receiver.toString();
+                sessionCountMap.set(receiverStr, (sessionCountMap.get(receiverStr) || 0) + 1);
+            }
+            if (req.user) {
+                const currentUserIdStr = req.user._id.toString();
+                if (s.sender && s.sender.toString() === currentUserIdStr && s.receiver) {
+                    connectedUserIds.add(s.receiver.toString());
+                }
+                if (s.receiver && s.receiver.toString() === currentUserIdStr && s.sender) {
+                    connectedUserIds.add(s.sender.toString());
+                }
+            }
+        });
+
+        const allReviews = await Review.aggregate([
+            {
+                $group: {
+                    _id: "$targetUser",
+                    avgRating: { $avg: "$rating" },
+                    totalReviews: { $sum: 1 }
+                }
+            }
+        ]);
+        const reviewMap = new Map();
+        allReviews.forEach(r => {
+            if (r._id) {
+                reviewMap.set(r._id.toString(), {
+                    rating: Math.round(r.avgRating * 10) / 10,
+                    reviews: r.totalReviews
+                });
+            }
+        });
+
+        const formattedUsers = nonAdminUsers.map(user => {
             const userSkills = allSkills.filter(
                 skill => skill.owner.toString() === user._id.toString()
             );
@@ -307,9 +401,14 @@ export const getAllProfiles = asyncHandler(
             const learnSkills = userSkills.filter(s => s.type === "learn");
 
             const mainSkill = teachSkills[0] || learnSkills[0] || {};
+            const userReviewData = reviewMap.get(user._id.toString()) || { rating: 0, reviews: 0 };
 
             return {
                 ...sanitizeProfile(user),
+                isConnected: connectedUserIds.has(user._id.toString()),
+                rating: userReviewData.rating,
+                reviews: userReviewData.reviews,
+                sessions: sessionCountMap.get(user._id.toString()) || 0,
                 teaches: teachSkills.map(s => s.title),
                 wants: learnSkills.map(s => s.title),
                 category: mainSkill.category || "all",

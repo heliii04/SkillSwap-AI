@@ -33,18 +33,27 @@ export default function UserProfileModal({
     useLockBodyScroll();
 
     const initialTeach = initialMatch?.theyTeach
-        ? [{ _id: initialMatch.theyTeach._id || initialMatch.theyTeach.id, title: initialMatch.theyTeach.title }]
-        : [];
+        ? [{ _id: initialMatch.theyTeach._id || initialMatch.theyTeach.id || "teach_0", title: initialMatch.theyTeach.title }]
+        : (Array.isArray(initialUser?.teaches) && initialUser.teaches.length > 0
+            ? initialUser.teaches.map((t, idx) => typeof t === "string" ? { _id: `teach_${idx}`, title: t } : { _id: t._id || t.id || `teach_${idx}`, title: t.title })
+            : (initialUser?.teachSkills || []));
+
+    const initialLearn = (initialMatch?.youWant || initialMatch?.theyWant)
+        ? [{ _id: (initialMatch.youWant || initialMatch.theyWant)._id || (initialMatch.youWant || initialMatch.theyWant).id || "learn_0", title: (initialMatch.youWant || initialMatch.theyWant).title }]
+        : (Array.isArray(initialUser?.wants) && initialUser.wants.length > 0
+            ? initialUser.wants.map((w, idx) => typeof w === "string" ? { _id: `learn_${idx}`, title: w } : { _id: w._id || w.id || `learn_${idx}`, title: w.title })
+            : (initialUser?.learnSkills || []));
+
     const initialMyTeach = initialMatch?.youTeach
-        ? [{ _id: initialMatch.youTeach._id || initialMatch.youTeach.id, title: initialMatch.youTeach.title }]
+        ? [{ _id: initialMatch.youTeach._id || initialMatch.youTeach.id || "myteach_0", title: initialMatch.youTeach.title }]
         : [];
 
     const [user, setUser] = useState(initialUser);
     const [teachSkills, setTeachSkills] = useState(initialTeach);
-    const [learnSkills, setLearnSkills] = useState([]);
+    const [learnSkills, setLearnSkills] = useState(initialLearn);
     const [loading, setLoading] = useState(autoOpenSwap ? false : !initialUser);
     const [imageError, setImageError] = useState(false);
-    const [isConnected, setIsConnected] = useState(false);
+    const [isConnected, setIsConnected] = useState(Boolean(initialUser?.isConnected));
     const [chatId, setChatId] = useState(null);
     const [hasPendingRequest, setHasPendingRequest] = useState(false);
 
@@ -57,6 +66,41 @@ export default function UserProfileModal({
         message: ""
     });
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [myRating, setMyRating] = useState(0);
+    const [reviewSubmitting, setReviewSubmitting] = useState(false);
+
+    const handleReviewSubmit = async (selectedRating) => {
+        try {
+            setMyRating(selectedRating);
+            setReviewSubmitting(true);
+            const res = await axiosClient.post("/reviews", {
+                targetUserId: userId,
+                rating: selectedRating,
+            });
+            const stats = res.data?.data?.targetUserStats;
+            if (stats) {
+                setUser((prev) => ({
+                    ...prev,
+                    rating: stats.rating,
+                    reviews: stats.reviews,
+                }));
+                window.dispatchEvent(
+                    new CustomEvent("user_rating_updated", {
+                        detail: {
+                            userId: userId,
+                            rating: stats.rating,
+                            reviews: stats.reviews,
+                        },
+                    })
+                );
+            }
+            toast.success(`Rated ${selectedRating} stars successfully!`);
+        } catch (err) {
+            toast.error(err?.response?.data?.message || "Failed to submit rating.");
+        } finally {
+            setReviewSubmitting(false);
+        }
+    };
 
     const handleOpenSwapForm = async (targetTeachSkills = teachSkills) => {
         try {
@@ -132,9 +176,14 @@ export default function UserProfileModal({
                     const fetchedTeach = res.data?.data?.teachSkills || [];
                     const mySkills = mySkillsRes.data?.data?.skills || [];
 
-                    setUser(fetchedUser);
-                    setTeachSkills(fetchedTeach);
-                    setLearnSkills(res.data?.data?.learnSkills || []);
+                    setUser((prev) => ({
+                        ...(prev || {}),
+                        ...(fetchedUser || {}),
+                        bio: fetchedUser?.bio || prev?.bio || "",
+                    }));
+                    if (fetchedTeach.length > 0) setTeachSkills(fetchedTeach);
+                    const fetchedLearn = res.data?.data?.learnSkills || [];
+                    if (fetchedLearn.length > 0) setLearnSkills(fetchedLearn);
                     setIsConnected(res.data?.data?.isConnected || false);
                     setChatId(res.data?.data?.chatId || null);
                     setHasPendingRequest(res.data?.data?.hasPendingRequest || false);
@@ -174,6 +223,25 @@ export default function UserProfileModal({
             isMounted = false;
         };
     }, [userId, onClose, autoOpenSwap, navigate, initialUser]);
+
+    useEffect(() => {
+        const handleRatingUpdate = (e) => {
+            const { userId: updatedId, rating, reviews } = e.detail || {};
+            const targetId = userId || user?.id || user?._id;
+            if (updatedId && targetId && updatedId.toString() === targetId.toString()) {
+                setUser((prev) => ({
+                    ...prev,
+                    rating,
+                    reviews,
+                }));
+            }
+        };
+
+        window.addEventListener("user_rating_updated", handleRatingUpdate);
+        return () => {
+            window.removeEventListener("user_rating_updated", handleRatingUpdate);
+        };
+    }, [userId, user?.id, user?._id]);
 
     if (!userId) return null;
 
@@ -300,11 +368,12 @@ export default function UserProfileModal({
                                         )}
 
                                         <div className="mt-3 flex items-center gap-4 text-xs text-white/40">
-                                            {user.location?.city && (
+                                            {((typeof user.location === "string" && user.location.trim() !== "" && user.location !== "Online") || (typeof user.location === "object" && user.location?.city?.trim())) && (
                                                 <div className="flex items-center gap-1.5">
                                                     <HiOutlineMapPin className="text-[#ff5a00] text-sm" />
-                                                    {user.location.city}
-                                                    {user.location.country ? `, ${user.location.country}` : ""}
+                                                    {typeof user.location === "string"
+                                                        ? user.location
+                                                        : `${user.location.city}${user.location.country ? `, ${user.location.country}` : ""}`}
                                                 </div>
                                             )}
                                             <div className="flex items-center gap-1.5">
@@ -336,7 +405,9 @@ export default function UserProfileModal({
                             <div className="grid grid-cols-3 gap-4">
                                 <div className="rounded-[16px] border border-white/5 bg-[#171821] p-5">
                                     <HiOutlineStar className="text-[#ff5a00] text-xl mb-3" />
-                                    <p className="text-2xl font-semibold text-white">{user.rating || 0}</p>
+                                    <p className="text-2xl font-semibold text-white">
+                                        {user.rating ? (Number(user.rating).toFixed(1)) : "0.0"}
+                                    </p>
                                     <p className="text-[11px] text-white/40 mt-1">Rating</p>
                                 </div>
                                 <div className="rounded-[16px] border border-white/5 bg-[#171821] p-5">
@@ -350,6 +421,25 @@ export default function UserProfileModal({
                                     <p className="text-[11px] text-white/40 mt-1">Sessions</p>
                                 </div>
                             </div>
+
+                            {isConnected && (
+                                <div className="rounded-[16px] border border-orange-500/20 bg-orange-500/[0.03] p-4 flex items-center justify-between">
+                                    <span className="text-xs font-medium text-white/80">Rate {user.name}'s mentorship:</span>
+                                    <div className="flex items-center gap-1.5">
+                                        {[1, 2, 3, 4, 5].map((star) => (
+                                            <button
+                                                key={star}
+                                                type="button"
+                                                disabled={reviewSubmitting}
+                                                onClick={() => handleReviewSubmit(star)}
+                                                className="text-lg transition hover:scale-125 disabled:opacity-50"
+                                            >
+                                                <HiOutlineStar className={star <= (myRating || Math.round(user.rating || 0)) ? "text-orange-400 fill-orange-400" : "text-white/30"} />
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
 
                             {/* Skills Section */}
                             <div className="grid sm:grid-cols-2 gap-8">

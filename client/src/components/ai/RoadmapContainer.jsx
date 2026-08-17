@@ -4,6 +4,7 @@ import RoadmapViewer from "./RoadmapViewer";
 import { useAuth } from "../../context/AuthContext";
 import useLockBodyScroll from "../../hooks/useLockBodyScroll";
 import { FiMap, FiClock, FiTrash2, FiMoreVertical, FiPlus } from "react-icons/fi";
+import { fetchRoadmapHistory, deleteRoadmapApi, clearAllRoadmapsApi } from "../../api/aiApi";
 
 export default function RoadmapContainer() {
     const { user } = useAuth();
@@ -21,18 +22,40 @@ export default function RoadmapContainer() {
     useLockBodyScroll(showHistory);
 
     useEffect(() => {
-        const saved = localStorage.getItem(storageKey);
-        const parsed = saved ? JSON.parse(saved) : [];
-        setSessions(parsed);
+        let isMounted = true;
 
         // Always start fresh on mount/refresh/navigation
         setCurrentSessionId(null);
         setActiveRoadmap(null);
         localStorage.removeItem(currentKey);
-    }, [userId, storageKey, currentKey]);
+
+        const loadHistory = async () => {
+            if (user && userId !== "guest") {
+                try {
+                    const res = await fetchRoadmapHistory();
+                    if (res.success && Array.isArray(res.data?.sessions) && isMounted) {
+                        setSessions(res.data.sessions);
+                        localStorage.setItem(storageKey, JSON.stringify(res.data.sessions));
+                        return;
+                    }
+                } catch (e) {
+                    console.warn("Failed to fetch backend roadmap history:", e);
+                }
+            }
+            const saved = localStorage.getItem(storageKey);
+            const parsed = saved ? JSON.parse(saved) : [];
+            if (isMounted) setSessions(parsed);
+        };
+
+        loadHistory();
+
+        return () => {
+            isMounted = false;
+        };
+    }, [user, userId, storageKey, currentKey]);
 
     const handleRoadmapGenerated = (roadmap) => {
-        const newId = Date.now().toString();
+        const newId = roadmap?._id || roadmap?.id || Date.now().toString();
         const rawSkill = roadmap?.skill || roadmap?.title || roadmap?.topic;
         const formattedTitle = rawSkill
             ? (rawSkill.toLowerCase().includes("roadmap") ? rawSkill : `${rawSkill} Roadmap`)
@@ -48,7 +71,8 @@ export default function RoadmapContainer() {
         localStorage.setItem(currentKey, newId);
 
         setSessions((prev) => {
-            const updated = [{ id: newId, roadmap: enrichedRoadmap, updatedAt: Date.now() }, ...prev];
+            const filtered = prev.filter((s) => s.id !== newId);
+            const updated = [{ id: newId, roadmap: enrichedRoadmap, updatedAt: roadmap.updatedAt || Date.now() }, ...filtered];
             localStorage.setItem(storageKey, JSON.stringify(updated));
             return updated;
         });
@@ -84,10 +108,18 @@ export default function RoadmapContainer() {
         setShowHistory(false);
     };
 
-    const deleteSession = (id) => {
+    const deleteSession = async (id) => {
         const newSessions = sessions.filter((s) => s.id !== id);
         setSessions(newSessions);
         localStorage.setItem(storageKey, JSON.stringify(newSessions));
+
+        if (user && userId !== "guest") {
+            try {
+                await deleteRoadmapApi(id);
+            } catch (e) {
+                console.warn("Failed to delete roadmap from backend:", e);
+            }
+        }
 
         if (currentSessionId === id) {
             if (newSessions.length > 0) {
@@ -96,15 +128,24 @@ export default function RoadmapContainer() {
                 setActiveRoadmap(newSessions[0].roadmap);
                 localStorage.setItem(currentKey, nextId);
             } else {
-                clearAllHistory();
+                startNewRoadmap();
             }
         }
     };
 
-    const clearAllHistory = () => {
+    const clearAllHistory = async () => {
         setSessions([]);
         localStorage.removeItem(storageKey);
         localStorage.removeItem(currentKey);
+
+        if (user && userId !== "guest") {
+            try {
+                await clearAllRoadmapsApi();
+            } catch (e) {
+                console.warn("Failed to clear roadmap history from backend:", e);
+            }
+        }
+
         startNewRoadmap();
     };
 
@@ -145,10 +186,17 @@ export default function RoadmapContainer() {
                                 </button>
                                 <button
                                     type="button"
-                                    onClick={() => {
+                                    onClick={async () => {
                                         setMenuOpen(false);
-                                        const saved = localStorage.getItem(storageKey);
-                                        if (saved) setSessions(JSON.parse(saved));
+                                        if (user && userId !== "guest") {
+                                            try {
+                                                const res = await fetchRoadmapHistory();
+                                                if (res.success && Array.isArray(res.data?.sessions)) {
+                                                    setSessions(res.data.sessions);
+                                                    localStorage.setItem(storageKey, JSON.stringify(res.data.sessions));
+                                                }
+                                            } catch (e) {}
+                                        }
                                         setShowHistory(true);
                                     }}
                                     className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-xs font-bold text-gray-300 transition hover:bg-white/5 hover:text-white whitespace-nowrap"

@@ -130,13 +130,14 @@ export const markAsRead = async (req, res, next) => {
         const { notificationId } = req.body || {};
 
         if (notificationId) {
-            await Notification.updateOne(
-                { _id: notificationId, recipient: currentUserId },
-                { $set: { isRead: true } }
-            );
+            await Notification.deleteOne({ _id: notificationId, recipient: currentUserId });
         } else {
-            // Delete all notifications for the user to completely clear the page
             await Notification.deleteMany({ recipient: currentUserId });
+        }
+
+        const io = req.app.get("io");
+        if (io && currentUserId) {
+            io.to(currentUserId.toString()).emit("notifications_cleared", { notificationId });
         }
 
         return res.status(200).json({
