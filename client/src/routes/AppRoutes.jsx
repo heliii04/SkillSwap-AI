@@ -22,7 +22,7 @@ const lazyWithRetry = (componentImport) =>
             if (!pageRefreshed) {
                 sessionStorage.setItem("page-refreshed-on-chunk-error", "true");
                 window.location.reload();
-                return new Promise(() => {}); // Pause while page reloads
+                return new Promise(() => { }); // Pause while page reloads
             }
             throw error;
         }
