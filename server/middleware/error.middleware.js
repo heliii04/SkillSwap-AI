@@ -53,13 +53,22 @@ export function errorHandler(
         process.env.NODE_ENV === "production";
 
     // Structured error logging with request context
-    logger.error(`Unhandled API Error: ${normalizedError.message}`, normalizedError, {
-        requestId: req?.requestId,
-        method: req?.method,
-        path: req?.originalUrl || req?.url,
-        userId: req?.user?._id?.toString() || null,
-        statusCode,
-    });
+    if (statusCode >= 500) {
+        logger.error(`Unhandled API Error: ${normalizedError.message}`, normalizedError, {
+            requestId: req?.requestId,
+            method: req?.method,
+            path: req?.originalUrl || req?.url,
+            userId: req?.user?._id?.toString() || null,
+            statusCode,
+        });
+    } else {
+        logger.warn(`API Warning (${statusCode}): ${normalizedError.message}`, {
+            requestId: req?.requestId,
+            method: req?.method,
+            path: req?.originalUrl || req?.url,
+            statusCode,
+        });
+    }
 
     res.status(statusCode).json({
         success: false,
