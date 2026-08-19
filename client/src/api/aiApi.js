@@ -59,6 +59,10 @@ export const streamAiChatApi = async ({ message, history, sessionId, onChunk, on
                 if (trimmed.startsWith("data: ")) {
                     try {
                         const json = JSON.parse(trimmed.slice(6));
+                        if (json.error) {
+                            if (onError) onError(new Error(json.error));
+                            return;
+                        }
                         if (json.chunk && onChunk) {
                             onChunk(json.chunk, json.sessionId);
                         }

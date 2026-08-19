@@ -127,24 +127,28 @@ export const getNotifications = async (req, res, next) => {
 export const markAsRead = async (req, res, next) => {
     try {
         const currentUserId = req.user._id;
-        const { notificationId } = req.body || {};
+        const { notificationId, type, types } = req.body || {};
 
         if (notificationId) {
-            await Notification.deleteOne({ _id: notificationId, recipient: currentUserId });
+            await Notification.updateOne({ _id: notificationId, recipient: currentUserId }, { isRead: true });
+        } else if (types && Array.isArray(types) && types.length > 0) {
+            await Notification.updateMany({ recipient: currentUserId, type: { $in: types } }, { isRead: true });
+        } else if (type) {
+            await Notification.updateMany({ recipient: currentUserId, type }, { isRead: true });
         } else {
-            await Notification.deleteMany({ recipient: currentUserId });
+            await Notification.updateMany({ recipient: currentUserId, isRead: false }, { isRead: true });
         }
 
         const io = req.app.get("io");
         if (io && currentUserId) {
-            io.to(currentUserId.toString()).emit("notifications_cleared", { notificationId });
+            io.to(currentUserId.toString()).emit("notifications_cleared", { notificationId, type, types });
         }
 
         return res.status(200).json({
             success: true,
-            message: notificationId
+            message: notificationId || type || types
                 ? "Notification marked as read successfully"
-                : "All notifications cleared successfully"
+                : "All notifications marked as read successfully"
         });
     } catch (error) {
         return next(error);
@@ -202,6 +206,26 @@ export const subscribePush = async (req, res, next) => {
         return res.status(200).json({
             success: true,
             message: "Push subscription registered successfully"
+        });
+    } catch (error) {
+        return next(error);
+    }
+};
+
+export const unsubscribePush = async (req, res, next) => {
+    try {
+        const currentUserId = req.user._id;
+        const { endpoint } = req.body || {};
+
+        if (endpoint) {
+            await PushMessSubscription.deleteMany({ endpoint, user: currentUserId });
+        } else {
+            await PushMessSubscription.deleteMany({ user: currentUserId });
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: "Push subscription unsubscribed successfully"
         });
     } catch (error) {
         return next(error);

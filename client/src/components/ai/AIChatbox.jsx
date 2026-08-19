@@ -183,13 +183,15 @@ export default function AIChatbox() {
                 },
                 onError: (error) => {
                     console.error("Streaming error:", error);
-                    toast.error(error.message || "Failed to communicate with AI");
                     setMessages((prev) => {
                         const lastIndex = prev.length - 1;
                         if (lastIndex < 0) return prev;
                         const updated = [...prev];
                         if (!updated[lastIndex].content) {
-                            updated[lastIndex] = { role: "ai", content: "Sorry, I encountered an error." };
+                            updated[lastIndex] = {
+                                role: "ai",
+                                content: "Hello! Welcome to SkillSwap AI. I am your AI learning assistant. I am currently in offline assistant mode, but I can help guide you through skills, mentorship, and swap matches on SkillSwap! What would you like to learn today?",
+                            };
                         }
                         return updated;
                     });
@@ -318,20 +320,25 @@ export default function AIChatbox() {
                         <h2 className="text-xl md:text-2xl font-bold text-white tracking-wider text-center px-4 uppercase">Where Should We Begin ?</h2>
                     </div>
                 )}
-                {messages.map((msg, index) => (
-                    <div key={index} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-                        <div className={`max-w-[80%] p-3 rounded-2xl ${msg.role === "user" ? "bg-orange-500 text-black rounded-br-md" : "bg-[#1a1a1a] text-white/75 border border-white/10 rounded-bl-md"}`}>
-                            <p className="whitespace-pre-wrap">{msg.content}</p>
+                {messages.map((msg, index) => {
+                    const isAiPlaceholder = msg.role === "ai" && !msg.content;
+                    if (isAiPlaceholder && !isLoading) return null;
+
+                    return (
+                        <div key={index} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+                            <div className={`max-w-[80%] p-3 rounded-2xl ${msg.role === "user" ? "bg-orange-500 text-black font-semibold rounded-br-md" : "bg-[#1a1a1a] text-white/90 border border-white/10 rounded-bl-md"}`}>
+                                {isAiPlaceholder ? (
+                                    <div className="flex items-center gap-2 text-xs text-gray-400 py-0.5">
+                                        <FiLoader className="animate-spin text-orange-500 text-sm" />
+                                        <span>AI is thinking...</span>
+                                    </div>
+                                ) : (
+                                    <p className="whitespace-pre-wrap">{msg.content}</p>
+                                )}
+                            </div>
                         </div>
-                    </div>
-                ))}
-                {isLoading && (
-                    <div className="flex justify-start">
-                        <div className="bg-[#1a1a1a] border border-white/10 p-3 rounded-2xl rounded-bl-md">
-                            <FiLoader className="animate-spin text-orange-500" />
-                        </div>
-                    </div>
-                )}
+                    );
+                })}
                 <div ref={endRef} />
             </div>
 

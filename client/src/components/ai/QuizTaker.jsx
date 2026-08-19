@@ -63,7 +63,7 @@ export default function QuizTaker() {
         setUserAnswers({});
 
         try {
-            const res = await generateQuiz(topic, 5);
+            const res = await generateQuiz(topic, 10);
             if (res.success && res.data?.questions) {
                 const questions = res.data.questions;
                 setQuizData(questions);

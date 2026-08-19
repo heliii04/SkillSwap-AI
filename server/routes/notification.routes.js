@@ -4,6 +4,7 @@ import {
     markAsRead,
     deleteNotification,
     subscribePush,
+    unsubscribePush,
 } from "../controllers/notificationController.js";
 import { requireAuth } from "../middleware/authMiddleware.js";
 
@@ -15,6 +16,7 @@ router.get("/", getNotifications);
 router.patch("/mark-read", markAsRead);
 router.post("/subscribe", subscribePush);
 router.post("/subscribe-push", subscribePush);
+router.post("/unsubscribe-push", unsubscribePush);
 router.delete("/:id", deleteNotification);
 
 export default router;

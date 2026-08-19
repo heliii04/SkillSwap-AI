@@ -159,6 +159,7 @@ export default function Messages() {
         const socketHost = API_URL.replace(/\/api\/v1\/?$/, "").replace(/\/api\/?$/, "");
         const socket = io(socketHost, {
             withCredentials: true,
+            auth: { token: getAccessToken() },
         });
 
         const currentUserId = user?.id || user?._id;
@@ -211,6 +212,7 @@ export default function Messages() {
             }
             try {
                 axiosClient.post(`/chats/${selectedConversationId}/read`).catch(() => {});
+                axiosClient.patch("/notifications/mark-read", { type: "message" }).catch(() => {});
                 const response = await axiosClient.get(`/chats/${selectedConversationId}/messages`);
                 if (isMounted) {
                     const fetchedMessages = response.data?.data?.messages || [];

@@ -77,7 +77,7 @@ class QueueManager {
 
         try {
             console.log(`⚙️ [QUEUE PROCESSING] Running job ${job.id} (${job.type}) [Active workers: ${this.activeWorkers}/${this.maxConcurrency}]`);
-            
+
             await this.executeJob(job);
 
             const duration = Date.now() - startTime;
@@ -93,7 +93,7 @@ class QueueManager {
                 const backoffMs = Math.pow(2, job.retries) * 1000; // 2s, 4s, 8s backoff
 
                 console.warn(`🔄 [QUEUE RETRYING] Re-queuing job ${job.id} (${job.type}) attempt ${job.retries}/${job.maxRetries} in ${backoffMs}ms...`);
-                
+
                 setTimeout(() => {
                     this.queue.unshift(job); // High priority retry
                     this.processNext();
@@ -211,7 +211,7 @@ class QueueManager {
      */
     async shutdown(timeoutMs = 5000) {
         console.log(`🛑 [QUEUE SHUTDOWN] Draining background queue (${this.queue.length} pending, ${this.activeWorkers} active)...`);
-        
+
         const startTime = Date.now();
         while ((this.activeWorkers > 0 || this.queue.length > 0) && Date.now() - startTime < timeoutMs) {
             await new Promise((resolve) => setTimeout(resolve, 200));

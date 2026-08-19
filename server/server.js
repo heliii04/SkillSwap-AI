@@ -139,8 +139,6 @@ process.on(
             "Unhandled promise rejection:",
             reason
         );
-
-        shutdown("unhandledRejection");
     }
 );
 

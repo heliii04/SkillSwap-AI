@@ -49,12 +49,12 @@ const tabs = [
         label: "All requests",
     },
     {
-        value: "incoming",
-        label: "Incoming",
-    },
-    {
         value: "sent",
         label: "Sent",
+    },
+    {
+        value: "incoming",
+        label: "Incoming",
     },
     {
         value: "accepted",
@@ -63,6 +63,10 @@ const tabs = [
     {
         value: "rejected",
         label: "Rejected",
+    },
+    {
+        value: "cancelled",
+        label: "Cancelled",
     },
 ];
 
@@ -204,6 +208,14 @@ export default function Requests() {
         };
 
         fetchRequests();
+
+        // Auto mark request-related notifications as read when viewing Requests page
+        axiosClient.patch("/notifications/mark-read", {
+            types: ["swap_request", "swap_accepted", "swap_rejected"]
+        }).catch((err) => {
+            console.error("Failed to auto mark request notifications as read:", err);
+        });
+
         return () => {
             isMounted = false;
         };
@@ -265,6 +277,20 @@ export default function Requests() {
                     (request) =>
                         request.status ===
                         "accepted"
+                ).length,
+
+            rejected:
+                requests.filter(
+                    (request) =>
+                        request.status ===
+                        "rejected"
+                ).length,
+
+            cancelled:
+                requests.filter(
+                    (request) =>
+                        request.status ===
+                        "cancelled"
                 ).length,
         }),
         [requests]
@@ -391,9 +417,11 @@ export default function Requests() {
 
             setRequests(
                 (current) =>
-                    current.filter(
+                    current.map(
                         (request) =>
-                            request.id !== requestId
+                            (request.id === requestId || request._id === requestId)
+                                ? { ...request, status: "cancelled" }
+                                : request
                     )
             );
 
@@ -1021,11 +1049,14 @@ function StatusBadge({ status }) {
 
         rejected:
             "border-red-500/20 bg-red-500/10 text-red-300",
+
+        cancelled:
+            "border-gray-500/20 bg-gray-500/10 text-gray-400",
     };
 
     return (
         <span
-            className={`rounded-full border px-3 py-1 text-xs capitalize ${styles[status]
+            className={`rounded-full border px-3 py-1 text-xs capitalize ${styles[status] || styles.cancelled
                 }`}
         >
             {status}

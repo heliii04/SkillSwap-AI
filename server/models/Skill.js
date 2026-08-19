@@ -476,19 +476,19 @@ export const CANONICAL_SKILL_MAP = [
         category: "technology"
     },
     {
-        regex: /\b(react|reactjs|react\.js|react\s*js|react\s*native)\b/i,
+        regex: /\b(react|reac|reactjs|react\.js|react\s*js|react\s*native)\b/i,
         title: "React",
         normalizedTitle: "react",
         category: "technology"
     },
     {
-        regex: /\b(python|python3|python\s*3|py|django|flask|fastapi)\b/i,
+        regex: /\b(python|pyton|pythn|python3|python\s*3|py|django|flask|fastapi)\b/i,
         title: "Python",
         normalizedTitle: "python",
         category: "technology"
     },
     {
-        regex: /\b(javascript|java\s*script|js|es6|es2015|vanilla\s*js)\b/i,
+        regex: /\b(javascript|javscript|jscript|java\s*script|js|es6|es2015|vanilla\s*js)\b/i,
         title: "JavaScript",
         normalizedTitle: "javascript",
         category: "technology"
@@ -536,7 +536,7 @@ export const CANONICAL_SKILL_MAP = [
         category: "technology"
     },
     {
-        regex: /\b(sql|mysql|postgres|postgresql|mongodb|mongo|database|db|redis|oracle)\b/i,
+        regex: /\b(sql|sqll|mysql|postgres|postgresql|mongodb|mongo|database|databas|db|redis|oracle)\b/i,
         title: "SQL & Databases",
         normalizedTitle: "sql & databases",
         category: "technology"
@@ -548,19 +548,19 @@ export const CANONICAL_SKILL_MAP = [
         category: "technology"
     },
     {
-        regex: /\b(ai|ml|ai\s*\&\s*ml|ai[\/\s]*ml|machine\s*learning|artificial\s*intelligence|deep\s*learning|data\s*science|tensorflow|pytorch)\b/i,
+        regex: /\b(ai|ml|ai\s*\&\s*ml|ai[\/\s]*ml|machine\s*learning|machine\s*leaning|artificial\s*intelligence|deep\s*learning|data\s*science|data\s*scence|data\s*sciense|tensorflow|pytorch)\b/i,
         title: "AI & Machine Learning",
         normalizedTitle: "ai & machine learning",
         category: "technology"
     },
     {
-        regex: /\b(aws|docker|kubernetes|k8s|devops|cloud|azure|gcp|terraform)\b/i,
+        regex: /\b(aws|docker|kubernetes|k8s|devops|devop|cloud|azure|gcp|terraform)\b/i,
         title: "Cloud & DevOps",
         normalizedTitle: "cloud & devops",
         category: "technology"
     },
     {
-        regex: /\b(flutter|android|ios|swift|kotlin|mobile\s*app)\b/i,
+        regex: /\b(flutter|fluter|fluttter|android|ios|swift|kotlin|mobile\s*app)\b/i,
         title: "Mobile App Development",
         normalizedTitle: "mobile app development",
         category: "technology"
@@ -727,11 +727,34 @@ export const CANONICAL_SKILL_MAP = [
     }
 ];
 
+export function levenshteinDistance(a, b) {
+    if (!a || !b) return (a || b).length;
+    const matrix = Array.from({ length: a.length + 1 }, () => Array(b.length + 1).fill(0));
+
+    for (let i = 0; i <= a.length; i++) matrix[i][0] = i;
+    for (let j = 0; j <= b.length; j++) matrix[0][j] = j;
+
+    for (let i = 1; i <= a.length; i++) {
+        for (let j = 1; j <= b.length; j++) {
+            const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+            matrix[i][j] = Math.min(
+                matrix[i - 1][j] + 1,
+                matrix[i][j - 1] + 1,
+                matrix[i - 1][j - 1] + cost
+            );
+        }
+    }
+    return matrix[a.length][b.length];
+}
+
 export function resolveCanonicalSkill(rawTitle) {
     if (!rawTitle || typeof rawTitle !== "string") {
         return null;
     }
     const clean = rawTitle.trim();
+    if (!clean) return null;
+
+    // 1. Exact or regex match in CANONICAL_SKILL_MAP
     const found = CANONICAL_SKILL_MAP.find(c => c.regex.test(clean));
     if (found) {
         return {
@@ -740,6 +763,31 @@ export function resolveCanonicalSkill(rawTitle) {
             category: found.category
         };
     }
+
+    // 2. Fuzzy Levenshtein Distance match against canonical skill titles & keywords
+    const cleanLower = clean.toLowerCase();
+    let bestMatch = null;
+    let minDistance = Infinity;
+
+    for (const c of CANONICAL_SKILL_MAP) {
+        const titleLower = c.title.toLowerCase();
+        const dist = levenshteinDistance(cleanLower, titleLower);
+        
+        const maxAllowedDist = titleLower.length <= 4 ? 1 : 2;
+        if (dist <= maxAllowedDist && dist < minDistance) {
+            minDistance = dist;
+            bestMatch = c;
+        }
+    }
+
+    if (bestMatch) {
+        return {
+            title: bestMatch.title,
+            normalizedTitle: bestMatch.normalizedTitle,
+            category: bestMatch.category
+        };
+    }
+
     return null;
 }
 

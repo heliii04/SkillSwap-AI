@@ -26,6 +26,7 @@ import {
     hasSessionHint,
     setAccessToken,
 } from "../api/tokenStore";
+import { unsubscribeWebPushSubscription } from "../utils/webPush";
 
 export const AuthContext = createContext(null);
 
@@ -96,12 +97,15 @@ export function AuthProvider({ children }) {
                     await loadCurrentUser();
                     return;
                 } catch (err) {
-                    console.log("Existing access token invalid or expired, refreshing...", err);
+                    console.log("Existing access token invalid or expired, clearing session:", err);
+                    clearSession();
+                    return;
                 }
             }
             await refreshAccessTokenRequest();
             await loadCurrentUser();
-        } catch {
+        } catch (err) {
+            console.log("Session restoration failed:", err);
             clearSession();
         } finally {
             setIsAuthLoading(false);
@@ -245,6 +249,7 @@ export function AuthProvider({ children }) {
 
     const logout = useCallback(async () => {
         try {
+            await unsubscribeWebPushSubscription();
             await logoutUser();
         } catch (error) {
             console.error(

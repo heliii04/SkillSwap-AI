@@ -15,11 +15,16 @@ function urlBase64ToUint8Array(base64String) {
     return outputArray;
 }
 
+let isSubscribing = false;
+
 export async function registerWebPushSubscription() {
     if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
         console.warn("Web Push is not supported in this browser environment.");
         return;
     }
+
+    if (isSubscribing) return;
+    isSubscribing = true;
 
     try {
         if (Notification.permission !== "granted") {
@@ -76,5 +81,45 @@ export async function registerWebPushSubscription() {
         }
     } catch (err) {
         console.error("Error in registerWebPushSubscription:", err);
+    } finally {
+        isSubscribing = false;
+    }
+}
+
+export async function unsubscribeWebPushSubscription() {
+    if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
+        return;
+    }
+
+    try {
+        const registration = await navigator.serviceWorker.ready;
+        const subscription = await registration.pushManager.getSubscription();
+
+        const token = getAccessToken();
+        const API_URL =
+            import.meta.env.VITE_API_BASE_URL ||
+            import.meta.env.VITE_API_URL ||
+            (typeof window !== "undefined" && window.location.hostname === "localhost"
+                ? "http://localhost:5000/api/v1"
+                : "https://skillswap-ai-8ill.onrender.com/api/v1");
+
+        if (token) {
+            await fetch(`${API_URL}/notifications/unsubscribe-push`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify(subscription ? { endpoint: subscription.endpoint } : {}),
+                credentials: "include",
+            }).catch(() => { });
+        }
+
+        if (subscription) {
+            await subscription.unsubscribe();
+            console.log("Web Push Subscription successfully unsubscribed on logout!");
+        }
+    } catch (err) {
+        console.error("Error in unsubscribeWebPushSubscription:", err);
     }
 }

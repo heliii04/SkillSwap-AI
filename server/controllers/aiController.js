@@ -380,16 +380,61 @@ export const clearAllAiChatHistory = asyncHandler(async (req, res) => {
     });
 });
 
-export const chatDiscussion = asyncHandler(async (req, res) => {
-    const { message, history, sessionId } = req.body;
-    const activeSessionId = sessionId || Date.now().toString();
+const GREETING_PATTERNS = /^(hello|hi|hey|hy|hola|namaste|good\s*morning|good\s*afternoon|good\s*evening|gm|gn)\b[\s!?.]*$/i;
 
-    // 1. We match for SkillSwap context if user asks about learning a skill.
-    let systemContext =
-        "You are a helpful AI assistant for SkillSwap, a platform for learning and teaching skills. Default to responding in English unless the user explicitly speaks or requests Hindi or Gujarati. STRICT LIMITATION: You MUST ONLY answer questions related to skills, learning, teaching, or the SkillSwap platform itself. If a user asks something unrelated, inappropriate, or uses bad language, give a VERY SHORT and polite apology (e.g., 'Sorry, I can only help with skill-related topics.'), DO NOT explain further, and DO NOT mention any users. NEVER use bad language. NEVER mention any users on the platform unless the user explicitly asks to learn a specific skill.";
+export const isGreetingQuery = (text) => {
+    if (!text || typeof text !== "string") return false;
+    return GREETING_PATTERNS.test(text.trim());
+};
 
-    const lowerMsg = message.toLowerCase();
-    const words = lowerMsg
+export const NON_SKILL_PATTERNS = [
+    /\b(slap|punch|hit|kick|kill|murder|steal|rob|hack|abuse|fight|attack|harm|weapon|gun|knife|drug|smoke|beer|alcohol|wine|beat|insult|scold|torture|shoot|destroy|bully|threat|sex|sexual|sexuality)\b/i,
+    /\b(sleep|eating|eat|drink|buying|buy|selling|sell|walk|running|bathroom|wash|shower|clean house|brushing|toilet)\b/i,
+    /\b(recipe|maggi|food|cooking dish|pasta|biryani|cake|tea|coffee|pizza|burger|samosa|momos|icecream|snack|breakfast|lunch|dinner)\b/i,
+    /\b(movie|film|actor|actress|gossip|song|joke|comedy|prank|meme|cinema|trailer|pubg|freefire|ludo|bgmi|fortnite)\b/i,
+    /\b(politics|election|prime minister|president|government|war|news|modi|trump|biden|weather|temperature|rain|climate)\b/i,
+    /\b(dating|gf|bf|girlfriend|boyfriend|love|romance|flirt|breakup|kiss|hug|marry|marriage|relationship)\b/i,
+    /\b(score|ipl|cricket match|football match|match score|match today|fifa)\b/i,
+    /\b(who is|tell me a story|sing a song|what is your name|whats ur name|whats your name|what's your name|who are you|who r u|how old are you|where do you live|who made you|your name|ur name|what is ur name|how are you|how r u|how are u|hru|kaise ho|kese ho|what are you doing|wbu|kya kar rahe ho|kya kr rhe ho)\b/i
+];
+
+const SKILL_KEYWORDS_REGEX = /\b(skill|skills|learn|learning|teach|teaching|swap|swaps|swaprequest|mentor|mentorship|platform|course|roadmap|react|javascript|python|java|c\+\+|node|express|html|css|figma|design|music|guitar|piano|fitness|yoga|language|english|hindi|spanish|french|code|coding|development|database|mongodb|sql|ai|machine learning|web|app|backend|frontend|fullstack|devops|git|github|api)\b/i;
+
+export const checkIsNonSkillQuery = (text) => {
+    if (!text || typeof text !== "string") return false;
+    const clean = text.trim();
+    if (!clean) return false;
+
+    if (isGreetingQuery(clean)) {
+        return false;
+    }
+
+    if (SKILL_KEYWORDS_REGEX.test(clean)) {
+        return false;
+    }
+
+    for (const pattern of NON_SKILL_PATTERNS) {
+        if (pattern.test(clean)) {
+            return true;
+        }
+    }
+
+    return false;
+};
+
+export const findTopSkillMentors = async (queryText) => {
+    if (!queryText || typeof queryText !== "string") return [];
+
+    const canonical = resolveCanonicalSkill(queryText);
+    const searchTerms = [queryText];
+    if (canonical) {
+        searchTerms.push(canonical.title);
+        searchTerms.push(canonical.normalizedTitle);
+    }
+
+    const words = searchTerms
+        .join(" ")
+        .toLowerCase()
         .replace(/[^a-zA-Z0-9\s]/g, "")
         .split(" ")
         .filter(
@@ -412,29 +457,118 @@ export const chatDiscussion = asyncHandler(async (req, res) => {
                     "the",
                     "for",
                     "and",
+                    "tell",
+                    "about",
+                    "explain",
                 ].includes(w)
         );
 
-    if (words.length > 0) {
-        const regexes = words.map((w) => new RegExp(w, "i"));
-        const potentialSkills = await Skill.find({
-            type: "teach",
-            isActive: true,
-            $or: [
-                { title: { $in: regexes } },
-                { tags: { $in: regexes } },
-            ],
-        })
-            .populate("owner", "name headline")
-            .limit(5)
-            .lean();
+    if (words.length === 0) return [];
 
-        if (potentialSkills.length > 0) {
-            const skillContext = potentialSkills
-                .map((s) => `${s.owner?.name} teaches ${s.title}`)
-                .join(", ");
-            systemContext += ` Important context: Here are up to 5 users who teach skills related to the user's query: ${skillContext}. ONLY mention them IF the user explicitly wants to learn these exact skills.`;
+    const regexes = words.map((w) => new RegExp(w, "i"));
+    const skills = await Skill.find({
+        type: "teach",
+        isActive: true,
+        $or: [
+            { title: { $in: regexes } },
+            { tags: { $in: regexes } },
+            { category: { $in: regexes } },
+        ],
+    })
+        .populate("owner", "name headline avatar location")
+        .limit(10)
+        .lean();
+
+    const mentorMap = new Map();
+    for (const s of skills) {
+        if (s.owner && s.owner._id && !mentorMap.has(s.owner._id.toString())) {
+            mentorMap.set(s.owner._id.toString(), {
+                name: s.owner.name,
+                headline: s.owner.headline || `Teaches ${s.title}`,
+                skillTitle: s.title,
+            });
         }
+        if (mentorMap.size >= 3) break;
+    }
+
+    return Array.from(mentorMap.values());
+};
+
+export const formatMentorSuggestions = (mentors) => {
+    if (!mentors || mentors.length === 0) return "";
+
+    const lines = mentors.map(
+        (m) => `• ${m.name}${m.headline ? ` (${m.headline})` : ` (Teaches ${m.skillTitle})`}`
+    );
+    return `💡 Top mentors on SkillSwap for this skill:\n` + lines.join("\n");
+};
+
+export const chatDiscussion = asyncHandler(async (req, res) => {
+    const { message, history, sessionId } = req.body;
+    const activeSessionId = sessionId || Date.now().toString();
+
+    if (isGreetingQuery(message)) {
+        const welcomeResponse = "Hello! Welcome to SkillSwap AI. I am your AI learning assistant. I can help you navigate skill swaps, learning goals, and mentorship on the platform! What would you like to learn today?";
+
+        if (req.user?._id) {
+            const titleSnippet = message.slice(0, 35) + (message.length > 35 ? "..." : "");
+            const userMsg = { sender: "user", text: message, timestamp: new Date() };
+            const aiMsg = { sender: "ai", text: welcomeResponse, timestamp: new Date() };
+
+            await AIChatHistory.findOneAndUpdate(
+                { user: req.user._id, sessionId: activeSessionId },
+                {
+                    $setOnInsert: { title: titleSnippet },
+                    $push: { messages: { $each: [userMsg, aiMsg] } },
+                },
+                { upsert: true, new: true }
+            );
+        }
+
+        return res.status(200).json({
+            success: true,
+            data: {
+                reply: welcomeResponse,
+                sessionId: activeSessionId,
+            },
+        });
+    }
+
+    if (checkIsNonSkillQuery(message)) {
+        const sorryResponse = "Sorry, I am your SkillSwap AI assistant and I can only help you with skill-related topics, learning, teaching, or platform queries. What skill would you like to learn today?";
+
+        if (req.user?._id) {
+            const titleSnippet = message.slice(0, 35) + (message.length > 35 ? "..." : "");
+            const userMsg = { sender: "user", text: message, timestamp: new Date() };
+            const aiMsg = { sender: "ai", text: sorryResponse, timestamp: new Date() };
+
+            await AIChatHistory.findOneAndUpdate(
+                { user: req.user._id, sessionId: activeSessionId },
+                {
+                    $setOnInsert: { title: titleSnippet },
+                    $push: { messages: { $each: [userMsg, aiMsg] } },
+                },
+                { upsert: true, new: true }
+            );
+        }
+
+        return res.status(200).json({
+            success: true,
+            data: {
+                reply: sorryResponse,
+                sessionId: activeSessionId,
+            },
+        });
+    }
+
+    // 1. We match for SkillSwap context if user asks about learning a skill.
+    let systemContext =
+        "You are a helpful AI assistant for SkillSwap, a platform for learning and teaching skills. Default to responding in English unless the user explicitly speaks or requests Hindi or Gujarati. STRICT LIMITATION: You MUST ONLY answer questions related to skills, learning, teaching, or the SkillSwap platform itself. If a user asks something unrelated, personal, off-topic, casual (e.g., 'whats ur name', 'who are you', jokes, weather, recipes, news, sports, politics), or uses bad language, give a VERY SHORT and polite apology starting with 'Sorry...' (e.g., 'Sorry, I can only help with skill-related topics, learning, teaching, or SkillSwap platform queries.'), DO NOT explain further, and DO NOT mention any users. NEVER use bad language. SPELLING CORRECTION RULE: Always auto-correct any misspelled skill names or topics in the user's prompt (e.g., 'Pyton' -> 'Python', 'Reac' -> 'React', 'Javscript' -> 'JavaScript', 'Fluter' -> 'Flutter') and use the correct official title in your reply.";
+
+    const topMentors = await findTopSkillMentors(message);
+    if (topMentors.length > 0) {
+        const mentorSuggestions = formatMentorSuggestions(topMentors);
+        systemContext += `\n\nCRITICAL INSTRUCTION: At the end of your response, ALWAYS include this exact mentor list:\n${mentorSuggestions}`;
     }
 
     // Convert history to prompt string for simplicity, or just pass message if no history
@@ -446,7 +580,7 @@ export const chatDiscussion = asyncHandler(async (req, res) => {
                 .join("\n") + `\nuser: ${message}`;
     } else {
         systemContext +=
-            " This is the very first message of the conversation. You MUST start your response by warmly welcoming the user to SkillSwap (e.g. 'Welcome to SkillSwap! I am your AI Assistant...'). After the welcome, proceed to answer their question or address their message.";
+            " When the user asks about a skill or topic, answer their question directly and DO NOT include any 'Hello! Welcome to SkillSwap...' greeting banner.";
     }
 
     const aiResponse = await chatWithGemini(prompt, systemContext);
@@ -491,8 +625,62 @@ export const streamChatDiscussion = async (req, res, next) => {
         res.setHeader("X-Accel-Buffering", "no");
         res.flushHeaders();
 
+        if (isGreetingQuery(message)) {
+            const welcomeResponse = "Hello! Welcome to SkillSwap AI. I am your AI learning assistant. I can help you navigate skill swaps, learning goals, and mentorship on the platform! What would you like to learn today?";
+            const words = welcomeResponse.split(" ");
+            for (const word of words) {
+                res.write(`data: ${JSON.stringify({ chunk: word + " ", sessionId: activeSessionId })}\n\n`);
+                await new Promise((r) => setTimeout(r, 15));
+            }
+            res.write("data: [DONE]\n\n");
+            res.end();
+
+            if (req.user?._id) {
+                const titleSnippet = message.slice(0, 35) + (message.length > 35 ? "..." : "");
+                const userMsg = { sender: "user", text: message, timestamp: new Date() };
+                const aiMsg = { sender: "ai", text: welcomeResponse, timestamp: new Date() };
+
+                await AIChatHistory.findOneAndUpdate(
+                    { user: req.user._id, sessionId: activeSessionId },
+                    {
+                        $setOnInsert: { title: titleSnippet },
+                        $push: { messages: { $each: [userMsg, aiMsg] } },
+                    },
+                    { upsert: true, new: true }
+                ).catch((err) => console.error("Error saving AI stream history to DB:", err.message));
+            }
+            return;
+        }
+
+        if (checkIsNonSkillQuery(message)) {
+            const sorryResponse = "Sorry, I am your SkillSwap AI assistant and I can only help you with skill-related topics, learning, teaching, or platform queries. What skill would you like to learn today?";
+            const words = sorryResponse.split(" ");
+            for (const word of words) {
+                res.write(`data: ${JSON.stringify({ chunk: word + " ", sessionId: activeSessionId })}\n\n`);
+                await new Promise((r) => setTimeout(r, 15));
+            }
+            res.write("data: [DONE]\n\n");
+            res.end();
+
+            if (req.user?._id) {
+                const titleSnippet = message.slice(0, 35) + (message.length > 35 ? "..." : "");
+                const userMsg = { sender: "user", text: message, timestamp: new Date() };
+                const aiMsg = { sender: "ai", text: sorryResponse, timestamp: new Date() };
+
+                await AIChatHistory.findOneAndUpdate(
+                    { user: req.user._id, sessionId: activeSessionId },
+                    {
+                        $setOnInsert: { title: titleSnippet },
+                        $push: { messages: { $each: [userMsg, aiMsg] } },
+                    },
+                    { upsert: true, new: true }
+                ).catch((err) => console.error("Error saving AI stream history to DB:", err.message));
+            }
+            return;
+        }
+
         let systemContext =
-            "You are a helpful AI assistant for SkillSwap, a platform for learning and teaching skills. Default to responding in English unless the user explicitly speaks or requests Hindi or Gujarati. STRICT LIMITATION: You MUST ONLY answer questions related to skills, learning, teaching, or the SkillSwap platform itself. If a user asks something unrelated, inappropriate, or uses bad language, give a VERY SHORT and polite apology (e.g., 'Sorry, I can only help with skill-related topics.'), DO NOT explain further, and DO NOT mention any users. NEVER use bad language. NEVER mention any users on the platform unless the user explicitly asks to learn a specific skill.";
+            "You are a helpful AI assistant for SkillSwap, a platform for learning and teaching skills. Default to responding in English unless the user explicitly speaks or requests Hindi or Gujarati. STRICT LIMITATION: You MUST ONLY answer questions related to skills, learning, teaching, or the SkillSwap platform itself. If a user asks something unrelated, personal, off-topic, casual (e.g., 'whats ur name', 'who are you', jokes, weather, recipes, news, sports, politics), or uses bad language, give a VERY SHORT and polite apology starting with 'Sorry...' (e.g., 'Sorry, I can only help with skill-related topics, learning, teaching, or SkillSwap platform queries.'), DO NOT explain further, and DO NOT mention any users. NEVER use bad language.";
 
         const lowerMsg = message.toLowerCase();
         const words = lowerMsg
@@ -521,26 +709,10 @@ export const streamChatDiscussion = async (req, res, next) => {
                     ].includes(w)
             );
 
-        if (words.length > 0) {
-            const regexes = words.map((w) => new RegExp(w, "i"));
-            const potentialSkills = await Skill.find({
-                type: "teach",
-                isActive: true,
-                $or: [
-                    { title: { $in: regexes } },
-                    { tags: { $in: regexes } },
-                ],
-            })
-                .populate("owner", "name headline")
-                .limit(5)
-                .lean();
-
-            if (potentialSkills.length > 0) {
-                const skillContext = potentialSkills
-                    .map((s) => `${s.owner?.name} teaches ${s.title}`)
-                    .join(", ");
-                systemContext += ` Important context: Here are up to 5 users who teach skills related to the user's query: ${skillContext}. ONLY mention them IF the user explicitly wants to learn these exact skills.`;
-            }
+        const topMentors = await findTopSkillMentors(message);
+        if (topMentors.length > 0) {
+            const mentorSuggestions = formatMentorSuggestions(topMentors);
+            systemContext += `\n\nCRITICAL INSTRUCTION: At the end of your response, ALWAYS include this exact mentor list:\n${mentorSuggestions}`;
         }
 
         let prompt = message;
@@ -551,7 +723,7 @@ export const streamChatDiscussion = async (req, res, next) => {
                     .join("\n") + `\nuser: ${message}`;
         } else {
             systemContext +=
-                " This is the very first message of the conversation. You MUST start your response by warmly welcoming the user to SkillSwap (e.g. 'Welcome to SkillSwap! I am your AI Assistant...'). After the welcome, proceed to answer their question or address their message.";
+            " When the user asks about a skill or topic, answer their question directly and DO NOT include any 'Hello! Welcome to SkillSwap...' greeting banner.";
         }
 
         const onChunk = (chunk) => {
@@ -585,16 +757,7 @@ export const streamChatDiscussion = async (req, res, next) => {
         res.end();
     }
 };
-const NON_SKILL_PATTERNS = [
-    /\b(slap|punch|hit|kick|kill|murder|steal|rob|hack|abuse|fight|attack|harm|weapon|gun|knife|drug|smoke|beer|alcohol|wine|beat|insult|scold|torture|shoot|destroy|bully|threat|sex|sexual|sexuality)\b/i,
-    /\b(sleep|eating|eat|drink|buying|buy|selling|sell|walk|running|bathroom|wash|shower|clean house|brushing|toilet)\b/i,
-    /\b(recipe|maggi|food|cooking dish|pasta|biryani|cake|tea|coffee|pizza|burger|samosa|momos|icecream|snack|breakfast|lunch|dinner)\b/i,
-    /\b(movie|film|actor|actress|gossip|song|joke|comedy|prank|meme|cinema|trailer|pubg|freefire|ludo|bgmi|fortnite)\b/i,
-    /\b(politics|election|prime minister|president|government|war|news|modi|trump|biden|weather|temperature|rain|climate)\b/i,
-    /\b(dating|gf|bf|girlfriend|boyfriend|love|romance|flirt|breakup|kiss|hug|marry|marriage|relationship)\b/i,
-    /\b(score|ipl|cricket match|football match|match score|match today|fifa)\b/i,
-    /\b(who is|tell me a story|sing a song|say hi|what is your name|hello|hi|how are you|good morning|good night|who made you)\b/i
-];
+
 
 export const isEducationalSkillTopic = async (topic) => {
     if (!topic || typeof topic !== "string") return false;
@@ -849,7 +1012,7 @@ export const clearAllUserRoadmaps = asyncHandler(async (req, res) => {
 });
 
 export const generateQuiz = asyncHandler(async (req, res) => {
-    const { topic, numQuestions = 5 } = req.body;
+    const { topic, numQuestions = 10 } = req.body;
 
     if (!topic || !topic.trim()) {
         throw new ApiError(400, "Failed to generate quiz");
@@ -860,7 +1023,12 @@ export const generateQuiz = asyncHandler(async (req, res) => {
         throw new ApiError(400, "Failed to generate quiz");
     }
 
-    const prompt = `Generate a ${numQuestions}-question quiz on the topic: ${topic}. Include a mix of MCQs and coding/text-based questions if applicable. For MCQs provide exactly 4 options. For coding/text questions, provide an empty array for options. Ensure the questions are highly varied and different from common examples (Randomized Seed: ${Math.random().toString(36).substring(7)} - ${Date.now()}).`;
+    const targetNum = parseInt(numQuestions, 10) || 10;
+    const prompt = `Generate a ${targetNum}-question quiz on topic: ${topic}. IMPORTANT: The quiz MUST contain EXACTLY ${targetNum} questions with a rich mix:
+- 4 MCQs (Multiple Choice Questions with type "MCQ" and exactly 4 options)
+- 3 Conceptual Q/A questions (type "Q/A" with an empty array [] for options)
+- 3 Practical Coding/Problem-Solving questions (type "Coding" with starter code or problem statement and an empty array [] for options)
+Ensure the questions are highly varied, educational, and accurately test deep knowledge of ${topic}. (Random Seed: ${Math.random().toString(36).substring(7)} - ${Date.now()}).`;
     const systemInstruction = "You are an expert examiner. Return the quiz in the specified JSON format.";
 
     let quizData;
@@ -870,47 +1038,8 @@ export const generateQuiz = asyncHandler(async (req, res) => {
             throw new Error("Invalid quiz structure returned from AI model");
         }
     } catch (err) {
-        console.warn("AI quiz generation failed, using structured template fallback:", err.message);
-        quizData = {
-            questions: [
-                {
-                    type: "MCQ",
-                    questionText: `What is the primary core concept of ${topic}?`,
-                    options: [
-                        `Understanding foundational principles of ${topic}`,
-                        `Using irrelevant unrelated tools`,
-                        `Ignoring syntax and structure`,
-                        `None of the above`
-                    ],
-                    correctAnswer: `Understanding foundational principles of ${topic}`,
-                    explanation: `${topic} relies heavily on its core principles for effective implementation.`
-                },
-                {
-                    type: "MCQ",
-                    questionText: `Which of the following is considered a best practice in ${topic}?`,
-                    options: [
-                        `Writing modular, well-documented code/workflows`,
-                        `Hardcoding static values everywhere`,
-                        `Avoiding testing and validation`,
-                        `Using deprecated features`
-                    ],
-                    correctAnswer: `Writing modular, well-documented code/workflows`,
-                    explanation: `Modularity and documentation ensure long-term maintainability in ${topic}.`
-                },
-                {
-                    type: "MCQ",
-                    questionText: `How do you optimize performance when working with ${topic}?`,
-                    options: [
-                        `By identifying bottlenecks and refactoring inefficient logic`,
-                        `By increasing unnecessary memory usage`,
-                        `By skipping optimization entirely`,
-                        `By disabling caching`
-                    ],
-                    correctAnswer: `By identifying bottlenecks and refactoring inefficient logic`,
-                    explanation: `Identifying bottlenecks and refactoring is key to optimal performance in ${topic}.`
-                }
-            ]
-        };
+        console.warn("AI quiz generation failed, using structured 10-question template fallback:", err.message);
+        quizData = getQuizFallback(prompt);
     }
 
     return res.status(200).json({
