@@ -23,6 +23,15 @@ export default function AdminSupport() {
     const [replying, setReplying] = useState(false);
     const [replySuccess, setReplySuccess] = useState("");
 
+    const CATEGORY_LABELS = {
+        account: "Account Support",
+        technical: "Technical Support",
+        feature: "Feature Suggestion",
+        feedback: "Feedback",
+        safety: "Safety/Report",
+        other: "Other",
+    };
+
     // Lock background scroll when ticket detail modal is open
     useEffect(() => {
         if (selectedTicket) {
@@ -162,10 +171,12 @@ export default function AdminSupport() {
                             onChange={(e) => setCategoryFilter(e.target.value)}
                             options={[
                                 { value: "all", label: "All Categories" },
-                                { value: "general", label: "General Inquiry" },
-                                { value: "support", label: "Technical Support" },
+                                { value: "account", label: "Account Support" },
+                                { value: "technical", label: "Technical Support" },
+                                { value: "feature", label: "Feature Suggestion" },
                                 { value: "feedback", label: "Feedback" },
-                                { value: "safety", label: "Safety/Report" }
+                                { value: "safety", label: "Safety/Report" },
+                                { value: "other", label: "Other" }
                             ]}
                         />
                     </div>
@@ -206,7 +217,7 @@ export default function AdminSupport() {
                                         </td>
                                         <td className="py-4 px-4">
                                             <span className="capitalize text-xs font-semibold text-white/50 bg-white/5 px-2 py-1 rounded-md">
-                                                {ticket.category}
+                                                {CATEGORY_LABELS[ticket.category] || ticket.category}
                                             </span>
                                         </td>
                                         <td className="py-4 px-4 text-white/50 text-xs">

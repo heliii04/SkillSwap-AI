@@ -75,7 +75,7 @@ export default function CustomSelect({
             </button>
 
             {isOpen && (
-                <ul className={`absolute z-50 mt-2 max-h-60 min-w-[220px] sm:min-w-[250px] w-max max-w-[340px] overflow-y-auto rounded-xl border border-white/10 bg-[#111218] p-1.5 shadow-2xl shadow-black/90 backdrop-blur-xl custom-scrollbar animate-in fade-in zoom-in-95 duration-100 ${
+                <ul className={`absolute z-50 mt-2 min-w-[220px] sm:min-w-[250px] w-max max-w-[340px] rounded-xl border border-white/10 bg-[#111218] p-1.5 shadow-2xl shadow-black/90 backdrop-blur-xl animate-in fade-in zoom-in-95 duration-100 ${
                     align === "left" ? "left-0" : "right-0"
                 }`}>
                     {normalizedOptions.map((option) => {
