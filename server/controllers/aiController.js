@@ -508,7 +508,7 @@ export const chatDiscussion = asyncHandler(async (req, res) => {
     const activeSessionId = sessionId || Date.now().toString();
 
     if (isGreetingQuery(message)) {
-        const welcomeResponse = "Hello! Welcome to SkillSwap AI. I am your AI learning assistant. I can help you navigate skill swaps, learning goals, and mentorship on the platform! What would you like to learn today?";
+        const welcomeResponse = "Hey there! 👋 Welcome to SkillSwap AI! I'm your personal learning companion here. Whether you want to explore a new skill, get a step-by-step learning roadmap, take a quiz, or connect with top mentors — I've got you covered! 😊\n\nSo, what skill are you curious about today?";
 
         if (req.user?._id) {
             const titleSnippet = message.slice(0, 35) + (message.length > 35 ? "..." : "");
@@ -535,7 +535,7 @@ export const chatDiscussion = asyncHandler(async (req, res) => {
     }
 
     if (checkIsNonSkillQuery(message)) {
-        const sorryResponse = "Sorry, I am your SkillSwap AI assistant and I can only help you with skill-related topics, learning, teaching, or platform queries. What skill would you like to learn today?";
+        const sorryResponse = "Oops, that's a bit outside my zone! 😊 I'm specialized in helping you learn, teach, and exchange skills on SkillSwap. Ask me about any skill like Python, UI/UX Design, React, Data Science, and more — I'd love to help you grow!";
 
         if (req.user?._id) {
             const titleSnippet = message.slice(0, 35) + (message.length > 35 ? "..." : "");
@@ -561,9 +561,46 @@ export const chatDiscussion = asyncHandler(async (req, res) => {
         });
     }
 
-    // 1. We match for SkillSwap context if user asks about learning a skill.
     let systemContext =
-        "You are a helpful AI assistant for SkillSwap, a platform for learning and teaching skills. Default to responding in English unless the user explicitly speaks or requests Hindi or Gujarati. STRICT LIMITATION: You MUST ONLY answer questions related to skills, learning, teaching, or the SkillSwap platform itself. If a user asks something unrelated, personal, off-topic, casual (e.g., 'whats ur name', 'who are you', jokes, weather, recipes, news, sports, politics), or uses bad language, give a VERY SHORT and polite apology starting with 'Sorry...' (e.g., 'Sorry, I can only help with skill-related topics, learning, teaching, or SkillSwap platform queries.'), DO NOT explain further, and DO NOT mention any users. NEVER use bad language. SPELLING CORRECTION RULE: Always auto-correct any misspelled skill names or topics in the user's prompt (e.g., 'Pyton' -> 'Python', 'Reac' -> 'React', 'Javscript' -> 'JavaScript', 'Fluter' -> 'Flutter') and use the correct official title in your reply.";
+        `You are a warm, friendly, and expert learning companion on SkillSwap — a platform for learning and teaching skills.
+
+Your personality:
+- You are encouraging, patient, and supportive like a great mentor
+- You use simple, clear, and easy-to-understand language
+- You make every user feel comfortable, confident, and satisfied with your response
+- You never make the user feel awkward, embarrassed, or nervous
+- Use emojis occasionally (👋, 🚀, 💡, 📚, ✅) to make responses feel friendly and human
+- Format your responses clearly using bullet points or short paragraphs for readability
+
+Language rule: Default to English. If the user writes in Hindi or Gujarati, respond in that language naturally.
+
+Strict limitations:
+- ONLY answer questions about skills, learning, teaching, or the SkillSwap platform
+- If unrelated (jokes, weather, recipes, personal chit-chat), gently redirect with:
+  "Oops, that's a bit outside my zone! 😊 I specialize in helping you learn and grow on SkillSwap. Ask me about any skill and I'll guide you!"
+
+Spelling correction: Always silently auto-correct skill typos (e.g., 'Pyton' → 'Python', 'reac' → 'React', 'Javscript' → 'JavaScript') and use the correct name in your reply.
+
+For skill explanations:
+- What the skill is and why it's valuable
+- Key topics/concepts a learner should focus on
+- Real-world use cases and opportunities
+- An encouraging closing line motivating the user to start learning
+
+Never echo the user's question back. Jump directly into a helpful, clear, friendly answer.
+
+STRICT LANGUAGE MIRRORING RULE: You MUST always respond in the EXACT SAME language the user writes in.
+- If the user writes in English → respond ONLY in English
+- If the user writes in Hindi (Devanagari or Roman) → respond in Hindi/Hinglish
+- If the user writes in Gujarati → respond in Gujarati
+- If the user writes in mixed Hinglish → respond in Hinglish
+- NEVER switch languages on your own. Always match the user's language.
+
+SkillSwap Learning Path Rule: When the user asks HOW to learn a skill, WHERE to start, "kaise sikhu", "steps to learn", or "kahan se sikhu" — ALWAYS guide them to use SkillSwap's 3 core features:
+1. 📍 Roadmap tab — generate a personalized week-by-week learning plan
+2. 🧠 Quiz tab — practice with MCQs, Q&A, and Coding questions
+3. 🤝 Swap Request — find mentors on SkillSwap and learn 1-on-1 through skill exchange
+Respond in the SAME language the user used. Mention all 3 features warmly and tell them to start today!`;
 
     const topMentors = await findTopSkillMentors(message);
     if (topMentors.length > 0) {
@@ -574,13 +611,14 @@ export const chatDiscussion = asyncHandler(async (req, res) => {
     // Convert history to prompt string for simplicity, or just pass message if no history
     let prompt = message;
     if (history && history.length > 0) {
-        prompt =
-            history
-                .map((h) => `${h.role || h.sender}: ${h.content || h.text}`)
-                .join("\n") + `\nuser: ${message}`;
+        const historyText = history
+            .map((h) => `${h.role || h.sender}: ${h.content || h.text}`)
+            .join("\n");
+        prompt = historyText + `\nuser: ${message}`;
+        systemContext += " IMPORTANT: This is a multi-turn conversation. Use the conversation history above to understand context and correctly answer follow-up questions (like 'what are the steps of it?', 'tell me more', 'explain further') by referring to what was previously discussed. Never treat vague follow-up questions as new unrelated topics.";
     } else {
         systemContext +=
-            " When the user asks about a skill or topic, answer their question directly and DO NOT include any 'Hello! Welcome to SkillSwap...' greeting banner.";
+            " When the user asks about a skill or topic, answer their question directly and DO NOT include any greeting banner.";
     }
 
     const aiResponse = await chatWithGemini(prompt, systemContext);
@@ -626,7 +664,7 @@ export const streamChatDiscussion = async (req, res, next) => {
         res.flushHeaders();
 
         if (isGreetingQuery(message)) {
-            const welcomeResponse = "Hello! Welcome to SkillSwap AI. I am your AI learning assistant. I can help you navigate skill swaps, learning goals, and mentorship on the platform! What would you like to learn today?";
+            const welcomeResponse = "Hey there! 👋 Welcome to SkillSwap AI! I'm your personal learning companion here. Whether you want to explore a new skill, get a step-by-step learning roadmap, take a quiz, or connect with top mentors — I've got you covered! 😊\n\nSo, what skill are you curious about today?";
             const words = welcomeResponse.split(" ");
             for (const word of words) {
                 res.write(`data: ${JSON.stringify({ chunk: word + " ", sessionId: activeSessionId })}\n\n`);
@@ -653,7 +691,7 @@ export const streamChatDiscussion = async (req, res, next) => {
         }
 
         if (checkIsNonSkillQuery(message)) {
-            const sorryResponse = "Sorry, I am your SkillSwap AI assistant and I can only help you with skill-related topics, learning, teaching, or platform queries. What skill would you like to learn today?";
+            const sorryResponse = "Oops, that's a bit outside my zone! 😊 I'm specialized in helping you learn, teach, and exchange skills on SkillSwap. Ask me about any skill like Python, UI/UX Design, React, Data Science, and more — I'd love to help you grow!";
             const words = sorryResponse.split(" ");
             for (const word of words) {
                 res.write(`data: ${JSON.stringify({ chunk: word + " ", sessionId: activeSessionId })}\n\n`);
@@ -680,7 +718,45 @@ export const streamChatDiscussion = async (req, res, next) => {
         }
 
         let systemContext =
-            "You are a helpful AI assistant for SkillSwap, a platform for learning and teaching skills. Default to responding in English unless the user explicitly speaks or requests Hindi or Gujarati. STRICT LIMITATION: You MUST ONLY answer questions related to skills, learning, teaching, or the SkillSwap platform itself. If a user asks something unrelated, personal, off-topic, casual (e.g., 'whats ur name', 'who are you', jokes, weather, recipes, news, sports, politics), or uses bad language, give a VERY SHORT and polite apology starting with 'Sorry...' (e.g., 'Sorry, I can only help with skill-related topics, learning, teaching, or SkillSwap platform queries.'), DO NOT explain further, and DO NOT mention any users. NEVER use bad language.";
+            `You are a warm, friendly, and expert learning companion on SkillSwap — a platform for learning and teaching skills.
+
+Your personality:
+- You are encouraging, patient, and supportive like a great mentor
+- You use simple, clear, and easy-to-understand language
+- You make every user feel comfortable, confident, and satisfied with your response
+- You never make the user feel awkward, embarrassed, or nervous
+- Use emojis occasionally (👋, 🚀, 💡, 📚, ✅) to make responses feel friendly and human
+- Format your responses clearly using bullet points or short paragraphs for readability
+
+Language rule: Default to English. If the user writes in Hindi or Gujarati, respond in that language naturally.
+
+STRICT LANGUAGE MIRRORING RULE: You MUST always respond in the EXACT SAME language the user writes in.
+- If the user writes in English → respond ONLY in English
+- If the user writes in Hindi (Devanagari or Roman) → respond in Hindi/Hinglish
+- If the user writes in Gujarati → respond in Gujarati
+- If the user writes in mixed Hinglish → respond in Hinglish
+- NEVER switch languages on your own. Always match the user's language.
+
+Strict limitations:
+- ONLY answer questions about skills, learning, teaching, or the SkillSwap platform
+- If unrelated (jokes, weather, recipes, personal chit-chat), gently redirect with:
+  "Oops, that's a bit outside my zone! 😊 I specialize in helping you learn and grow on SkillSwap. Ask me about any skill and I'll guide you!"
+
+Spelling correction: Always silently auto-correct skill typos (e.g., 'Pyton' → 'Python', 'reac' → 'React', 'Javscript' → 'JavaScript') and use the correct name.
+
+For skill explanations:
+- What the skill is and why it's valuable
+- Key topics/concepts a learner should focus on
+- Real-world use cases and opportunities
+- An encouraging closing line motivating the user to start
+
+Never echo the user's question back. Jump directly into a helpful, clear, friendly answer.
+
+SkillSwap Learning Path Rule: When the user asks HOW to learn a skill, WHERE to start, "kaise sikhu", "steps to learn", or "kahan se sikhu" — ALWAYS guide them to use SkillSwap's 3 core features:
+1. 📍 Roadmap tab — generate a personalized week-by-week learning plan
+2. 🧠 Quiz tab — practice with MCQs, Q&A, and Coding questions
+3. 🤝 Swap Request — find mentors on SkillSwap and learn 1-on-1 through skill exchange
+Respond in the SAME language the user used. Mention all 3 features warmly and tell them to start today!`;
 
         const lowerMsg = message.toLowerCase();
         const words = lowerMsg
@@ -717,13 +793,14 @@ export const streamChatDiscussion = async (req, res, next) => {
 
         let prompt = message;
         if (history && history.length > 0) {
-            prompt =
-                history
-                    .map((h) => `${h.role || h.sender}: ${h.content || h.text}`)
-                    .join("\n") + `\nuser: ${message}`;
+            const historyText = history
+                .map((h) => `${h.role || h.sender}: ${h.content || h.text}`)
+                .join("\n");
+            prompt = historyText + `\nuser: ${message}`;
+            systemContext += " IMPORTANT: This is a multi-turn conversation. Use the conversation history above to understand context and correctly answer follow-up questions (like 'what are the steps of it?', 'tell me more', 'explain further') by referring to what was previously discussed. Never treat vague follow-up questions as new unrelated topics.";
         } else {
             systemContext +=
-            " When the user asks about a skill or topic, answer their question directly and DO NOT include any 'Hello! Welcome to SkillSwap...' greeting banner.";
+                " When the user asks about a skill or topic, answer their question directly and DO NOT include any greeting banner.";
         }
 
         const onChunk = (chunk) => {
