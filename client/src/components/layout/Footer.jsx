@@ -210,6 +210,42 @@ export default function Footer() {
             © 2026 SkillSwap AI. All rights reserved.
           </p>
 
+          {/* Designer Credit */}
+          <div className="group flex items-center gap-2 text-sm">
+            <span className="text-white/35">
+              Designed & Developed by
+            </span>
+
+            <span
+              className="
+        relative
+        cursor-default
+        font-semibold
+        tracking-wide
+        text-white/80
+        transition-all
+        duration-300
+        group-hover:text-orange-400
+      "
+            >
+              Heli Vyas
+
+              <span
+                className="
+          absolute
+          -bottom-1
+          left-0
+          h-px
+          w-0
+          bg-orange-500
+          transition-all
+          duration-300
+          group-hover:w-full
+        "
+              />
+            </span>
+          </div>
+
           <div className="flex gap-8">
 
             <Link

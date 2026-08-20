@@ -390,7 +390,7 @@ export const isGreetingQuery = (text) => {
 export const NON_SKILL_PATTERNS = [
     /\b(slap|punch|hit|kick|kill|murder|steal|rob|hack|abuse|fight|attack|harm|weapon|gun|knife|drug|smoke|beer|alcohol|wine|beat|insult|scold|torture|shoot|destroy|bully|threat|sex|sexual|sexuality)\b/i,
     /\b(sleep|eating|eat|drink|buying|buy|selling|sell|walk|running|bathroom|wash|shower|clean house|brushing|toilet)\b/i,
-    /\b(recipe|maggi|food|cooking dish|pasta|biryani|cake|tea|coffee|pizza|burger|samosa|momos|icecream|snack|breakfast|lunch|dinner)\b/i,
+    /\b(recipe|maggi|food|cooking dish|pasta|biryani|cake|tea|coffee|pizza|burger|samosa|momos|icecream|snack|breakfast|lunch|dinner|panipuri|pani\s*puri|golgappa|chaat|dosa|idli|vada|paratha|roti|sabzi|dal|khichdi|halwa|ladoo|jalebi|rasgulla|gulab\s*jamun|bhel|sev|puri|noodles|sandwich|chowmein|manchurian|spring\s*roll|french\s*fries|chips|popcorn|soda|juice|milkshake|lassi|chai|thali|curry|masala|tadka|khana|nashta|khane|peena|ghar\s*ka\s*khana)\b/i,
     /\b(movie|film|actor|actress|gossip|song|joke|comedy|prank|meme|cinema|trailer|pubg|freefire|ludo|bgmi|fortnite)\b/i,
     /\b(politics|election|prime minister|president|government|war|news|modi|trump|biden|weather|temperature|rain|climate)\b/i,
     /\b(dating|gf|bf|girlfriend|boyfriend|love|romance|flirt|breakup|kiss|hug|marry|marriage|relationship)\b/i,
@@ -398,7 +398,35 @@ export const NON_SKILL_PATTERNS = [
     /\b(who is|tell me a story|sing a song|what is your name|whats ur name|whats your name|what's your name|who are you|who r u|how old are you|where do you live|who made you|your name|ur name|what is ur name|how are you|how r u|how are u|hru|kaise ho|kese ho|what are you doing|wbu|kya kar rahe ho|kya kr rhe ho)\b/i
 ];
 
-const SKILL_KEYWORDS_REGEX = /\b(skill|skills|learn|learning|teach|teaching|swap|swaps|swaprequest|mentor|mentorship|platform|course|roadmap|react|javascript|python|java|c\+\+|node|express|html|css|figma|design|music|guitar|piano|fitness|yoga|language|english|hindi|spanish|french|code|coding|development|database|mongodb|sql|ai|machine learning|web|app|backend|frontend|fullstack|devops|git|github|api)\b/i;
+// Skill keywords that bypass non-skill check — 'roadmap' intentionally removed
+// so that 'roadmap of panipuri' still gets caught by NON_SKILL_PATTERNS
+const SKILL_KEYWORDS_REGEX = /\b(skill|skills|learn|learning|teach|teaching|swap|swaps|swaprequest|mentor|mentorship|platform|course|react|javascript|python|java|c\+\+|node|express|html|css|figma|design|music|guitar|piano|fitness|yoga|language|english|hindi|spanish|french|code|coding|development|database|mongodb|sql|ai|machine learning|web|app|backend|frontend|fullstack|devops|git|github|api)\b/i;
+
+// Intent: User is asking for a DEFINITION / explanation of a skill
+const SKILL_DEFINITION_REGEX = /^\s*(what\s+is|what's|whats|define|explain|tell\s+me\s+about|describe|kya\s+hai|kya\s+h|bata\s+do|batao|matlab|arth|meaning\s+of|what\s+does|what\s+are)\s+/i;
+
+// Intent: User is asking for STEPS / HOW TO LEARN
+// Matches: "steps", "roadmap", "give roadmap", "roadmap of X", "roadmap on X", "roadmap for X", "how to learn" etc.
+const STEPS_ROADMAP_REGEX = /\b(steps|step\s+by\s+step|how\s+to\s+learn|how\s+to\s+start|kaise\s+sikhu|kahan\s+se\s+shuru|kahan\s+se\s+sikhu|roadmap|learning\s+path|where\s+to\s+start|beginner\s+guide|guide\s+me|how\s+do\s+i\s+learn|how\s+can\s+i\s+learn|mujhe\s+sikhna\s+hai|sikhna\s+chahta|sikhna\s+chahti|course\s+for|syllabus|curriculum|plan\s+for|give\s+me\s+steps|give\s+me\s+a\s+plan|learning\s+plan|study\s+plan)\b/i;
+
+// Intent: User wants MENTOR / USER SUGGESTIONS
+const MENTOR_SUGGESTION_REGEX = /\b(suggest|recommendation|recommend|mentor|mentors|teacher|tutor|who\s+teaches|find\s+me|best\s+user|top\s+user|good\s+person|koi\s+mil|koi\s+batao|kaun\s+sikhayega|sikhane\s+wala|perfect\s+person|best\s+person|best\s+mentor|connect\s+me|expert|specialist|professionals?\s+for|users?\s+for|people\s+who\s+teach|someone\s+who\s+teaches)\b/i;
+
+export const detectQueryIntent = (text) => {
+    if (!text || typeof text !== "string") return "general";
+    const clean = text.trim();
+
+    // If it contains a non-skill topic word, override to 'non-skill'
+    // even if it also has roadmap/steps keywords (e.g. "give roadmap of panipuri")
+    for (const pattern of NON_SKILL_PATTERNS) {
+        if (pattern.test(clean)) return "non-skill";
+    }
+
+    if (MENTOR_SUGGESTION_REGEX.test(clean)) return "mentor";
+    if (STEPS_ROADMAP_REGEX.test(clean)) return "steps";
+    if (SKILL_DEFINITION_REGEX.test(clean)) return "definition";
+    return "general";
+};
 
 export const checkIsNonSkillQuery = (text) => {
     if (!text || typeof text !== "string") return false;
@@ -441,25 +469,11 @@ export const findTopSkillMentors = async (queryText) => {
             (w) =>
                 w.length > 2 &&
                 ![
-                    "how",
-                    "to",
-                    "learn",
-                    "teach",
-                    "seekhna",
-                    "want",
-                    "can",
-                    "you",
-                    "help",
-                    "me",
-                    "with",
-                    "what",
-                    "is",
-                    "the",
-                    "for",
-                    "and",
-                    "tell",
-                    "about",
-                    "explain",
+                    "how", "to", "learn", "teach", "seekhna", "want",
+                    "can", "you", "help", "me", "with", "what", "is",
+                    "the", "for", "and", "tell", "about", "explain",
+                    "suggest", "best", "top", "find", "good", "give",
+                    "mentor", "mentors", "user", "users", "person",
                 ].includes(w)
         );
 
@@ -475,20 +489,28 @@ export const findTopSkillMentors = async (queryText) => {
             { category: { $in: regexes } },
         ],
     })
-        .populate("owner", "name headline avatar location")
-        .limit(10)
+        .populate("owner", "name headline avatar location rating reviews")
+        .limit(15)
         .lean();
 
     const mentorMap = new Map();
     for (const s of skills) {
         if (s.owner && s.owner._id && !mentorMap.has(s.owner._id.toString())) {
+            const loc = s.owner.location;
+            const locationStr = loc?.city
+                ? `${loc.city}${loc.country ? ", " + loc.country : ""}`
+                : null;
+
             mentorMap.set(s.owner._id.toString(), {
                 name: s.owner.name,
                 headline: s.owner.headline || `Teaches ${s.title}`,
                 skillTitle: s.title,
+                location: locationStr,
+                rating: s.owner.rating || null,
+                reviews: s.owner.reviews || 0,
             });
         }
-        if (mentorMap.size >= 3) break;
+        if (mentorMap.size >= 5) break;
     }
 
     return Array.from(mentorMap.values());
@@ -497,10 +519,14 @@ export const findTopSkillMentors = async (queryText) => {
 export const formatMentorSuggestions = (mentors) => {
     if (!mentors || mentors.length === 0) return "";
 
-    const lines = mentors.map(
-        (m) => `• ${m.name}${m.headline ? ` (${m.headline})` : ` (Teaches ${m.skillTitle})`}`
-    );
-    return `💡 Top mentors on SkillSwap for this skill:\n` + lines.join("\n");
+    const lines = mentors.map((m, i) => {
+        let line = `${i + 1}. 👤 *${m.name}*`;
+        if (m.headline) line += ` — ${m.headline}`;
+        if (m.location) line += ` 📍 ${m.location}`;
+        if (m.rating && m.rating > 0) line += ` ⭐ ${m.rating}${m.reviews ? ` (${m.reviews} reviews)` : ""}`;
+        return line;
+    });
+    return `🎯 Top mentors on SkillSwap for this skill:\n\n` + lines.join("\n") + `\n\n👉 Open their profile on SkillSwap to send a swap request and start learning!`;
 };
 
 export const chatDiscussion = asyncHandler(async (req, res) => {
@@ -527,10 +553,7 @@ export const chatDiscussion = asyncHandler(async (req, res) => {
 
         return res.status(200).json({
             success: true,
-            data: {
-                reply: welcomeResponse,
-                sessionId: activeSessionId,
-            },
+            data: { reply: welcomeResponse, sessionId: activeSessionId },
         });
     }
 
@@ -539,14 +562,11 @@ export const chatDiscussion = asyncHandler(async (req, res) => {
 
         if (req.user?._id) {
             const titleSnippet = message.slice(0, 35) + (message.length > 35 ? "..." : "");
-            const userMsg = { sender: "user", text: message, timestamp: new Date() };
-            const aiMsg = { sender: "ai", text: sorryResponse, timestamp: new Date() };
-
             await AIChatHistory.findOneAndUpdate(
                 { user: req.user._id, sessionId: activeSessionId },
                 {
                     $setOnInsert: { title: titleSnippet },
-                    $push: { messages: { $each: [userMsg, aiMsg] } },
+                    $push: { messages: { $each: [{ sender: "user", text: message, timestamp: new Date() }, { sender: "ai", text: sorryResponse, timestamp: new Date() }] } },
                 },
                 { upsert: true, new: true }
             );
@@ -554,32 +574,127 @@ export const chatDiscussion = asyncHandler(async (req, res) => {
 
         return res.status(200).json({
             success: true,
-            data: {
-                reply: sorryResponse,
-                sessionId: activeSessionId,
-            },
+            data: { reply: sorryResponse, sessionId: activeSessionId },
         });
     }
 
-    let systemContext =
-        `You are a warm, friendly, and expert learning companion on SkillSwap — a platform for learning and teaching skills.
+    // ── Detect intent ──────────────────────────────────────────────────────
+    const intent = detectQueryIntent(message);
+
+    // ── NON-SKILL intent: e.g. "give roadmap of panipuri" ────────────────
+    if (intent === "non-skill") {
+        const sorryResponse = "Oops, that's a bit outside my zone! 😊 I'm specialized in helping you learn, teach, and exchange skills on SkillSwap. Ask me about any skill like Python, UI/UX Design, React, Data Science, Guitar and more — I'd love to help you grow!";
+
+        if (req.user?._id) {
+            const titleSnippet = message.slice(0, 35) + (message.length > 35 ? "..." : "");
+            await AIChatHistory.findOneAndUpdate(
+                { user: req.user._id, sessionId: activeSessionId },
+                {
+                    $setOnInsert: { title: titleSnippet },
+                    $push: { messages: { $each: [{ sender: "user", text: message, timestamp: new Date() }, { sender: "ai", text: sorryResponse, timestamp: new Date() }] } },
+                },
+                { upsert: true, new: true }
+            );
+        }
+
+        return res.status(200).json({
+            success: true,
+            data: { reply: sorryResponse, sessionId: activeSessionId },
+        });
+    }
+
+    // ── MENTOR intent: fetch real users from DB, no Gemini needed ──────────
+    if (intent === "mentor") {
+        const topMentors = await findTopSkillMentors(message);
+        let mentorReply;
+        if (topMentors.length > 0) {
+            mentorReply = formatMentorSuggestions(topMentors);
+        } else {
+            mentorReply = "Hmm, I couldn't find specific mentors for that skill right now. 🤔 But don't worry — head over to the **Discover** or **Recommendations** page on SkillSwap and browse mentors filtered by your skill category. You'll find the perfect match! 🚀";
+        }
+
+        if (req.user?._id) {
+            const titleSnippet = message.slice(0, 35) + (message.length > 35 ? "..." : "");
+            await AIChatHistory.findOneAndUpdate(
+                { user: req.user._id, sessionId: activeSessionId },
+                {
+                    $setOnInsert: { title: titleSnippet },
+                    $push: { messages: { $each: [{ sender: "user", text: message, timestamp: new Date() }, { sender: "ai", text: mentorReply, timestamp: new Date() }] } },
+                },
+                { upsert: true, new: true }
+            );
+        }
+
+        return res.status(200).json({
+            success: true,
+            data: { reply: mentorReply, sessionId: activeSessionId },
+        });
+    }
+
+    // ── STEPS intent: redirect to SkillSwap features ───────────────────────
+    if (intent === "steps") {
+        const stepsReply = `Great question! 🎯 To learn this skill step-by-step, SkillSwap has 3 powerful features built just for you:\n\n📍 **AI Roadmap** — Get a personalized week-by-week learning plan tailored to your current level and goals. Just go to the **Roadmap tab** and generate yours in seconds!\n\n🧠 **AI Quiz** — Test your knowledge with MCQs, Q&A, and Coding challenges. Head to the **Quiz tab** and start practicing today.\n\n🤝 **AI Recommendations** — Discover the best skill-match mentors and send a swap request to learn 1-on-1 from a real expert.\n\nStart with the Roadmap — it's the fastest way to go from zero to confident! 🚀`;
+
+        if (req.user?._id) {
+            const titleSnippet = message.slice(0, 35) + (message.length > 35 ? "..." : "");
+            await AIChatHistory.findOneAndUpdate(
+                { user: req.user._id, sessionId: activeSessionId },
+                {
+                    $setOnInsert: { title: titleSnippet },
+                    $push: { messages: { $each: [{ sender: "user", text: message, timestamp: new Date() }, { sender: "ai", text: stepsReply, timestamp: new Date() }] } },
+                },
+                { upsert: true, new: true }
+            );
+        }
+
+        return res.status(200).json({
+            success: true,
+            data: { reply: stepsReply, sessionId: activeSessionId },
+        });
+    }
+
+    // ── DEFINITION intent OR general: call Gemini with focused system prompt ─
+    const isDefinition = intent === "definition";
+
+    let systemContext = `You are a warm, friendly, and expert learning companion on SkillSwap — a platform for learning and teaching skills.
 
 Your personality:
 - You are encouraging, patient, and supportive like a great mentor
 - You use simple, clear, and easy-to-understand language
 - You make every user feel comfortable, confident, and satisfied with your response
-- You never make the user feel awkward, embarrassed, or nervous
 - Use emojis occasionally (👋, 🚀, 💡, 📚, ✅) to make responses feel friendly and human
 - Format your responses clearly using bullet points or short paragraphs for readability
 
-Language rule: Default to English. If the user writes in Hindi or Gujarati, respond in that language naturally.
+STRICT LANGUAGE MIRRORING RULE: ALWAYS respond in the EXACT SAME language the user writes in.
+- English → English only
+- Hindi/Hinglish → Hindi/Hinglish
+- Gujarati → Gujarati
 
 Strict limitations:
 - ONLY answer questions about skills, learning, teaching, or the SkillSwap platform
-- If unrelated (jokes, weather, recipes, personal chit-chat), gently redirect with:
-  "Oops, that's a bit outside my zone! 😊 I specialize in helping you learn and grow on SkillSwap. Ask me about any skill and I'll guide you!"
+- If unrelated, gently redirect: "Oops, that's a bit outside my zone! 😊 Ask me about any skill and I'll guide you!"
 
-Spelling correction: Always silently auto-correct skill typos (e.g., 'Pyton' → 'Python', 'reac' → 'React', 'Javscript' → 'JavaScript') and use the correct name in your reply.
+Spelling correction: Auto-correct skill typos silently (e.g., 'Pyton' → 'Python').`;
+
+    if (isDefinition) {
+        // DEFINITION mode: give ONLY a concise definition + key concepts + use cases
+        systemContext += `
+
+CRITICAL INSTRUCTION FOR THIS MESSAGE:
+The user is asking for a DEFINITION or explanation of a skill. You MUST:
+1. Give a clear, beginner-friendly definition of the skill in 2-3 sentences
+2. List 3-5 key concepts/topics of that skill as bullet points
+3. Mention 2-3 real-world use cases or career opportunities
+4. End with ONE encouraging sentence
+
+DO NOT:
+- Suggest learning steps or roadmaps
+- Mention quiz, roadmap tab, or platform features
+- Give a long essay — keep it concise and scannable
+- Repeat the user's question`;
+    } else {
+        // General: full context with SkillSwap platform guidance
+        systemContext += `
 
 For skill explanations:
 - What the skill is and why it's valuable
@@ -587,53 +702,34 @@ For skill explanations:
 - Real-world use cases and opportunities
 - An encouraging closing line motivating the user to start learning
 
-Never echo the user's question back. Jump directly into a helpful, clear, friendly answer.
-
-STRICT LANGUAGE MIRRORING RULE: You MUST always respond in the EXACT SAME language the user writes in.
-- If the user writes in English → respond ONLY in English
-- If the user writes in Hindi (Devanagari or Roman) → respond in Hindi/Hinglish
-- If the user writes in Gujarati → respond in Gujarati
-- If the user writes in mixed Hinglish → respond in Hinglish
-- NEVER switch languages on your own. Always match the user's language.
-
-SkillSwap Learning Path Rule: When the user asks HOW to learn a skill, WHERE to start, "kaise sikhu", "steps to learn", or "kahan se sikhu" — ALWAYS guide them to use SkillSwap's 3 core features:
-1. 📍 Roadmap tab — generate a personalized week-by-week learning plan
+SkillSwap Learning Path Rule: When the user asks HOW to learn a skill, WHERE to start, or about steps — ALWAYS guide them to:
+1. 📍 Roadmap tab — personalized week-by-week learning plan
 2. 🧠 Quiz tab — practice with MCQs, Q&A, and Coding questions
-3. 🤝 Swap Request — find mentors on SkillSwap and learn 1-on-1 through skill exchange
-Respond in the SAME language the user used. Mention all 3 features warmly and tell them to start today!`;
+3. 🤝 AI Recommendations — find and connect with mentors
 
-    const topMentors = await findTopSkillMentors(message);
-    if (topMentors.length > 0) {
-        const mentorSuggestions = formatMentorSuggestions(topMentors);
-        systemContext += `\n\nCRITICAL INSTRUCTION: At the end of your response, ALWAYS include this exact mentor list:\n${mentorSuggestions}`;
+Never echo the user's question back. Jump directly into a helpful, clear, friendly answer.`;
     }
 
-    // Convert history to prompt string for simplicity, or just pass message if no history
     let prompt = message;
     if (history && history.length > 0) {
         const historyText = history
             .map((h) => `${h.role || h.sender}: ${h.content || h.text}`)
             .join("\n");
         prompt = historyText + `\nuser: ${message}`;
-        systemContext += " IMPORTANT: This is a multi-turn conversation. Use the conversation history above to understand context and correctly answer follow-up questions (like 'what are the steps of it?', 'tell me more', 'explain further') by referring to what was previously discussed. Never treat vague follow-up questions as new unrelated topics.";
+        systemContext += " IMPORTANT: Multi-turn conversation — use history context for follow-up questions.";
     } else {
-        systemContext +=
-            " When the user asks about a skill or topic, answer their question directly and DO NOT include any greeting banner.";
+        systemContext += " Answer the user's question directly. DO NOT include any greeting banner.";
     }
 
     const aiResponse = await chatWithGemini(prompt, systemContext);
 
-    // Save/update conversation session in MongoDB
     if (req.user?._id) {
         const titleSnippet = message.slice(0, 35) + (message.length > 35 ? "..." : "");
-        const userMsg = { sender: "user", text: message, timestamp: new Date() };
-        const aiMsg = { sender: "ai", text: aiResponse, timestamp: new Date() };
-
         await AIChatHistory.findOneAndUpdate(
             { user: req.user._id, sessionId: activeSessionId },
             {
                 $setOnInsert: { title: titleSnippet },
-                $push: { messages: { $each: [userMsg, aiMsg] } },
+                $push: { messages: { $each: [{ sender: "user", text: message, timestamp: new Date() }, { sender: "ai", text: aiResponse, timestamp: new Date() }] } },
             },
             { upsert: true, new: true }
         );
@@ -641,10 +737,7 @@ Respond in the SAME language the user used. Mention all 3 features warmly and te
 
     return res.status(200).json({
         success: true,
-        data: {
-            reply: aiResponse,
-            sessionId: activeSessionId,
-        },
+        data: { reply: aiResponse, sessionId: activeSessionId },
     });
 });
 
@@ -717,78 +810,123 @@ export const streamChatDiscussion = async (req, res, next) => {
             return;
         }
 
-        let systemContext =
-            `You are a warm, friendly, and expert learning companion on SkillSwap — a platform for learning and teaching skills.
+        // ── Detect intent (same logic as chatDiscussion) ───────────────────
+        const streamIntent = detectQueryIntent(message);
+
+        // ── NON-SKILL intent: e.g. "give roadmap of panipuri" ─────────────
+        if (streamIntent === "non-skill") {
+            const sorryResponse = "Oops, that's a bit outside my zone! 😊 I'm specialized in helping you learn, teach, and exchange skills on SkillSwap. Ask me about any skill like Python, UI/UX Design, React, Data Science, Guitar and more — I'd love to help you grow!";
+            const sorryWords = sorryResponse.split(" ");
+            for (const word of sorryWords) {
+                res.write(`data: ${JSON.stringify({ chunk: word + " ", sessionId: activeSessionId })}\n\n`);
+                await new Promise((r) => setTimeout(r, 15));
+            }
+            res.write("data: [DONE]\n\n");
+            res.end();
+
+            if (req.user?._id) {
+                const titleSnippet = message.slice(0, 35) + (message.length > 35 ? "..." : "");
+                await AIChatHistory.findOneAndUpdate(
+                    { user: req.user._id, sessionId: activeSessionId },
+                    {
+                        $setOnInsert: { title: titleSnippet },
+                        $push: { messages: { $each: [{ sender: "user", text: message, timestamp: new Date() }, { sender: "ai", text: sorryResponse, timestamp: new Date() }] } },
+                    },
+                    { upsert: true, new: true }
+                ).catch((err) => console.error("Error saving AI stream history:", err.message));
+            }
+            return;
+        }
+
+        // ── MENTOR intent: stream real DB results directly ─────────────────
+        if (streamIntent === "mentor") {
+            const topMentors = await findTopSkillMentors(message);
+            let mentorReply = topMentors.length > 0
+                ? formatMentorSuggestions(topMentors)
+                : "Hmm, I couldn't find specific mentors for that skill right now. 🤔 But don't worry — head over to the **Discover** or **Recommendations** page on SkillSwap to browse mentors by skill category. You'll find the perfect match! 🚀";
+
+            const words = mentorReply.split(" ");
+            for (const word of words) {
+                res.write(`data: ${JSON.stringify({ chunk: word + " ", sessionId: activeSessionId })}\n\n`);
+                await new Promise((r) => setTimeout(r, 15));
+            }
+            res.write("data: [DONE]\n\n");
+            res.end();
+
+            if (req.user?._id) {
+                const titleSnippet = message.slice(0, 35) + (message.length > 35 ? "..." : "");
+                await AIChatHistory.findOneAndUpdate(
+                    { user: req.user._id, sessionId: activeSessionId },
+                    {
+                        $setOnInsert: { title: titleSnippet },
+                        $push: { messages: { $each: [{ sender: "user", text: message, timestamp: new Date() }, { sender: "ai", text: mentorReply, timestamp: new Date() }] } },
+                    },
+                    { upsert: true, new: true }
+                ).catch((err) => console.error("Error saving AI stream history:", err.message));
+            }
+            return;
+        }
+
+        // ── STEPS intent: stream SkillSwap feature redirect ───────────────
+        if (streamIntent === "steps") {
+            const stepsReply = `Great question! 🎯 To learn this skill step-by-step, SkillSwap has 3 powerful features built just for you:\n\n📍 **AI Roadmap** — Get a personalized week-by-week learning plan tailored to your current level and goals. Just go to the **Roadmap tab** and generate yours in seconds!\n\n🧠 **AI Quiz** — Test your knowledge with MCQs, Q&A, and Coding challenges. Head to the **Quiz tab** and start practicing today.\n\n🤝 **AI Recommendations** — Discover the best skill-match mentors and send a swap request to learn 1-on-1 from a real expert.\n\nStart with the Roadmap — it's the fastest way to go from zero to confident! 🚀`;
+
+            const words = stepsReply.split(" ");
+            for (const word of words) {
+                res.write(`data: ${JSON.stringify({ chunk: word + " ", sessionId: activeSessionId })}\n\n`);
+                await new Promise((r) => setTimeout(r, 15));
+            }
+            res.write("data: [DONE]\n\n");
+            res.end();
+
+            if (req.user?._id) {
+                const titleSnippet = message.slice(0, 35) + (message.length > 35 ? "..." : "");
+                await AIChatHistory.findOneAndUpdate(
+                    { user: req.user._id, sessionId: activeSessionId },
+                    {
+                        $setOnInsert: { title: titleSnippet },
+                        $push: { messages: { $each: [{ sender: "user", text: message, timestamp: new Date() }, { sender: "ai", text: stepsReply, timestamp: new Date() }] } },
+                    },
+                    { upsert: true, new: true }
+                ).catch((err) => console.error("Error saving AI stream history:", err.message));
+            }
+            return;
+        }
+
+        // ── DEFINITION or general: build focused system prompt then stream ─
+        const isDefinition = streamIntent === "definition";
+
+        let systemContext = `You are a warm, friendly, and expert learning companion on SkillSwap — a platform for learning and teaching skills.
 
 Your personality:
 - You are encouraging, patient, and supportive like a great mentor
 - You use simple, clear, and easy-to-understand language
-- You make every user feel comfortable, confident, and satisfied with your response
-- You never make the user feel awkward, embarrassed, or nervous
 - Use emojis occasionally (👋, 🚀, 💡, 📚, ✅) to make responses feel friendly and human
 - Format your responses clearly using bullet points or short paragraphs for readability
 
-Language rule: Default to English. If the user writes in Hindi or Gujarati, respond in that language naturally.
+STRICT LANGUAGE MIRRORING RULE: ALWAYS respond in the EXACT SAME language the user writes in.
+- English → English only | Hindi/Hinglish → Hindi/Hinglish | Gujarati → Gujarati
 
-STRICT LANGUAGE MIRRORING RULE: You MUST always respond in the EXACT SAME language the user writes in.
-- If the user writes in English → respond ONLY in English
-- If the user writes in Hindi (Devanagari or Roman) → respond in Hindi/Hinglish
-- If the user writes in Gujarati → respond in Gujarati
-- If the user writes in mixed Hinglish → respond in Hinglish
-- NEVER switch languages on your own. Always match the user's language.
+Strict limitations: ONLY answer about skills, learning, teaching, or SkillSwap.
+Spelling correction: Auto-correct skill typos silently.`;
 
-Strict limitations:
-- ONLY answer questions about skills, learning, teaching, or the SkillSwap platform
-- If unrelated (jokes, weather, recipes, personal chit-chat), gently redirect with:
-  "Oops, that's a bit outside my zone! 😊 I specialize in helping you learn and grow on SkillSwap. Ask me about any skill and I'll guide you!"
+        if (isDefinition) {
+            systemContext += `
 
-Spelling correction: Always silently auto-correct skill typos (e.g., 'Pyton' → 'Python', 'reac' → 'React', 'Javscript' → 'JavaScript') and use the correct name.
+CRITICAL INSTRUCTION FOR THIS MESSAGE:
+The user is asking for a DEFINITION or explanation of a skill. You MUST:
+1. Give a clear, beginner-friendly definition of the skill in 2-3 sentences
+2. List 3-5 key concepts/topics of that skill as bullet points
+3. Mention 2-3 real-world use cases or career opportunities
+4. End with ONE encouraging sentence
 
-For skill explanations:
-- What the skill is and why it's valuable
-- Key topics/concepts a learner should focus on
-- Real-world use cases and opportunities
-- An encouraging closing line motivating the user to start
+DO NOT suggest learning steps, roadmaps, quiz or platform features. Keep it concise and scannable.`;
+        } else {
+            systemContext += `
 
-Never echo the user's question back. Jump directly into a helpful, clear, friendly answer.
-
-SkillSwap Learning Path Rule: When the user asks HOW to learn a skill, WHERE to start, "kaise sikhu", "steps to learn", or "kahan se sikhu" — ALWAYS guide them to use SkillSwap's 3 core features:
-1. 📍 Roadmap tab — generate a personalized week-by-week learning plan
-2. 🧠 Quiz tab — practice with MCQs, Q&A, and Coding questions
-3. 🤝 Swap Request — find mentors on SkillSwap and learn 1-on-1 through skill exchange
-Respond in the SAME language the user used. Mention all 3 features warmly and tell them to start today!`;
-
-        const lowerMsg = message.toLowerCase();
-        const words = lowerMsg
-            .replace(/[^a-zA-Z0-9\s]/g, "")
-            .split(" ")
-            .filter(
-                (w) =>
-                    w.length > 2 &&
-                    ![
-                        "how",
-                        "to",
-                        "learn",
-                        "teach",
-                        "seekhna",
-                        "want",
-                        "can",
-                        "you",
-                        "help",
-                        "me",
-                        "with",
-                        "what",
-                        "is",
-                        "the",
-                        "for",
-                        "and",
-                    ].includes(w)
-            );
-
-        const topMentors = await findTopSkillMentors(message);
-        if (topMentors.length > 0) {
-            const mentorSuggestions = formatMentorSuggestions(topMentors);
-            systemContext += `\n\nCRITICAL INSTRUCTION: At the end of your response, ALWAYS include this exact mentor list:\n${mentorSuggestions}`;
+For skill explanations: what the skill is, key topics, real-world use cases, encouraging close.
+SkillSwap Learning Path Rule: When asked about steps/how to learn → guide to Roadmap tab, Quiz tab, AI Recommendations.
+Never echo the user's question back.`;
         }
 
         let prompt = message;

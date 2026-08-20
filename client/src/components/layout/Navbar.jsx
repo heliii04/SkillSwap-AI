@@ -31,21 +31,22 @@ export default function Navbar() {
   const isAuthenticated = Boolean(user);
 
   useEffect(() => {
-    if (isHomePage) {
-      const moveTimer = setTimeout(() => {
-        setIsMoving(true);
-      }, 900);
+    if (!showSplash) return;
 
-      const closeTimer = setTimeout(() => {
-        setShowSplash(false);
-      }, 2600);
+    const moveTimer = setTimeout(() => {
+      setIsMoving(true);
+    }, 900);
 
-      return () => {
-        clearTimeout(moveTimer);
-        clearTimeout(closeTimer);
-      };
-    }
-  }, [isHomePage]);
+    const closeTimer = setTimeout(() => {
+      setShowSplash(false);
+    }, 2600);
+
+    return () => {
+      clearTimeout(moveTimer);
+      clearTimeout(closeTimer);
+    };
+  }, [showSplash]);
+
 
   useEffect(() => {
     if (showSplash) {

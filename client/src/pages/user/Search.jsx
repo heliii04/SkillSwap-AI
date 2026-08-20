@@ -204,6 +204,8 @@ export default function Search() {
                                 availability: "Available",
                                 mode: user.mode || "online",
                                 level: user.level || "all",
+                                // Array of all categories from all teach skills
+                                categories: Array.isArray(user.categories) ? user.categories : (user.category ? [user.category] : []),
                                 category: user.category || "all",
                                 teaches: user.teaches || [],
                                 wants: user.wants || [],
@@ -293,10 +295,12 @@ export default function Search() {
                     );
 
                 const matchesCategory =
-                    filters.category ===
-                    "all" ||
-                    mentor.category ===
-                    filters.category;
+                    filters.category === "all" ||
+                    // Check against ALL categories of this user's teach skills
+                    (Array.isArray(mentor.categories)
+                        ? mentor.categories.some(cat => cat?.toLowerCase() === filters.category.toLowerCase())
+                        : mentor.category?.toLowerCase() === filters.category.toLowerCase()
+                    );
 
                 const matchesMode =
                     filters.mode ===

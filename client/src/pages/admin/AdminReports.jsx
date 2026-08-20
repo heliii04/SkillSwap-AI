@@ -63,15 +63,15 @@ export default function AdminReports() {
     return (
         <div className="space-y-6 animate-fade-in">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 rounded-3xl border border-white/10 bg-[#0d0e15] p-6">
-                <div>
+                <div className="min-w-0">
                     <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                        <FiShield className="text-orange-500" /> User Conduct & Content Moderation
+                        <FiShield className="text-orange-500 shrink-0" /> User Conduct & Content Moderation
                     </h2>
                     <p className="text-xs text-white/45 mt-1">Review user reports, take action, or suspend policy-violating accounts.</p>
                 </div>
 
-                <div className="flex items-center gap-2">
-                    <FiFilter className="text-white/40 text-sm" />
+                <div className="flex items-center gap-2 shrink-0">
+                    <FiFilter className="text-white/40 text-sm shrink-0" />
                     <CustomSelect
                         value={statusFilter}
                         onChange={(e) => setStatusFilter(e.target.value)}
@@ -81,6 +81,7 @@ export default function AdminReports() {
                             { value: "resolved", label: "Resolved" },
                             { value: "dismissed", label: "Dismissed" }
                         ]}
+                        align="right"
                     />
                 </div>
             </div>

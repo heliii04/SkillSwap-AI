@@ -403,6 +403,31 @@ export const getAllProfiles = asyncHandler(
             const mainSkill = teachSkills[0] || learnSkills[0] || {};
             const userReviewData = reviewMap.get(user._id.toString()) || { rating: 0, reviews: 0 };
 
+            // Saari teach skills ki unique categories collect karo
+            const allCategories = [
+                ...new Set(
+                    teachSkills
+                        .map(s => s.category)
+                        .filter(Boolean)
+                )
+            ];
+            // Saare unique levels collect karo
+            const allLevels = [
+                ...new Set(
+                    teachSkills
+                        .map(s => s.level)
+                        .filter(Boolean)
+                )
+            ];
+            // Saare unique modes collect karo
+            const allModes = [
+                ...new Set(
+                    teachSkills
+                        .map(s => s.teachingMode)
+                        .filter(Boolean)
+                )
+            ];
+
             return {
                 ...sanitizeProfile(user),
                 isConnected: connectedUserIds.has(user._id.toString()),
@@ -411,9 +436,12 @@ export const getAllProfiles = asyncHandler(
                 sessions: sessionCountMap.get(user._id.toString()) || 0,
                 teaches: teachSkills.map(s => s.title),
                 wants: learnSkills.map(s => s.title),
-                category: mainSkill.category || "all",
-                level: mainSkill.level || "all",
-                mode: mainSkill.teachingMode || mainSkill.learningMode || "all",
+                // Array of all categories (for multi-category filtering)
+                categories: allCategories,
+                // Single fallback fields (backward compat)
+                category: allCategories[0] || mainSkill.category || "all",
+                level: allLevels[0] || mainSkill.level || "all",
+                mode: allModes[0] || mainSkill.teachingMode || mainSkill.learningMode || "all",
             };
         });
 
